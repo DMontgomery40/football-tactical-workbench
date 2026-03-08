@@ -5,6 +5,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+.env
+.env.local
 
 backend_server.log
 backend_server.pid

@@ -230,6 +230,12 @@ def choose_device() -> str:
         return "cpu"
 
 
+def choose_keypoint_device(detector_device: str) -> str:
+    if detector_device == "mps":
+        return "cpu"
+    return detector_device
+
+
 def safe_int(value: object, default: int = -1) -> int:
     try:
         if value is None:
@@ -559,6 +565,36 @@ def compute_spatial_entropy(points: np.ndarray, cols: int = EXPERIMENT_GRID_COLS
     return entropy / normalization if normalization > 0 else entropy
 
 
+def compute_team_shape_metrics(points: np.ndarray) -> dict[str, float]:
+    if points.shape[0] == 0:
+        return {
+            "player_count": 0.0,
+            "centroid_x_cm": float("nan"),
+            "centroid_y_cm": float("nan"),
+            "spread_rms_cm": float("nan"),
+            "length_axis_cm": float("nan"),
+            "width_axis_cm": float("nan"),
+            "hull_area_cm2": float("nan"),
+        }
+
+    centroid = points.mean(axis=0)
+    centered = points - centroid
+    distances_sq = np.sum(centered ** 2, axis=1)
+    spread_rms = float(np.sqrt(np.mean(distances_sq)))
+    length_axis = float(np.percentile(points[:, 0], 90) - np.percentile(points[:, 0], 10)) if points.shape[0] >= 2 else 0.0
+    width_axis = float(np.percentile(points[:, 1], 90) - np.percentile(points[:, 1], 10)) if points.shape[0] >= 2 else 0.0
+
+    return {
+        "player_count": float(points.shape[0]),
+        "centroid_x_cm": float(centroid[0]),
+        "centroid_y_cm": float(centroid[1]),
+        "spread_rms_cm": spread_rms,
+        "length_axis_cm": length_axis,
+        "width_axis_cm": width_axis,
+        "hull_area_cm2": compute_convex_hull_area(points),
+    }
+
+
 def rolling_nanmean(values: list[float], window: int) -> list[float]:
     result: list[float] = []
     for index in range(len(values)):
@@ -568,125 +604,162 @@ def rolling_nanmean(values: list[float], window: int) -> list[float]:
     return result
 
 
-def build_spatial_entropy_experiment(frame_records: list[dict[str, Any]], fps: float) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    window_frames = max(5, int(round((fps if fps > 0 else 25.0) * EXPERIMENT_WINDOW_SECONDS)))
-    team_labels = ["home", "away"]
-    series_by_team: dict[str, dict[str, list[float]]] = {
-        label: {
-            "player_count": [],
-            "entropy": [],
-            "hull_area": [],
-            "entropy_delta": [],
-            "hull_delta": [],
-            "entropy_volatility": [],
-            "hull_volatility": [],
-        }
-        for label in team_labels
-    }
+def zscore_series(values: list[float]) -> list[float]:
+    finite_values = np.array([value for value in values if np.isfinite(value)], dtype=np.float32)
+    if finite_values.size == 0:
+        return [float("nan")] * len(values)
+    mean_value = float(finite_values.mean())
+    std_value = float(finite_values.std())
+    if std_value < 1e-8:
+        return [0.0 if np.isfinite(value) else float("nan") for value in values]
+    return [((float(value) - mean_value) / std_value) if np.isfinite(value) else float("nan") for value in values]
 
-    for record in frame_records:
-        for team_label in team_labels:
-            points = np.array(
-                [
-                    row["field_point"]
-                    for row in record["players"]
-                    if row["team_label"] == team_label and row["field_point"] is not None
-                ],
-                dtype=np.float32,
-            )
-            player_count = float(points.shape[0])
-            entropy = compute_spatial_entropy(points)
-            hull_area = compute_convex_hull_area(points)
 
-            team_series = series_by_team[team_label]
-            team_series["player_count"].append(player_count)
-            team_series["entropy"].append(entropy)
-            team_series["hull_area"].append(hull_area if player_count > 0 else float("nan"))
+def build_geometric_volatility_experiment(frame_records: list[dict[str, Any]], fps: float) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    frame_rows: list[dict[str, float]] = []
+    seconds_per_frame = 1.0 / fps if fps > 0 else 1.0 / 25.0
 
-    for team_label in team_labels:
-        team_series = series_by_team[team_label]
-        entropy_values = team_series["entropy"]
-        hull_values = team_series["hull_area"]
-        entropy_delta: list[float] = []
-        hull_delta: list[float] = []
-
-        for index, value in enumerate(entropy_values):
-            if index == 0 or not np.isfinite(value) or not np.isfinite(entropy_values[index - 1]):
-                entropy_delta.append(float("nan"))
-            else:
-                entropy_delta.append(abs(value - entropy_values[index - 1]))
-
-        for index, value in enumerate(hull_values):
-            if index == 0 or not np.isfinite(value) or not np.isfinite(hull_values[index - 1]):
-                hull_delta.append(float("nan"))
-            else:
-                hull_delta.append(abs(value - hull_values[index - 1]))
-
-        team_series["entropy_delta"] = entropy_delta
-        team_series["hull_delta"] = hull_delta
-        team_series["entropy_volatility"] = rolling_nanmean(entropy_delta, window_frames)
-        team_series["hull_volatility"] = rolling_nanmean(hull_delta, window_frames)
-
-    timeseries_rows: list[dict[str, Any]] = []
-    combined_volatility: list[float] = []
     for frame_index, record in enumerate(frame_records):
-        home_entropy_vol = series_by_team["home"]["entropy_volatility"][frame_index]
-        away_entropy_vol = series_by_team["away"]["entropy_volatility"][frame_index]
-        valid_values = [value for value in [home_entropy_vol, away_entropy_vol] if np.isfinite(value)]
-        combined_entropy_vol = float(np.mean(valid_values)) if valid_values else float("nan")
-        combined_volatility.append(combined_entropy_vol)
+        home_points = np.array(
+            [row["field_point"] for row in record["players"] if row["team_label"] == "home" and row["field_point"] is not None],
+            dtype=np.float32,
+        )
+        away_points = np.array(
+            [row["field_point"] for row in record["players"] if row["team_label"] == "away" and row["field_point"] is not None],
+            dtype=np.float32,
+        )
+        all_points = np.concatenate([home_points, away_points], axis=0) if home_points.size and away_points.size else (home_points if home_points.size else away_points)
 
-        timeseries_rows.append(
+        home_metrics = compute_team_shape_metrics(home_points)
+        away_metrics = compute_team_shape_metrics(away_points)
+        centroid_distance = (
+            float(np.linalg.norm(np.array([home_metrics["centroid_x_cm"], home_metrics["centroid_y_cm"]]) - np.array([away_metrics["centroid_x_cm"], away_metrics["centroid_y_cm"]])))
+            if np.isfinite(home_metrics["centroid_x_cm"]) and np.isfinite(away_metrics["centroid_x_cm"])
+            else float("nan")
+        )
+        entropy_grid = compute_spatial_entropy(all_points) if all_points.size else float("nan")
+
+        frame_rows.append(
             {
-                "frame_index": frame_index,
-                "seconds": round(frame_index / fps, 4) if fps > 0 else round(frame_index / 25.0, 4),
-                "home_player_count": int(series_by_team["home"]["player_count"][frame_index]),
-                "away_player_count": int(series_by_team["away"]["player_count"][frame_index]),
-                "home_entropy": series_by_team["home"]["entropy"][frame_index],
-                "away_entropy": series_by_team["away"]["entropy"][frame_index],
-                "home_hull_area_cm2": series_by_team["home"]["hull_area"][frame_index],
-                "away_hull_area_cm2": series_by_team["away"]["hull_area"][frame_index],
-                "home_entropy_delta": series_by_team["home"]["entropy_delta"][frame_index],
-                "away_entropy_delta": series_by_team["away"]["entropy_delta"][frame_index],
-                "home_hull_delta": series_by_team["home"]["hull_delta"][frame_index],
-                "away_hull_delta": series_by_team["away"]["hull_delta"][frame_index],
-                "home_entropy_volatility": home_entropy_vol,
-                "away_entropy_volatility": away_entropy_vol,
-                "combined_entropy_volatility": combined_entropy_vol,
+                "frame_index": float(frame_index),
+                "seconds": frame_index * seconds_per_frame,
+                "home_player_count": home_metrics["player_count"],
+                "away_player_count": away_metrics["player_count"],
+                "home_centroid_x_cm": home_metrics["centroid_x_cm"],
+                "home_centroid_y_cm": home_metrics["centroid_y_cm"],
+                "away_centroid_x_cm": away_metrics["centroid_x_cm"],
+                "away_centroid_y_cm": away_metrics["centroid_y_cm"],
+                "home_spread_rms_cm": home_metrics["spread_rms_cm"],
+                "away_spread_rms_cm": away_metrics["spread_rms_cm"],
+                "home_length_axis_cm": home_metrics["length_axis_cm"],
+                "away_length_axis_cm": away_metrics["length_axis_cm"],
+                "home_width_axis_cm": home_metrics["width_axis_cm"],
+                "away_width_axis_cm": away_metrics["width_axis_cm"],
+                "home_hull_area_cm2": home_metrics["hull_area_cm2"],
+                "away_hull_area_cm2": away_metrics["hull_area_cm2"],
+                "centroid_distance_cm": centroid_distance,
+                "entropy_grid": entropy_grid,
             }
         )
 
-    finite_combined = [value for value in combined_volatility if np.isfinite(value)]
+    numeric_keys = [
+        "home_player_count",
+        "away_player_count",
+        "home_centroid_x_cm",
+        "home_centroid_y_cm",
+        "away_centroid_x_cm",
+        "away_centroid_y_cm",
+        "home_spread_rms_cm",
+        "away_spread_rms_cm",
+        "home_length_axis_cm",
+        "away_length_axis_cm",
+        "home_width_axis_cm",
+        "away_width_axis_cm",
+        "home_hull_area_cm2",
+        "away_hull_area_cm2",
+        "centroid_distance_cm",
+        "entropy_grid",
+    ]
+
+    rows_by_second: dict[int, list[dict[str, float]]] = defaultdict(list)
+    for row in frame_rows:
+        rows_by_second[int(row["seconds"])].append(row)
+
+    second_rows: list[dict[str, Any]] = []
+    for second_bucket in sorted(rows_by_second):
+        bucket_rows = rows_by_second[second_bucket]
+        aggregated: dict[str, Any] = {"second": second_bucket, "seconds": float(second_bucket)}
+        for key in numeric_keys:
+            finite_values = [float(row[key]) for row in bucket_rows if np.isfinite(row[key])]
+            aggregated[key] = float(np.mean(finite_values)) if finite_values else float("nan")
+        second_rows.append(aggregated)
+
+    window_seconds = max(3, int(round(EXPERIMENT_WINDOW_SECONDS)))
+    volatility_features = [
+        "home_spread_rms_cm",
+        "away_spread_rms_cm",
+        "home_length_axis_cm",
+        "away_length_axis_cm",
+        "centroid_distance_cm",
+        "entropy_grid",
+    ]
+
+    for feature in volatility_features:
+        delta_key = f"{feature}_delta"
+        volatility_key = f"{feature}_volatility"
+        zscore_key = f"{feature}_z"
+        deltas: list[float] = []
+        values = [float(row[feature]) for row in second_rows]
+        for index, value in enumerate(values):
+            if index == 0 or not np.isfinite(value) or not np.isfinite(values[index - 1]):
+                deltas.append(float("nan"))
+            else:
+                deltas.append(abs(value - values[index - 1]))
+        rolling_values = rolling_nanmean(deltas, window_seconds)
+        z_values = zscore_series(rolling_values)
+        for row, delta_value, rolling_value, z_value in zip(second_rows, deltas, rolling_values, z_values):
+            row[delta_key] = delta_value
+            row[volatility_key] = rolling_value
+            row[zscore_key] = z_value
+
+    combined_values: list[float] = []
+    for row in second_rows:
+        z_values = [row[f"{feature}_z"] for feature in volatility_features if np.isfinite(row[f"{feature}_z"])]
+        combined = float(np.mean(z_values)) if z_values else float("nan")
+        row["vol_index"] = combined
+        combined_values.append(combined)
+
+    finite_combined = [value for value in combined_values if np.isfinite(value)]
     experiment_card = {
-        "id": "spatial_entropy_volatility",
+        "id": "geometric_volatility_index",
         "status": "experimental",
-        "title": "Spatial Entropy Volatility",
-        "summary": f"Rolling {int(EXPERIMENT_WINDOW_SECONDS)}s mean of absolute spatial-entropy change on the calibrated pitch.",
-        "interpretation": "Higher values indicate rapidly changing team shape and a more unstable game state.",
+        "title": "Geometric Volatility Index",
+        "summary": "1 Hz team-shape volatility built from spread, team length, inter-team centroid distance, and spatial entropy.",
+        "interpretation": "Higher values indicate rapid spatial reorganization and a more unstable game state.",
         "metrics": [
             {
-                "label": "Peak combined volatility",
+                "label": "Peak vol index",
                 "value": round(float(max(finite_combined)), 4) if finite_combined else 0.0,
-                "hint": "Highest combined home/away entropy volatility over the clip.",
+                "hint": "Highest normalized combined volatility over the half.",
             },
             {
-                "label": "Average combined volatility",
+                "label": "Average vol index",
                 "value": round(float(np.mean(finite_combined)), 4) if finite_combined else 0.0,
-                "hint": "Baseline chaos level across the whole sample.",
+                "hint": "Baseline volatility across the half.",
             },
             {
-                "label": "Latest combined volatility",
+                "label": "Latest vol index",
                 "value": round(float(finite_combined[-1]), 4) if finite_combined else 0.0,
-                "hint": "Most recent volatility reading from the tail of the clip.",
+                "hint": "Most recent combined volatility reading.",
             },
             {
-                "label": "Grid",
-                "value": f"{EXPERIMENT_GRID_COLS}x{EXPERIMENT_GRID_ROWS}",
-                "hint": "Pitch occupancy grid used for the entropy estimate.",
+                "label": "Sampling",
+                "value": "1 Hz / 10s",
+                "hint": "Per-second series with 10-second rolling mean absolute deltas.",
             },
         ],
     }
-    return timeseries_rows, experiment_card
+    return second_rows, experiment_card
 
 
 def load_soccernet_goal_events(source_video_path: Path) -> tuple[list[dict[str, Any]], str | None]:
@@ -756,8 +829,8 @@ def attach_goal_targets(
     if not goal_events:
         return timeseries_rows, {
             "goals_in_clip": 0,
-            "avg_pre_goal_volatility_30s": 0.0,
-            "avg_baseline_volatility_30s": 0.0,
+            "avg_pre_goal_vol_index_30s": 0.0,
+            "avg_baseline_vol_index_30s": 0.0,
             "pre_goal_uplift_30s": 0.0,
         }
 
@@ -780,12 +853,12 @@ def attach_goal_targets(
         for lookahead in GOAL_LOOKAHEAD_SECONDS:
             row[f"goal_in_next_{lookahead}s"] = int(np.isfinite(seconds_to_next_goal) and 0.0 <= seconds_to_next_goal <= lookahead)
 
-        combined_volatility = float(row["combined_entropy_volatility"]) if np.isfinite(row["combined_entropy_volatility"]) else float("nan")
-        if np.isfinite(combined_volatility):
+        vol_index = float(row["vol_index"]) if np.isfinite(row["vol_index"]) else float("nan")
+        if np.isfinite(vol_index):
             if row["goal_in_next_30s"]:
-                pre_goal_values_30.append(combined_volatility)
+                pre_goal_values_30.append(vol_index)
             else:
-                baseline_values_30.append(combined_volatility)
+                baseline_values_30.append(vol_index)
 
     avg_pre_goal_volatility = float(np.mean(pre_goal_values_30)) if pre_goal_values_30 else 0.0
     avg_baseline_volatility = float(np.mean(baseline_values_30)) if baseline_values_30 else 0.0
@@ -793,8 +866,8 @@ def attach_goal_targets(
 
     return timeseries_rows, {
         "goals_in_clip": len(goal_events),
-        "avg_pre_goal_volatility_30s": round(avg_pre_goal_volatility, 4),
-        "avg_baseline_volatility_30s": round(avg_baseline_volatility, 4),
+        "avg_pre_goal_vol_index_30s": round(avg_pre_goal_volatility, 4),
+        "avg_baseline_vol_index_30s": round(avg_baseline_volatility, 4),
         "pre_goal_uplift_30s": round(float(uplift), 4),
     }
 
@@ -843,7 +916,8 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     ball_conf = float(config_payload["ball_conf"])
     iou = float(config_payload["iou"])
 
-    device = choose_device()
+    detector_device = choose_device()
+    keypoint_device = choose_keypoint_device(detector_device)
     player_model = YOLO(detector_spec["weights_path"])
     ball_model: YOLO | None = YOLO(detector_spec["weights_path"]) if include_ball else None
     keypoint_model = YOLO(resolve_model_path(KEYPOINT_MODEL_DEFAULT, "keypoint"))
@@ -878,7 +952,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 break
 
             if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:
-                homography_candidate, detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, device)
+                homography_candidate, detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, keypoint_device)
                 if homography_candidate is not None:
                     field_homography = homography_candidate
                     last_calibration_frame = frame_index
@@ -895,7 +969,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 tracker=DEFAULT_TRACKER,
                 conf=player_conf,
                 iou=iou,
-                device=device,
+                device=detector_device,
                 classes=[detector_spec["player_class_id"]],
                 verbose=False,
             )
@@ -934,7 +1008,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     tracker=DEFAULT_TRACKER,
                     conf=ball_conf,
                     iou=iou,
-                    device=device,
+                    device=detector_device,
                     classes=[detector_spec["ball_class_id"]],
                     verbose=False,
                 )
@@ -1070,8 +1144,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     full_outputs_zip_path = outputs_dir / "all_outputs.zip"
 
     job_manager.log(job_id, f"Opening video: {source_video_path}")
-    device = choose_device()
-    job_manager.log(job_id, f"Device chosen: {device}")
+    detector_device = choose_device()
+    keypoint_device = choose_keypoint_device(detector_device)
+    job_manager.log(job_id, f"Detector device chosen: {detector_device}")
+    job_manager.log(job_id, f"Field calibration device chosen: {keypoint_device}")
 
     cap = cv2.VideoCapture(str(source_video_path))
     if not cap.isOpened():
@@ -1128,7 +1204,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
 
         if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or active_field_homography is None:
             calibration_refresh_attempts += 1
-            homography_candidate, _detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, device)
+            homography_candidate, _detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, keypoint_device)
             calibration_visible_counts.append(visible_count)
             calibration_inlier_counts.append(inlier_count)
             if homography_candidate is not None:
@@ -1149,7 +1225,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             tracker=DEFAULT_TRACKER,
             conf=player_conf,
             iou=iou,
-            device=device,
+            device=detector_device,
             classes=[detector_spec["player_class_id"]],
             verbose=False,
         )
@@ -1202,7 +1278,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 tracker=DEFAULT_TRACKER,
                 conf=ball_conf,
                 iou=iou,
-                device=device,
+                device=detector_device,
                 classes=[detector_spec["ball_class_id"]],
                 verbose=False,
             )
@@ -1440,7 +1516,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 )
         projection_csv_key = f"/runs/{run_dir.name}/outputs/projections.csv"
 
-    entropy_timeseries_rows, experiment_card = build_spatial_entropy_experiment(frame_records, fps if fps > 0 else 25.0)
+    entropy_timeseries_rows, experiment_card = build_geometric_volatility_experiment(frame_records, fps if fps > 0 else 25.0)
     goal_events, goal_label_source = load_soccernet_goal_events(source_video_path)
     entropy_timeseries_rows, goal_metrics = attach_goal_targets(entropy_timeseries_rows, goal_events)
     experiment_card["metrics"].extend(
@@ -1451,19 +1527,19 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "hint": "Count of SoccerNet goal annotations aligned to this half.",
             },
             {
-                "label": "30s pre-goal vol",
-                "value": goal_metrics["avg_pre_goal_volatility_30s"],
-                "hint": "Average combined volatility in rows that precede a goal within 30 seconds.",
+                "label": "30s pre-goal index",
+                "value": goal_metrics["avg_pre_goal_vol_index_30s"],
+                "hint": "Average combined volatility index in rows that precede a goal within 30 seconds.",
             },
             {
-                "label": "30s baseline vol",
-                "value": goal_metrics["avg_baseline_volatility_30s"],
-                "hint": "Average combined volatility outside those 30-second pre-goal windows.",
+                "label": "30s baseline index",
+                "value": goal_metrics["avg_baseline_vol_index_30s"],
+                "hint": "Average combined volatility index outside those 30-second pre-goal windows.",
             },
             {
                 "label": "30s uplift",
                 "value": goal_metrics["pre_goal_uplift_30s"],
-                "hint": "Relative lift of the experimental signal in pre-goal windows versus baseline.",
+                "hint": "Relative lift of the volatility index in pre-goal windows versus baseline.",
             },
         ]
     )
@@ -1474,17 +1550,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             "seconds",
             "home_player_count",
             "away_player_count",
-            "home_entropy",
-            "away_entropy",
+            "home_centroid_x_cm",
+            "home_centroid_y_cm",
+            "away_centroid_x_cm",
+            "away_centroid_y_cm",
+            "home_spread_rms_cm",
+            "away_spread_rms_cm",
+            "home_length_axis_cm",
+            "away_length_axis_cm",
+            "home_width_axis_cm",
+            "away_width_axis_cm",
             "home_hull_area_cm2",
             "away_hull_area_cm2",
-            "home_entropy_delta",
-            "away_entropy_delta",
-            "home_hull_delta",
-            "away_hull_delta",
-            "home_entropy_volatility",
-            "away_entropy_volatility",
-            "combined_entropy_volatility",
+            "centroid_distance_cm",
+            "entropy_grid",
+            "home_spread_rms_cm_volatility",
+            "away_spread_rms_cm_volatility",
+            "home_length_axis_cm_volatility",
+            "away_length_axis_cm_volatility",
+            "centroid_distance_cm_volatility",
+            "entropy_grid_volatility",
+            "vol_index",
             "seconds_to_next_goal",
             "next_goal_team",
             "goal_in_next_30s",
@@ -1492,21 +1578,31 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         ])
         for row in entropy_timeseries_rows:
             csv_writer.writerow([
-                row["frame_index"],
+                row["second"],
                 row["seconds"],
                 row["home_player_count"],
                 row["away_player_count"],
-                round(float(row["home_entropy"]), 6) if np.isfinite(row["home_entropy"]) else "",
-                round(float(row["away_entropy"]), 6) if np.isfinite(row["away_entropy"]) else "",
+                round(float(row["home_centroid_x_cm"]), 4) if np.isfinite(row["home_centroid_x_cm"]) else "",
+                round(float(row["home_centroid_y_cm"]), 4) if np.isfinite(row["home_centroid_y_cm"]) else "",
+                round(float(row["away_centroid_x_cm"]), 4) if np.isfinite(row["away_centroid_x_cm"]) else "",
+                round(float(row["away_centroid_y_cm"]), 4) if np.isfinite(row["away_centroid_y_cm"]) else "",
+                round(float(row["home_spread_rms_cm"]), 4) if np.isfinite(row["home_spread_rms_cm"]) else "",
+                round(float(row["away_spread_rms_cm"]), 4) if np.isfinite(row["away_spread_rms_cm"]) else "",
+                round(float(row["home_length_axis_cm"]), 4) if np.isfinite(row["home_length_axis_cm"]) else "",
+                round(float(row["away_length_axis_cm"]), 4) if np.isfinite(row["away_length_axis_cm"]) else "",
+                round(float(row["home_width_axis_cm"]), 4) if np.isfinite(row["home_width_axis_cm"]) else "",
+                round(float(row["away_width_axis_cm"]), 4) if np.isfinite(row["away_width_axis_cm"]) else "",
                 round(float(row["home_hull_area_cm2"]), 4) if np.isfinite(row["home_hull_area_cm2"]) else "",
                 round(float(row["away_hull_area_cm2"]), 4) if np.isfinite(row["away_hull_area_cm2"]) else "",
-                round(float(row["home_entropy_delta"]), 6) if np.isfinite(row["home_entropy_delta"]) else "",
-                round(float(row["away_entropy_delta"]), 6) if np.isfinite(row["away_entropy_delta"]) else "",
-                round(float(row["home_hull_delta"]), 4) if np.isfinite(row["home_hull_delta"]) else "",
-                round(float(row["away_hull_delta"]), 4) if np.isfinite(row["away_hull_delta"]) else "",
-                round(float(row["home_entropy_volatility"]), 6) if np.isfinite(row["home_entropy_volatility"]) else "",
-                round(float(row["away_entropy_volatility"]), 6) if np.isfinite(row["away_entropy_volatility"]) else "",
-                round(float(row["combined_entropy_volatility"]), 6) if np.isfinite(row["combined_entropy_volatility"]) else "",
+                round(float(row["centroid_distance_cm"]), 4) if np.isfinite(row["centroid_distance_cm"]) else "",
+                round(float(row["entropy_grid"]), 6) if np.isfinite(row["entropy_grid"]) else "",
+                round(float(row["home_spread_rms_cm_volatility"]), 6) if np.isfinite(row["home_spread_rms_cm_volatility"]) else "",
+                round(float(row["away_spread_rms_cm_volatility"]), 6) if np.isfinite(row["away_spread_rms_cm_volatility"]) else "",
+                round(float(row["home_length_axis_cm_volatility"]), 6) if np.isfinite(row["home_length_axis_cm_volatility"]) else "",
+                round(float(row["away_length_axis_cm_volatility"]), 6) if np.isfinite(row["away_length_axis_cm_volatility"]) else "",
+                round(float(row["centroid_distance_cm_volatility"]), 6) if np.isfinite(row["centroid_distance_cm_volatility"]) else "",
+                round(float(row["entropy_grid_volatility"]), 6) if np.isfinite(row["entropy_grid_volatility"]) else "",
+                round(float(row["vol_index"]), 6) if np.isfinite(row["vol_index"]) else "",
                 round(float(row["seconds_to_next_goal"]), 4) if np.isfinite(row["seconds_to_next_goal"]) else "",
                 row["next_goal_team"],
                 row["goal_in_next_30s"],
@@ -1812,7 +1908,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "goal_events_csv": goal_events_csv_key,
         "summary_json": f"/runs/{run_dir.name}/outputs/summary.json",
         "all_outputs_zip": f"/runs/{run_dir.name}/outputs/all_outputs.zip",
-        "device": device,
+        "device": detector_device,
+        "field_calibration_device": keypoint_device,
         "player_model": detector_spec["name"],
         "ball_model": detector_spec["name"] if include_ball else "off",
         "field_calibration_model": KEYPOINT_MODEL_DEFAULT,

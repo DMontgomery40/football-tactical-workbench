@@ -1,0 +1,100 @@
+/Users/davidmontgomery/football_pose_workbench/backend/scripts/soccernet_batch_experiment.py:39: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  stamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+[2026-03-08 07:26:47] [batch] starting batch soccernet_train_20_goalaligned_v1_20260308_002646
+[2026-03-08 07:26:47] [batch] split=train offset=0 limit=20 files=['1_224p.mkv', '2_224p.mkv', 'Labels-v2.json']
+[2026-03-08 07:26:47] [batch] dataset_dir=/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet
+[2026-03-08 07:26:47] [batch] runs_root=/Users/davidmontgomery/football_pose_workbench/backend/experiments/soccernet_train_20_goalaligned_v1_20260308_002646/runs
+/Users/davidmontgomery/football_pose_workbench/backend/scripts/soccernet_batch_experiment.py:198: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "created_at": datetime.utcnow().isoformat() + "Z",
+[2026-03-08 07:26:47] [game-001] processing england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley
+[2026-03-08 07:26:47] [game-001] already have 1_224p.mkv
+[2026-03-08 07:26:47] [game-001] already have 2_224p.mkv
+[2026-03-08 07:26:47] [game-001] already have Labels-v2.json
+[2026-03-08 07:26:47] [game-001-1] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet/england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley/1_224p.mkv
+[2026-03-08 07:26:47] [game-001-1] Detector device chosen: mps
+[2026-03-08 07:26:47] [game-001-1] Field calibration device chosen: cpu
+[2026-03-08 07:26:47] [game-001-1] Loading detector weights: soccana
+[2026-03-08 07:26:47] [game-001-1] Loading field calibration weights: soccana_keypoint
+[2026-03-08 07:26:48] [game-001-1] Ball tracking enabled through the shared soccer detector
+/Users/davidmontgomery/football_pose_workbench/backend/scripts/soccernet_batch_experiment.py:39: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  stamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+[2026-03-08 07:26:49] [game-001-1] progress=1.00
+[2026-03-08 07:26:51] [game-001-1] Tracked 25 frames at 7.51 fps
+[2026-03-08 07:26:53] [game-001-1] Tracked 50 frames at 9.64 fps
+[2026-03-08 07:26:54] [game-001-1] Tracked 75 frames at 11.01 fps
+[2026-03-08 07:26:56] [game-001-1] Tracked 100 frames at 12.33 fps
+[2026-03-08 07:26:57] [game-001-1] Tracked 125 frames at 13.26 fps
+[2026-03-08 07:26:58] [game-001-1] Tracked 150 frames at 14.10 fps
+[2026-03-08 07:27:00] [game-001-1] Tracked 175 frames at 14.59 fps
+[2026-03-08 07:27:01] [game-001-1] Tracked 200 frames at 15.01 fps
+[2026-03-08 07:27:02] [game-001-1] Tracked 225 frames at 15.37 fps
+[2026-03-08 07:27:04] [game-001-1] Tracked 250 frames at 15.60 fps
+[2026-03-08 07:27:05] [game-001-1] Tracked 275 frames at 15.80 fps
+[2026-03-08 07:27:06] [game-001-1] Tracked 300 frames at 16.04 fps
+[2026-03-08 07:27:08] [game-001-1] Tracked 325 frames at 16.21 fps
+[2026-03-08 07:27:09] [game-001-1] Tracked 350 frames at 16.43 fps
+[2026-03-08 07:27:10] [game-001-1] Tracked 375 frames at 16.48 fps
+[2026-03-08 07:27:12] [game-001-1] Tracked 400 frames at 16.63 fps
+[2026-03-08 07:27:13] [game-001-1] Tracked 425 frames at 16.70 fps
+[2026-03-08 07:27:14] [game-001-1] Tracked 450 frames at 16.80 fps
+[2026-03-08 07:27:16] [game-001-1] Tracked 475 frames at 16.62 fps
+[2026-03-08 07:27:18] [game-001-1] Tracked 500 frames at 16.70 fps
+[2026-03-08 07:27:19] [game-001-1] Tracked 525 frames at 16.78 fps
+[2026-03-08 07:27:20] [game-001-1] Tracked 550 frames at 16.95 fps
+[2026-03-08 07:27:21] [game-001-1] Tracked 575 frames at 17.05 fps
+[2026-03-08 07:27:23] [game-001-1] Tracked 600 frames at 17.19 fps
+[2026-03-08 07:27:24] [game-001-1] Tracked 625 frames at 17.27 fps
+[2026-03-08 07:27:25] [game-001-1] Tracked 650 frames at 17.38 fps
+[2026-03-08 07:27:26] [game-001-1] Tracked 675 frames at 17.44 fps
+[2026-03-08 07:27:28] [game-001-1] Tracked 700 frames at 17.53 fps
+[2026-03-08 07:27:29] [game-001-1] Tracked 725 frames at 17.57 fps
+[2026-03-08 07:27:30] [game-001-1] Tracked 750 frames at 17.66 fps
+[2026-03-08 07:27:31] [game-001-1] Tracked 775 frames at 17.69 fps
+[2026-03-08 07:27:33] [game-001-1] Tracked 800 frames at 17.74 fps
+[2026-03-08 07:27:34] [game-001-1] Tracked 825 frames at 17.77 fps
+[2026-03-08 07:27:35] [game-001-1] Tracked 850 frames at 17.84 fps
+[2026-03-08 07:27:37] [game-001-1] Tracked 875 frames at 17.86 fps
+[2026-03-08 07:27:38] [game-001-1] Tracked 900 frames at 17.92 fps
+[2026-03-08 07:27:39] [game-001-1] Tracked 925 frames at 17.93 fps
+[2026-03-08 07:27:40] [game-001-1] Tracked 950 frames at 17.98 fps
+[2026-03-08 07:27:42] [game-001-1] Tracked 975 frames at 18.00 fps
+[2026-03-08 07:27:43] [game-001-1] Tracked 1000 frames at 18.04 fps
+[2026-03-08 07:27:44] [game-001-1] Tracked 1025 frames at 18.06 fps
+[2026-03-08 07:27:46] [game-001-1] Tracked 1050 frames at 18.10 fps
+[2026-03-08 07:27:47] [game-001-1] Tracked 1075 frames at 18.11 fps
+[2026-03-08 07:27:48] [game-001-1] Tracked 1100 frames at 18.15 fps
+[2026-03-08 07:27:50] [game-001-1] Tracked 1125 frames at 18.16 fps
+[2026-03-08 07:27:51] [game-001-1] Tracked 1150 frames at 18.19 fps
+[2026-03-08 07:27:52] [game-001-1] Tracked 1175 frames at 18.19 fps
+[2026-03-08 07:27:53] [game-001-1] Tracked 1200 frames at 18.22 fps
+[2026-03-08 07:27:55] [game-001-1] Tracked 1225 frames at 18.23 fps
+[2026-03-08 07:27:56] [game-001-1] Tracked 1250 frames at 18.26 fps
+[2026-03-08 07:27:57] [game-001-1] Tracked 1275 frames at 18.26 fps
+[2026-03-08 07:27:59] [game-001-1] Tracked 1300 frames at 18.30 fps
+[2026-03-08 07:28:00] [game-001-1] Tracked 1325 frames at 18.29 fps
+[2026-03-08 07:28:01] [game-001-1] Tracked 1350 frames at 18.30 fps
+[2026-03-08 07:28:03] [game-001-1] Tracked 1375 frames at 18.30 fps
+[2026-03-08 07:28:04] [game-001-1] Tracked 1400 frames at 18.33 fps
+[2026-03-08 07:28:05] [game-001-1] Tracked 1425 frames at 18.33 fps
+[2026-03-08 07:28:07] [game-001-1] Tracked 1450 frames at 18.36 fps
+[2026-03-08 07:28:08] [game-001-1] Tracked 1475 frames at 18.38 fps
+[2026-03-08 07:28:09] [game-001-1] Tracked 1500 frames at 18.40 fps
+[2026-03-08 07:28:11] [game-001-1] Tracked 1525 frames at 18.37 fps
+[2026-03-08 07:28:12] [game-001-1] Tracked 1550 frames at 18.38 fps
+[2026-03-08 07:28:13] [game-001-1] Tracked 1575 frames at 18.39 fps
+[2026-03-08 07:28:14] [game-001-1] Tracked 1600 frames at 18.43 fps
+[2026-03-08 07:28:16] [game-001-1] Tracked 1625 frames at 18.44 fps
+[2026-03-08 07:28:17] [game-001-1] Tracked 1650 frames at 18.47 fps
+[2026-03-08 07:28:18] [game-001-1] Tracked 1675 frames at 18.47 fps
+[2026-03-08 07:28:19] [game-001-1] Tracked 1700 frames at 18.51 fps
+[2026-03-08 07:28:21] [game-001-1] Tracked 1725 frames at 18.51 fps
+[2026-03-08 07:28:22] [game-001-1] Tracked 1750 frames at 18.54 fps
+[2026-03-08 07:28:23] [game-001-1] Tracked 1775 frames at 18.55 fps
+[2026-03-08 07:28:25] [game-001-1] Tracked 1800 frames at 18.57 fps
+[2026-03-08 07:28:26] [game-001-1] Tracked 1825 frames at 18.59 fps
+[2026-03-08 07:28:27] [game-001-1] Tracked 1850 frames at 18.63 fps
+[2026-03-08 07:28:28] [game-001-1] Tracked 1875 frames at 18.65 fps
+[2026-03-08 07:28:29] [game-001-1] Tracked 1900 frames at 18.68 fps
+[2026-03-08 07:28:31] [game-001-1] Tracked 1925 frames at 18.69 fps
+[2026-03-08 07:28:32] [game-001-1] Tracked 1950 frames at 18.71 fps
+[2026-03-08 07:28:33] [game-001-1] Tracked 1975 frames at 18.72 fps
