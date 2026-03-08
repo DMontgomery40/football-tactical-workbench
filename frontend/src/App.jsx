@@ -542,7 +542,6 @@ export default function App() {
           <span>frontend 4317</span>
           <span>backend 8431</span>
           <span>wide-angle first</span>
-          <span>demo, not fantasy</span>
         </div>
       </header>
 
