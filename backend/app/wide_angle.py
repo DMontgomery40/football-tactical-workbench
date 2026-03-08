@@ -708,14 +708,14 @@ def field_point_to_minimap(field_point: tuple[float, float] | None, map_width: i
     return float(x_value), float(y_value)
 
 
-def calibration_active_for_frame(
+def calibration_stale_for_frame(
     homography_matrix: np.ndarray | None,
     last_good_calibration_frame: int,
     frame_index: int,
 ) -> bool:
     if homography_matrix is None or last_good_calibration_frame < 0:
-        return False
-    return (frame_index - last_good_calibration_frame) <= CALIBRATION_MAX_AGE_FRAMES
+        return True
+    return (frame_index - last_good_calibration_frame) > CALIBRATION_MAX_AGE_FRAMES
 
 
 def homography_reprojection_error_cm(
@@ -1372,8 +1372,8 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 latest_field_keypoints = detected_keypoints
                 latest_visible_keypoints = visible_count
                 latest_inlier_count = inlier_count
-            calibration_is_fresh = calibration_active_for_frame(field_homography, last_calibration_frame, frame_index)
-            projection_homography = field_homography if calibration_is_fresh else None
+            calibration_is_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)
+            projection_homography = field_homography
 
             current_players: list[dict[str, Any]] = []
             current_ball: dict[str, Any] | None = None
@@ -1498,8 +1498,12 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             )
             status_text = (
                 f"field calib {latest_visible_keypoints} kp / {latest_inlier_count} inliers"
-                if calibration_is_fresh
-                else f"field calib waiting ({latest_visible_keypoints} kp)"
+                if field_homography is not None and not calibration_is_stale
+                else (
+                    f"field calib stale ({latest_visible_keypoints} kp / {latest_inlier_count} inliers)"
+                    if field_homography is not None
+                    else f"field calib waiting ({latest_visible_keypoints} kp)"
+                )
             )
             cv2.putText(
                 annotated,
@@ -1533,7 +1537,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     cv2.LINE_AA,
                 )
 
-            if calibration_is_fresh:
+            if field_homography is not None:
                 minimap = create_pitch_map(minimap_width, minimap_height)
                 for player_row in current_players:
                     if player_row["pitch_point"] is None:
@@ -1684,8 +1688,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             else:
                 calibration_refresh_rejections += 1
 
-        calibration_is_fresh = calibration_active_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
-        projection_homography = active_field_homography if calibration_is_fresh else None
+        calibration_is_stale = calibration_stale_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
+        projection_homography = active_field_homography
 
         player_detection_count = 0
         ball_detection_count = 0
@@ -1788,7 +1792,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             {
                 "players": frame_players,
                 "ball": frame_ball,
-                "field_calibration_active": calibration_is_fresh,
+                "field_calibration_active": active_field_homography is not None,
+                "field_calibration_stale": calibration_is_stale,
                 "visible_pitch_keypoints": current_visible_keypoints,
                 "homography_inliers": current_inlier_count,
                 "last_good_calibration_frame": last_good_calibration_frame,
@@ -2275,8 +2280,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
         field_status = (
             f"field calib {record['visible_pitch_keypoints']} kp / {record['homography_inliers']} inliers"
-            if record["field_calibration_active"]
-            else f"field calib waiting ({record['visible_pitch_keypoints']} kp)"
+            if record["field_calibration_active"] and not record.get("field_calibration_stale")
+            else (
+                f"field calib stale ({record['visible_pitch_keypoints']} kp / {record['homography_inliers']} inliers)"
+                if record["field_calibration_active"]
+                else f"field calib waiting ({record['visible_pitch_keypoints']} kp)"
+            )
         )
         cv2.putText(
             annotated,
