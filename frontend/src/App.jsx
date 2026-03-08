@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8431';
+const DEFAULT_API_HOST = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : '127.0.0.1';
+const DEFAULT_API_PROTOCOL = typeof window !== 'undefined' && window.location?.protocol ? window.location.protocol : 'http:';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${DEFAULT_API_PROTOCOL}//${DEFAULT_API_HOST}:8431`;
 
 const defaultForm = {
   localVideoPath: '',

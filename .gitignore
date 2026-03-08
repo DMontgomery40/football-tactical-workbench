@@ -17,10 +17,9 @@ frontend/node_modules/
 frontend/dist/
 
 backend/datasets/
-backend/experiments/
-backend/models/
 backend/runs/
-
+backend/models/soccana_keypoint/.cache
+backend/models/soccana/.cache
 workflows.md
 WORKFLOWS.md
 

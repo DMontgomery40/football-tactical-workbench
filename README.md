@@ -39,8 +39,8 @@ This README follows the current code and verified runtime behaviour.
 - player tracker: `hybrid_reid`
 - ball tracker: `bytetrack.yaml`
 - calibration refresh cadence: every `10` frames
-- frontend dev server: `127.0.0.1:4317`
-- backend API server: `127.0.0.1:8431`
+- frontend dev server: `0.0.0.0:4317`
+- backend API server: `0.0.0.0:8431`
 - run storage: `backend/runs/`
 - model cache: `backend/models/`
 
@@ -104,7 +104,7 @@ To stop a backend started through `run_all.sh`:
 
 ## First Run Workflow
 
-1. Open `http://127.0.0.1:4317`.
+1. Open `http://127.0.0.1:4317` on the host machine, or `http://<host-lan-ip>:4317` from another device on the same LAN.
 2. Load a clip from upload or paste a local filesystem path.
 3. Optionally open the live preview workspace to stream the detector output.
 4. Click `Analyze loaded clip`.
