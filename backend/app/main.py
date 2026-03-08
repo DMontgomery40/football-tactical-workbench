@@ -26,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from ultralytics import YOLO
 
+from app.ai_diagnostics import generate_run_diagnostics, resolve_provider_config
 from app.wide_angle import (
     PLAYER_MODEL_OPTIONS,
     TACTICAL_LEARN_CARDS,
@@ -306,6 +307,7 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/config")
 def config() -> dict[str, Any]:
+    diagnostics_config = resolve_provider_config()
     return {
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
@@ -316,6 +318,8 @@ def config() -> dict[str, Any]:
         "soccernet_dataset_dir": str(SOCCERNET_DIR),
         "soccernet_video_files": ["1_720p.mkv", "2_720p.mkv", "1_224p.mkv", "2_224p.mkv"],
         "soccernet_label_files": ["Labels-v2.json", "Labels.json"],
+        "diagnostics_provider": diagnostics_config.provider if diagnostics_config else None,
+        "diagnostics_model": diagnostics_config.model if diagnostics_config else None,
     }
 
 
@@ -439,6 +443,13 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["learn_cards"] = TACTICAL_LEARN_CARDS
     normalized["experiments"] = list(normalized.get("experiments") or [])
     normalized["entropy_timeseries_csv"] = normalized.get("entropy_timeseries_csv")
+    normalized["diagnostics_source"] = normalized.get("diagnostics_source", "heuristic")
+    normalized["diagnostics_provider"] = normalized.get("diagnostics_provider")
+    normalized["diagnostics_model"] = normalized.get("diagnostics_model")
+    normalized["diagnostics_status"] = normalized.get("diagnostics_status", "unknown")
+    normalized["diagnostics_summary_line"] = normalized.get("diagnostics_summary_line", "")
+    normalized["diagnostics_error"] = normalized.get("diagnostics_error", "")
+    normalized["diagnostics_json"] = normalized.get("diagnostics_json")
 
     is_legacy = "field_calibration_refresh_frames" not in normalized
     if is_legacy:
@@ -465,6 +476,34 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["legacy_summary"] = False
 
     return normalized
+
+
+def refresh_run_diagnostics(run_dir: Path) -> dict[str, Any]:
+    outputs_dir = run_dir / "outputs"
+    summary_path = outputs_dir / "summary.json"
+    if not summary_path.exists():
+        raise FileNotFoundError(summary_path)
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    heuristic_diagnostics = list(summary.get("heuristic_diagnostics") or summary.get("diagnostics") or [])
+    diagnostics, artifact = generate_run_diagnostics(
+        summary=summary,
+        heuristic_diagnostics=heuristic_diagnostics,
+        outputs_dir=outputs_dir,
+        job_id=f"refresh-{run_dir.name}",
+        job_manager=None,
+    )
+    summary["diagnostics"] = diagnostics
+    summary["heuristic_diagnostics"] = heuristic_diagnostics
+    summary["diagnostics_source"] = "ai" if artifact.get("status") == "completed" else "heuristic"
+    summary["diagnostics_provider"] = artifact.get("provider")
+    summary["diagnostics_model"] = artifact.get("model")
+    summary["diagnostics_status"] = artifact.get("status")
+    summary["diagnostics_summary_line"] = artifact.get("summary_line", "")
+    summary["diagnostics_error"] = artifact.get("error", "")
+    summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return summary
 
 
 def inspect_video(path: Path) -> dict[str, Any]:
@@ -608,6 +647,28 @@ def get_persisted_run(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Run summary not found") from exc
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=500, detail="Run summary is not valid JSON") from exc
+
+
+@app.post("/api/runs/{run_id}/refresh-diagnostics")
+def refresh_persisted_run_diagnostics(run_id: str) -> dict[str, Any]:
+    run_dir = (RUNS_DIR / run_id).resolve()
+    try:
+        run_dir.relative_to(RUNS_DIR.resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid run id") from exc
+
+    if not run_dir.exists() or not run_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    try:
+        refresh_run_diagnostics(run_dir)
+        return load_persisted_run(run_dir)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Run summary not found") from exc
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail="Run summary is not valid JSON") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not refresh diagnostics: {exc}") from exc
 
 
 @app.get("/api/live-preview")

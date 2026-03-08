@@ -17,6 +17,8 @@ import numpy as np
 from huggingface_hub import hf_hub_download
 from ultralytics import YOLO
 
+from app.ai_diagnostics import generate_run_diagnostics
+
 DEFAULT_TRACKER = "bytetrack.yaml"
 MODEL_CACHE_DIR = Path(__file__).resolve().parent.parent / "models"
 MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -827,6 +829,11 @@ def attach_goal_targets(
     goal_events: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if not goal_events:
+        for row in timeseries_rows:
+            row["seconds_to_next_goal"] = float("nan")
+            row["next_goal_team"] = ""
+            for lookahead in GOAL_LOOKAHEAD_SECONDS:
+                row[f"goal_in_next_{lookahead}s"] = 0
         return timeseries_rows, {
             "goals_in_clip": 0,
             "avg_pre_goal_vol_index_30s": 0.0,
@@ -1912,6 +1919,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             }
         )
 
+    heuristic_diagnostics = diagnostics
+
     summary = {
         "job_id": job_id,
         "run_dir": str(run_dir),
@@ -1962,10 +1971,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "jersey_crops_used": len(jersey_samples),
         "experiments": [experiment_card],
         "top_tracks": track_rows[:20],
-        "diagnostics": diagnostics,
+        "diagnostics": heuristic_diagnostics,
         "learn_cards": TACTICAL_LEARN_CARDS,
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
+
+    ai_diagnostics, diagnostics_artifact = generate_run_diagnostics(
+        summary=summary,
+        heuristic_diagnostics=heuristic_diagnostics,
+        outputs_dir=outputs_dir,
+        job_id=job_id,
+        job_manager=job_manager,
+    )
+    summary["diagnostics"] = ai_diagnostics
+    summary["heuristic_diagnostics"] = heuristic_diagnostics
+    summary["diagnostics_source"] = "ai" if diagnostics_artifact.get("status") == "completed" else "heuristic"
+    summary["diagnostics_provider"] = diagnostics_artifact.get("provider")
+    summary["diagnostics_model"] = diagnostics_artifact.get("model")
+    summary["diagnostics_status"] = diagnostics_artifact.get("status")
+    summary["diagnostics_summary_line"] = diagnostics_artifact.get("summary_line", "")
+    summary["diagnostics_error"] = diagnostics_artifact.get("error", "")
+    summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
 
     summary_json_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     zip_inputs = [overlay_video_path, detections_csv_path, track_summary_csv_path, summary_json_path]
@@ -1975,6 +2001,9 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         zip_inputs.append(entropy_timeseries_csv_path)
     if goal_events_csv_path.exists():
         zip_inputs.append(goal_events_csv_path)
+    diagnostics_json_path = outputs_dir / "diagnostics_ai.json"
+    if diagnostics_json_path.exists():
+        zip_inputs.append(diagnostics_json_path)
     zip_paths(full_outputs_zip_path, zip_inputs)
     job_manager.log(job_id, f"Summary written to {summary_json_path.name}")
     return summary

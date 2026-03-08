@@ -5,3 +5,4 @@ numpy==2.1.1
 opencv-python==4.11.0.86
 ultralytics==8.3.81
 huggingface_hub==0.31.4
+SoccerNet==0.1.62

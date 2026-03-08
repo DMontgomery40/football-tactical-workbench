@@ -13,6 +13,7 @@ A local Mac-friendly workbench for wide-angle football analysis with a real UI, 
 - Automatic field-keypoint calibration with **Soccana_Keypoint**
 - Pitch projection refreshed every **10 frames**
 - Live model preview in the browser while the clip plays
+- AI-generated run diagnostics when a provider is configured
 - Saved overlay video plus CSV diagnostics and summaries
 
 ## Current model stack
@@ -66,6 +67,27 @@ Terminal 2:
 
 ```bash
 echo "starting frontend" && cd frontend && bash run_frontend.sh
+```
+
+## AI diagnostics
+
+Run diagnostics can be generated from the actual completed run summary through a model provider instead of fixed threshold text.
+
+- Supported providers: OpenAI, OpenRouter, Anthropic, or a local OpenAI-compatible endpoint
+- Provider selection is environment-driven through `.env`
+- If generation fails or no provider is configured, the backend falls back to heuristic diagnostics
+- Existing saved runs can be upgraded in the UI with `Regenerate diagnostics`
+
+Example env keys:
+
+```bash
+AI_DIAGNOSTICS_PROVIDER=auto
+AI_DIAGNOSTICS_MODEL=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+ANTHROPIC_API_KEY=
+AI_DIAGNOSTICS_BASE_URL=
+AI_DIAGNOSTICS_API_KEY=
 ```
 
 ## Typical workflow

@@ -22,6 +22,10 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
   - source loading endpoints
   - live preview endpoint
   - analyze job creation and persisted run loading
+- `backend/app/ai_diagnostics.py`
+  - provider-backed run diagnostics
+  - supports OpenAI, OpenRouter, Anthropic, and local OpenAI-compatible endpoints
+  - current OpenAI default path is `gpt-5.4`
 - `backend/app/wide_angle.py`
   - core video analysis pipeline
   - Soccana detector and field-keypoint model resolution
@@ -45,6 +49,8 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Default field calibration model is `soccana_keypoint`.
 - Pitch calibration is automatic and refreshed every 10 frames.
 - Ball detection uses the same soccer-specific detector unless the user explicitly asks to change that.
+- AI diagnostics are a real post-run path now. Do not revert to heuristic-only diagnostics unless explicitly requested.
+- Keep diagnostics provider/model/source fields aligned between backend summary output and frontend display.
 - Keep all user-visible status in job logs and `summary.json`; the frontend depends on that.
 - If you change the exported summary shape, update the frontend in the same turn.
 
@@ -57,8 +63,21 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
   - calibration health
   - tracking quality
   - saved overlay outputs
+- The app must feel like a stateful tool, not a stack of unrelated cards.
+- Persist obvious repeated values locally:
+  - last-used local video path
+  - last-used dataset folder
+  - theme mode
+  - useful SoccerNet browse state
+- Do not make the user re-enter paths that are predictably the same every session.
+- Overlay playback is the primary artifact. In run review, the video must be visually dominant.
+- Diagnostics and overlay are compatible views. Do not force them into mutually exclusive tabs unless explicitly asked.
+- Passive state cards and interactive controls must look unmistakably different.
+- Do not default the page into stale saved-run review when there is no current input clip loaded.
+- SoccerNet browsing should be reactive and scalable. Avoid giant scroll dumps and avoid unnecessary “fetch” clicks for simple filtering.
 - Do not add controls that the backend no longer uses.
 - Avoid stale or duplicate controls. If a workflow is removed backend-side, remove its UI.
+- If the UI starts getting worse from incremental patches, prefer a coherent refactor over more local fixes.
 
 ## Validation expectations
 
@@ -73,6 +92,19 @@ After frontend changes:
 ```bash
 cd frontend && npm run build
 ```
+
+For substantial frontend changes:
+
+- Use a real browser check, not just a build.
+- Verify layout and interaction in-browser with Playwright or equivalent.
+- Check at minimum:
+  - default boot state
+  - input clip loading
+  - live preview state
+  - saved run review
+  - overlay plus diagnostics visibility
+  - SoccerNet browse/filter behavior
+  - obvious path persistence across refresh
 
 When changing the pipeline:
 
@@ -91,3 +123,6 @@ When changing the pipeline:
 - Do not silently fall back to generic `yolo11n.pt` / `yolo11n-pose.pt` without telling the user.
 - Do not mix outdated README/UI copy from the old pose/windows prototype into the current app.
 - Do not change the browser workflow in a way that makes it harder to tell whether the tracker, ball detector, or field calibration is actually working.
+- Do not treat visual polish as success if the interaction model is still confusing.
+- Do not hide the most important evidence, especially the overlay video, behind weak layout ratios.
+- Do not let AI-generated diagnostics sound like canned heuristics or generic chatbot prose.
