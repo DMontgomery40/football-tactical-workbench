@@ -95,17 +95,21 @@ You can also scan a dataset folder and click one of the discovered videos to aut
 
 - Bundesliga sample clips: `backend/datasets/bundesliga_sample`
 - YouTube match downloads: `backend/datasets/youtube_clips`
-- SoccerNet downloads: `backend/datasets/soccernet`
+- SoccerNet workspace: `backend/datasets/soccernet`
 
 These are local working datasets and are not meant to be committed to git.
+The repository does **not** ship SoccerNet footage.
 
 ## SoccerNet access
 
 SoccerNet video access is not public in the normal sense.
 
+- This repository provides the platform and tooling to work with SoccerNet data.
+- This repository does **not** provide, bundle, or redistribute SoccerNet videos or labels.
 - It is password protected.
-- It is only available to people who have personally signed the SoccerNet NDA.
-- Access is tied to the SoccerNet terms you agreed to, including non-commercial usage restrictions.
+- You must have your **own** SoccerNet NDA-approved access.
+- You must use your **own** SoccerNet password/credentials.
+- Access is tied to the SoccerNet terms you personally agreed to, including non-commercial usage restrictions.
 
 Do not share downloaded SoccerNet videos or credentials through this repo.
 
