@@ -946,7 +946,7 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
 
 @app.get("/api/runs/recent")
 def recent_runs(limit: int = 8) -> list[dict[str, Any]]:
-    bounded_limit = min(max(limit, 1), 20)
+    bounded_limit = min(max(limit, 1), 1000)
     return list_persisted_runs(limit=bounded_limit)
 
 

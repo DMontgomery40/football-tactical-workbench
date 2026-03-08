@@ -664,7 +664,7 @@ export default function App() {
   async function loadRecentRuns() {
     setRecentRunsError('');
     try {
-      const response = await fetch(`${API_BASE}/api/runs/recent?limit=6`);
+      const response = await fetch(`${API_BASE}/api/runs/recent?limit=1000`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error('Could not load recent runs');

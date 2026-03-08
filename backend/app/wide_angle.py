@@ -37,7 +37,12 @@ BROWSER_VIDEO_FOURCCS = ("avc1", "H264", "h264", "X264")
 DETECTOR_MODEL_DEFAULT = "soccana"
 KEYPOINT_MODEL_DEFAULT = "soccana_keypoint"
 CALIBRATION_REFRESH_FRAMES = 10
+CALIBRATION_MAX_AGE_FRAMES = 30
 FIELD_KEYPOINT_CONFIDENCE = 0.35
+MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5
+MIN_CALIBRATION_INLIERS = 4
+MAX_CALIBRATION_REPROJECTION_ERROR_CM = 250.0
+MAX_CALIBRATION_TEMPORAL_DRIFT_CM = 1800.0
 EXPERIMENT_WINDOW_SECONDS = 10.0
 EXPERIMENT_GRID_COLS = 6
 EXPERIMENT_GRID_ROWS = 4
@@ -703,38 +708,95 @@ def field_point_to_minimap(field_point: tuple[float, float] | None, map_width: i
     return float(x_value), float(y_value)
 
 
+def calibration_active_for_frame(
+    homography_matrix: np.ndarray | None,
+    last_good_calibration_frame: int,
+    frame_index: int,
+) -> bool:
+    if homography_matrix is None or last_good_calibration_frame < 0:
+        return False
+    return (frame_index - last_good_calibration_frame) <= CALIBRATION_MAX_AGE_FRAMES
+
+
+def homography_reprojection_error_cm(
+    homography_matrix: np.ndarray,
+    image_points: np.ndarray,
+    field_points: np.ndarray,
+) -> float:
+    if image_points.size == 0 or field_points.size == 0:
+        return float("inf")
+    projected = cv2.perspectiveTransform(image_points.reshape(1, -1, 2), homography_matrix)[0]
+    if projected.shape != field_points.shape or not np.isfinite(projected).all():
+        return float("inf")
+    errors = np.linalg.norm(projected - field_points, axis=1)
+    if errors.size == 0 or not np.isfinite(errors).all():
+        return float("inf")
+    return float(np.mean(errors))
+
+
+def homography_temporal_drift_cm(
+    previous_homography: np.ndarray | None,
+    candidate_homography: np.ndarray,
+    frame_width: int,
+    frame_height: int,
+) -> float:
+    if previous_homography is None:
+        return 0.0
+
+    sample_points = np.array(
+        [
+            [frame_width * 0.18, frame_height * 0.82],
+            [frame_width * 0.35, frame_height * 0.86],
+            [frame_width * 0.50, frame_height * 0.90],
+            [frame_width * 0.65, frame_height * 0.86],
+            [frame_width * 0.82, frame_height * 0.82],
+        ],
+        dtype=np.float32,
+    ).reshape(1, -1, 2)
+    previous_projected = cv2.perspectiveTransform(sample_points, previous_homography)[0]
+    candidate_projected = cv2.perspectiveTransform(sample_points, candidate_homography)[0]
+    if not np.isfinite(previous_projected).all() or not np.isfinite(candidate_projected).all():
+        return float("inf")
+
+    drifts = np.linalg.norm(candidate_projected - previous_projected, axis=1)
+    if drifts.size == 0 or not np.isfinite(drifts).all():
+        return float("inf")
+    return float(np.median(drifts))
+
+
 def detect_pitch_homography(
     frame: np.ndarray,
     keypoint_model: YOLO,
     device: str,
     confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE,
-) -> tuple[np.ndarray | None, np.ndarray | None, int, int]:
+) -> tuple[np.ndarray | None, np.ndarray | None, int, int, float]:
     results = keypoint_model(source=frame, conf=0.05, device=device, verbose=False)
     if not results:
-        return None, None, 0, 0
+        return None, None, 0, 0, float("inf")
 
     result = results[0]
     if not hasattr(result, "keypoints") or result.keypoints is None or result.keypoints.data is None:
-        return None, None, 0, 0
+        return None, None, 0, 0, float("inf")
 
     keypoints_data = result.keypoints.data.cpu().numpy().astype(np.float32)
     if keypoints_data.size == 0:
-        return None, None, 0, 0
+        return None, None, 0, 0, float("inf")
 
     best_index = int(np.argmax((keypoints_data[:, :, 2] >= confidence_threshold).sum(axis=1)))
     keypoints = keypoints_data[best_index]
     valid_mask = keypoints[:, 2] >= confidence_threshold
     visible_count = int(valid_mask.sum())
     if visible_count < 4:
-        return None, keypoints, visible_count, 0
+        return None, keypoints, visible_count, 0, float("inf")
 
     image_points = keypoints[valid_mask, :2].astype(np.float32)
     field_points = PITCH_REFERENCE_POINTS[valid_mask].astype(np.float32)
     homography_matrix, inlier_mask = cv2.findHomography(image_points, field_points, cv2.RANSAC, 35.0)
     inlier_count = int(inlier_mask.sum()) if inlier_mask is not None else visible_count
     if homography_matrix is None or inlier_count < 4:
-        return None, keypoints, visible_count, inlier_count
-    return homography_matrix.astype(np.float32), keypoints, visible_count, inlier_count
+        return None, keypoints, visible_count, inlier_count, float("inf")
+    reprojection_error = homography_reprojection_error_cm(homography_matrix.astype(np.float32), image_points, field_points)
+    return homography_matrix.astype(np.float32), keypoints, visible_count, inlier_count, reprojection_error
 
 
 def overlay_minimap(frame: np.ndarray, minimap: np.ndarray, style: dict[str, Any]) -> None:
@@ -1279,6 +1341,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     latest_visible_keypoints = 0
     latest_inlier_count = 0
     last_calibration_frame = -1
+    latest_reprojection_error_cm = float("inf")
 
     jersey_samples: list[np.ndarray] = []
     jersey_sample_track_ids: list[int] = []
@@ -1293,13 +1356,24 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 break
 
             if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:
-                homography_candidate, detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, keypoint_device)
-                if homography_candidate is not None:
+                homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
+                temporal_drift = homography_temporal_drift_cm(field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float("inf")
+                candidate_is_usable = (
+                    homography_candidate is not None
+                    and visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS
+                    and inlier_count >= MIN_CALIBRATION_INLIERS
+                    and reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM
+                    and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
+                )
+                if candidate_is_usable:
                     field_homography = homography_candidate
                     last_calibration_frame = frame_index
+                    latest_reprojection_error_cm = reprojection_error
                 latest_field_keypoints = detected_keypoints
                 latest_visible_keypoints = visible_count
                 latest_inlier_count = inlier_count
+            calibration_is_fresh = calibration_active_for_frame(field_homography, last_calibration_frame, frame_index)
+            projection_homography = field_homography if calibration_is_fresh else None
 
             current_players: list[dict[str, Any]] = []
             current_ball: dict[str, Any] | None = None
@@ -1313,7 +1387,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 iou=iou,
                 frame_width=frame_width,
                 frame_height=frame_height,
-                field_homography=field_homography,
+                field_homography=projection_homography,
                 frame_index=frame_index,
                 tracker_mode=tracker_mode,
                 appearance_embedder=appearance_embedder,
@@ -1374,7 +1448,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 team_info = team_info_by_track.get(player_row["track_id"], default_team_info())
                 player_row["team_label"] = team_info["team_label"]
                 player_row["team_vote_ratio"] = float(team_info["team_vote_ratio"])
-                player_row["field_point"] = project_point(player_row["anchor"], field_homography)
+                player_row["field_point"] = project_point(player_row["anchor"], projection_homography)
                 player_row["pitch_point"] = field_point_to_minimap(player_row["field_point"], minimap_width, minimap_height)
                 x1, y1, x2, y2 = player_row["bbox"]
                 color = TEAM_BOX_COLORS.get(player_row["team_label"], TEAM_BOX_COLORS["unassigned"])
@@ -1393,7 +1467,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 )
 
             if current_ball is not None:
-                current_ball["field_point"] = project_point(current_ball["anchor"], field_homography)
+                current_ball["field_point"] = project_point(current_ball["anchor"], projection_homography)
                 current_ball["pitch_point"] = field_point_to_minimap(current_ball["field_point"], minimap_width, minimap_height)
                 x1, y1, x2, y2 = current_ball["bbox"]
                 cv2.rectangle(annotated, (x1, y1), (x2, y2), TEAM_BOX_COLORS["ball"], style["box_thickness"])
@@ -1424,7 +1498,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             )
             status_text = (
                 f"field calib {latest_visible_keypoints} kp / {latest_inlier_count} inliers"
-                if field_homography is not None
+                if calibration_is_fresh
                 else f"field calib waiting ({latest_visible_keypoints} kp)"
             )
             cv2.putText(
@@ -1439,7 +1513,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             )
             cv2.putText(
                 annotated,
-                f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}",
+                f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'} · reproj {latest_reprojection_error_cm:.0f}cm" if np.isfinite(latest_reprojection_error_cm) else f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}",
                 (text_x, first_line_y + style["line_gap"] * 2),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 style["small_status_scale"],
@@ -1459,7 +1533,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     cv2.LINE_AA,
                 )
 
-            if field_homography is not None:
+            if calibration_is_fresh:
                 minimap = create_pitch_map(minimap_width, minimap_height)
                 for player_row in current_players:
                     if player_row["pitch_point"] is None:
@@ -1574,9 +1648,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     calibration_inlier_counts: list[int] = []
     calibration_refresh_attempts = 0
     calibration_refresh_successes = 0
+    calibration_refresh_rejections = 0
     field_registered_frames = 0
     last_good_calibration_frame = -1
     active_field_homography = manual_homography_matrix
+    latest_calibration_reprojection_error_cm = float("inf")
     frame_index = 0
     player_row_count = 0
     ball_row_count = 0
@@ -1589,13 +1665,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
 
         if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or active_field_homography is None:
             calibration_refresh_attempts += 1
-            homography_candidate, _detected_keypoints, visible_count, inlier_count = detect_pitch_homography(frame, keypoint_model, keypoint_device)
+            homography_candidate, _detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
             calibration_visible_counts.append(visible_count)
             calibration_inlier_counts.append(inlier_count)
-            if homography_candidate is not None:
+            temporal_drift = homography_temporal_drift_cm(active_field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float("inf")
+            candidate_is_usable = (
+                homography_candidate is not None
+                and visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS
+                and inlier_count >= MIN_CALIBRATION_INLIERS
+                and reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM
+                and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
+            )
+            if candidate_is_usable:
                 active_field_homography = homography_candidate
                 calibration_refresh_successes += 1
                 last_good_calibration_frame = frame_index
+                latest_calibration_reprojection_error_cm = reprojection_error
+            else:
+                calibration_refresh_rejections += 1
+
+        calibration_is_fresh = calibration_active_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
+        projection_homography = active_field_homography if calibration_is_fresh else None
 
         player_detection_count = 0
         ball_detection_count = 0
@@ -1613,7 +1703,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             iou=iou,
             frame_width=frame_width,
             frame_height=frame_height,
-            field_homography=active_field_homography,
+            field_homography=projection_homography,
             frame_index=frame_index,
             tracker_mode=tracker_mode,
             appearance_embedder=appearance_embedder,
@@ -1674,7 +1764,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 confidence = float(b_confidences[best_index])
                 anchor_x = float((x1 + x2) / 2.0)
                 anchor_y = float((y1 + y2) / 2.0)
-                field_point = project_point((anchor_x, anchor_y), active_field_homography)
+                field_point = project_point((anchor_x, anchor_y), projection_homography)
                 pitch_point = field_point_to_minimap(field_point, minimap_width, minimap_height)
                 frame_ball = {
                     "frame_index": frame_index,
@@ -1698,10 +1788,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             {
                 "players": frame_players,
                 "ball": frame_ball,
-                "field_calibration_active": active_field_homography is not None,
+                "field_calibration_active": calibration_is_fresh,
                 "visible_pitch_keypoints": current_visible_keypoints,
                 "homography_inliers": current_inlier_count,
                 "last_good_calibration_frame": last_good_calibration_frame,
+                "calibration_reprojection_error_cm": latest_calibration_reprojection_error_cm,
             }
         )
         player_detections_per_frame.append(player_detection_count)
@@ -1714,7 +1805,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         if frame_index % 25 == 0:
             elapsed = datetime.utcnow().timestamp() - start_time
             fps_effective = frame_index / elapsed if elapsed > 0 else 0.0
-            job_manager.log(job_id, f"Tracked {frame_index} frames at {fps_effective:.2f} fps")
+            if np.isfinite(latest_calibration_reprojection_error_cm):
+                job_manager.log(job_id, f"Tracked {frame_index} frames at {fps_effective:.2f} fps · calib reproj {latest_calibration_reprojection_error_cm:.0f}cm")
+            else:
+                job_manager.log(job_id, f"Tracked {frame_index} frames at {fps_effective:.2f} fps")
 
     cap.release()
     if frame_index == 0:
@@ -2196,7 +2290,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
         cv2.putText(
             annotated,
-            f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}",
+            f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'} · reproj {record['calibration_reprojection_error_cm']:.0f}cm" if np.isfinite(record['calibration_reprojection_error_cm']) else f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}",
             (text_x, first_line_y + style["line_gap"] * 3),
             cv2.FONT_HERSHEY_SIMPLEX,
             style["small_status_scale"],
@@ -2460,6 +2554,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "field_calibration_refresh_frames": CALIBRATION_REFRESH_FRAMES,
         "field_calibration_refresh_attempts": calibration_refresh_attempts,
         "field_calibration_refresh_successes": calibration_refresh_successes,
+        "field_calibration_refresh_rejections": calibration_refresh_rejections,
         "average_visible_pitch_keypoints": round(float(avg_visible_pitch_keypoints), 4),
         "last_good_calibration_frame": last_good_calibration_frame,
         "goal_events_count": len(goal_events),
