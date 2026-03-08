@@ -6,7 +6,7 @@ A local Mac-friendly workbench for wide-angle football analysis with a real UI, 
 
 - React UI on **http://127.0.0.1:4317**
 - FastAPI backend on **http://127.0.0.1:8431**
-- Soccer-specific detection with **Soccana** weights
+- Football-specific detection with **Soccana** weights
 - Player, ball, and referee detection
 - ByteTrack-based multi-object tracking
 - Unsupervised home/away separation from jersey colors
