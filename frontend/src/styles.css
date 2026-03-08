@@ -170,7 +170,7 @@ textarea {
   gap: 10px;
 }
 
-.hero-pills span,
+.hero-pills > span,
 .status-pill,
 .theme-chip {
   display: inline-flex;
@@ -183,6 +183,55 @@ textarea {
   color: var(--text);
   white-space: nowrap;
   font-size: 0.92rem;
+}
+
+.connection-chip {
+  gap: 9px;
+  padding-left: 12px;
+}
+
+.chip-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 55%, transparent);
+  flex: 0 0 auto;
+}
+
+.connection-chip.online {
+  border-color: color-mix(in srgb, var(--good-line) 90%, var(--line));
+  background: color-mix(in srgb, var(--good-bg) 78%, var(--surface));
+  color: var(--good-text);
+}
+
+.connection-chip.online .chip-dot {
+  background: color-mix(in srgb, var(--good-text) 84%, white);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--surface) 45%, transparent),
+    0 0 12px color-mix(in srgb, var(--good-text) 45%, transparent);
+}
+
+.connection-chip.offline {
+  border-color: color-mix(in srgb, var(--warn-line) 90%, var(--line));
+  background: color-mix(in srgb, var(--warn-bg) 82%, var(--surface));
+  color: var(--warn-text);
+}
+
+.connection-chip.offline .chip-dot {
+  background: color-mix(in srgb, var(--warn-text) 88%, white);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--surface) 45%, transparent),
+    0 0 12px color-mix(in srgb, var(--warn-text) 38%, transparent);
+}
+
+.connection-chip.idle {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface) 92%, var(--page-panel));
+}
+
+.connection-chip.idle .chip-dot {
+  background: color-mix(in srgb, var(--text-muted) 60%, var(--line));
 }
 
 .theme-switcher {
@@ -469,6 +518,13 @@ textarea {
   color: var(--accent-strong);
   border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
   background: var(--accent-soft);
+}
+
+.status-pill.paused,
+.status-pill.stopping {
+  color: var(--warn-text);
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
 }
 
 .status-pill.completed {

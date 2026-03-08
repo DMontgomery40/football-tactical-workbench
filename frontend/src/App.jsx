@@ -1,8 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const DEFAULT_API_HOST = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : '127.0.0.1';
-const DEFAULT_API_PROTOCOL = typeof window !== 'undefined' && window.location?.protocol ? window.location.protocol : 'http:';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || `${DEFAULT_API_PROTOCOL}//${DEFAULT_API_HOST}:8431`;
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+function isLoopbackHost(hostname) {
+  return LOOPBACK_HOSTS.has(String(hostname || '').toLowerCase());
+}
+
+function resolveApiBase() {
+  if (typeof window === 'undefined') {
+    return import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8431';
+  }
+
+  const browserProtocol = window.location?.protocol || 'http:';
+  const browserHost = window.location?.hostname || '127.0.0.1';
+  const fallbackBase = `${browserProtocol}//${browserHost}:8431`;
+  const configuredBase = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+
+  if (!configuredBase) {
+    return fallbackBase;
+  }
+
+  try {
+    const url = new URL(configuredBase);
+    if (isLoopbackHost(url.hostname) && !isLoopbackHost(browserHost)) {
+      url.protocol = browserProtocol;
+      url.hostname = browserHost;
+    }
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return fallbackBase;
+  }
+}
+
+const API_BASE = resolveApiBase();
 
 const defaultForm = {
   localVideoPath: '',
@@ -40,6 +70,14 @@ const REVIEW_PANELS = [
   { id: 'tracks', label: 'Tracks' },
   { id: 'files', label: 'Files' },
 ];
+
+const BACKEND_ACTIVITY_WINDOW_MS = 20000;
+const BACKEND_FAILURE_WINDOW_MS = 20000;
+const ACTIVE_JOB_STATUSES = new Set(['queued', 'running', 'paused', 'stopping']);
+
+function isActiveJobStatus(status) {
+  return ACTIVE_JOB_STATUSES.has(String(status || ''));
+}
 
 function readStoredJson(key, fallback) {
   try {
@@ -237,7 +275,15 @@ export default function App() {
   const [isRefreshingDiagnostics, setIsRefreshingDiagnostics] = useState(false);
   const [job, setJob] = useState(null);
   const [activeExperiment, setActiveExperiment] = useState(null);
+  const [backendActivity, setBackendActivity] = useState({
+    lastAttemptAt: 0,
+    lastResponseAt: 0,
+    lastFailureAt: 0,
+    lastPath: '',
+  });
+  const [statusClock, setStatusClock] = useState(() => Date.now());
   const [jobError, setJobError] = useState('');
+  const [jobActionPending, setJobActionPending] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState('input');
   const [reviewPanel, setReviewPanel] = useState('overview');
@@ -245,8 +291,37 @@ export default function App() {
   const soccerNetPollRef = useRef(null);
   const sourceVideoRef = useRef(null);
 
+  async function apiFetch(url, options) {
+    const startedAt = Date.now();
+    const path = typeof url === 'string' ? url.replace(API_BASE, '') : 'request';
+    setBackendActivity((current) => ({
+      ...current,
+      lastAttemptAt: startedAt,
+      lastPath: path,
+    }));
+
+    try {
+      const response = await fetch(url, options);
+      setBackendActivity((current) => ({
+        ...current,
+        lastAttemptAt: startedAt,
+        lastResponseAt: Date.now(),
+        lastPath: path,
+      }));
+      return response;
+    } catch (error) {
+      setBackendActivity((current) => ({
+        ...current,
+        lastAttemptAt: startedAt,
+        lastFailureAt: Date.now(),
+        lastPath: path,
+      }));
+      throw error;
+    }
+  }
+
   useEffect(() => {
-    fetch(`${API_BASE}/api/config`)
+    apiFetch(`${API_BASE}/api/config`)
       .then((response) => response.json())
       .then((data) => {
         setConfig(data);
@@ -262,7 +337,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/soccernet/config`)
+    apiFetch(`${API_BASE}/api/soccernet/config`)
       .then((response) => response.json())
       .then((data) => {
         setSoccerNetConfig(data);
@@ -338,7 +413,54 @@ export default function App() {
     return () => window.clearInterval(handle);
   }, [job?.job_id, job?.status]);
 
+  useEffect(() => {
+    const handle = window.setInterval(() => {
+      setStatusClock(Date.now());
+    }, 5000);
+    return () => window.clearInterval(handle);
+  }, []);
+
+  useEffect(() => {
+    if (workspaceMode !== 'job' || isActiveJobStatus(job?.status)) {
+      return;
+    }
+    setWorkspaceMode(selectedRun ? 'review' : 'input');
+  }, [job?.status, selectedRun?.run_id, workspaceMode]);
+
   const currentJob = job;
+  const hasActiveJob = isActiveJobStatus(currentJob?.status);
+  const canPauseJob = currentJob?.status === 'running' || currentJob?.status === 'queued';
+  const canResumeJob = currentJob?.status === 'paused';
+  const canStopJob = isActiveJobStatus(currentJob?.status);
+  const latestBackendFailure = backendActivity.lastFailureAt > backendActivity.lastResponseAt ? backendActivity.lastFailureAt : 0;
+  const backendStatus = useMemo(() => {
+    if (latestBackendFailure && statusClock - latestBackendFailure < BACKEND_FAILURE_WINDOW_MS) {
+      return {
+        label: 'backend offline',
+        tone: 'offline',
+        title: backendActivity.lastPath ? `Latest failed request: ${backendActivity.lastPath}` : 'Latest API request failed',
+      };
+    }
+    if (backendActivity.lastResponseAt && statusClock - backendActivity.lastResponseAt < BACKEND_ACTIVITY_WINDOW_MS) {
+      return {
+        label: 'backend active',
+        tone: 'online',
+        title: backendActivity.lastPath ? `Latest API response: ${backendActivity.lastPath}` : 'Backend responded recently',
+      };
+    }
+    if (backendActivity.lastAttemptAt) {
+      return {
+        label: 'backend idle',
+        tone: 'idle',
+        title: backendActivity.lastPath ? `Last API activity: ${backendActivity.lastPath}` : 'No recent API traffic',
+      };
+    }
+    return {
+      label: 'backend waiting',
+      tone: 'idle',
+      title: 'No API traffic yet',
+    };
+  }, [backendActivity.lastAttemptAt, backendActivity.lastPath, backendActivity.lastResponseAt, latestBackendFailure, statusClock]);
   const reviewedRun = selectedRun;
   const summary = reviewedRun?.summary || null;
   const sourceLabel = source
@@ -397,7 +519,7 @@ export default function App() {
   async function scanFolderPath(folderPath) {
     setScanError('');
     setFolderScan(null);
-    const response = await fetch(`${API_BASE}/api/scan-folder`, {
+    const response = await apiFetch(`${API_BASE}/api/scan-folder`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folder_path: folderPath }),
@@ -418,7 +540,7 @@ export default function App() {
         query: soccerNetQuery,
         limit: '200',
       });
-      const response = await fetch(`${API_BASE}/api/soccernet/games?${params.toString()}`);
+      const response = await apiFetch(`${API_BASE}/api/soccernet/games?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || 'Could not load SoccerNet games');
@@ -458,7 +580,7 @@ export default function App() {
 
     async function tick() {
       try {
-        const response = await fetch(`${API_BASE}/api/soccernet/downloads/${jobId}`);
+        const response = await apiFetch(`${API_BASE}/api/soccernet/downloads/${jobId}`);
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.detail || 'Could not poll SoccerNet download');
@@ -494,7 +616,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/soccernet/download`, {
+      const response = await apiFetch(`${API_BASE}/api/soccernet/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -550,7 +672,7 @@ export default function App() {
         payload.append('local_video_path', localVideoPath);
       }
 
-      const response = await fetch(`${API_BASE}/api/source`, {
+      const response = await apiFetch(`${API_BASE}/api/source`, {
         method: 'POST',
         body: payload,
       });
@@ -598,7 +720,7 @@ export default function App() {
 
   async function loadBackendJobs({ hydrateActive = false } = {}) {
     try {
-      const response = await fetch(`${API_BASE}/api/jobs`);
+      const response = await apiFetch(`${API_BASE}/api/jobs`);
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
         throw new Error('Could not load backend jobs');
@@ -608,30 +730,29 @@ export default function App() {
         return data;
       }
 
-      const activeJob = data.find((item) => item?.status === 'running' || item?.status === 'queued') || null;
+      const activeJob = data.find((item) => isActiveJobStatus(item?.status)) || null;
       if (activeJob) {
         setActiveExperiment(null);
         setJob((current) => {
-          if (current?.job_id === activeJob.job_id && (current?.status === 'running' || current?.status === 'queued')) {
+          if (current?.job_id === activeJob.job_id && isActiveJobStatus(current?.status)) {
             return current;
           }
           return activeJob;
         });
-        if (activeJob.status === 'running' || activeJob.status === 'queued') {
+        if (isActiveJobStatus(activeJob.status)) {
           startPolling(activeJob.job_id);
         }
         return data;
       }
 
+      clearPolling();
+      setJob(null);
+
       try {
-        const experimentResponse = await fetch(`${API_BASE}/api/experiments/active`);
+        const experimentResponse = await apiFetch(`${API_BASE}/api/experiments/active`);
         if (experimentResponse.ok) {
           const experiment = await experimentResponse.json();
           setActiveExperiment(experiment);
-          if (hydrateActive && experiment?.status === 'running') {
-            setJob(experiment);
-            return data;
-          }
         } else {
           setActiveExperiment(null);
         }
@@ -639,13 +760,12 @@ export default function App() {
         console.error(error);
         setActiveExperiment(null);
       }
-
-      if (!job && data.length > 0) {
-        setJob(data[0]);
-      }
       return data;
     } catch (error) {
       console.error(error);
+      clearPolling();
+      setJob(null);
+      setActiveExperiment(null);
       return [];
     }
   }
@@ -677,7 +797,7 @@ export default function App() {
   async function loadRecentRuns() {
     setRecentRunsError('');
     try {
-      const response = await fetch(`${API_BASE}/api/runs/recent?limit=1000`);
+      const response = await apiFetch(`${API_BASE}/api/runs/recent?limit=1000`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error('Could not load recent runs');
@@ -692,7 +812,7 @@ export default function App() {
   async function handleLoadRun(runId) {
     setReviewError('');
     try {
-      const response = await fetch(`${API_BASE}/api/runs/${runId}`);
+      const response = await apiFetch(`${API_BASE}/api/runs/${runId}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || 'Could not load run');
@@ -710,7 +830,7 @@ export default function App() {
     setReviewError('');
     setIsRefreshingDiagnostics(true);
     try {
-      const response = await fetch(`${API_BASE}/api/runs/${reviewedRunId}/refresh-diagnostics`, {
+      const response = await apiFetch(`${API_BASE}/api/runs/${reviewedRunId}/refresh-diagnostics`, {
         method: 'POST',
       });
       const data = await response.json();
@@ -766,7 +886,7 @@ export default function App() {
     payload.append('iou', form.iou);
 
     try {
-      const response = await fetch(`${API_BASE}/api/analyze`, {
+      const response = await apiFetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: payload,
       });
@@ -789,18 +909,40 @@ export default function App() {
     }
   }
 
+  async function handleJobAction(action) {
+    if (!currentJob?.job_id) {
+      return;
+    }
+    setJobError('');
+    setJobActionPending(action);
+    try {
+      const response = await apiFetch(`${API_BASE}/api/jobs/${currentJob.job_id}/${action}`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || `Could not ${action} job`);
+      }
+      setJob(data);
+    } catch (error) {
+      setJobError(error.message || `Could not ${action} job`);
+    } finally {
+      setJobActionPending('');
+    }
+  }
+
   function startPolling(jobId) {
     clearPolling();
 
     async function tick() {
       try {
-        const response = await fetch(`${API_BASE}/api/jobs/${jobId}`);
+        const response = await apiFetch(`${API_BASE}/api/jobs/${jobId}`);
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.detail || 'Could not poll analysis job');
         }
         setJob(data);
-        if (data.status === 'completed' || data.status === 'failed') {
+        if (data.status === 'completed' || data.status === 'failed' || data.status === 'stopped') {
           clearPolling();
           if (data.status === 'completed' && data.run_id) {
             await handleLoadRun(data.run_id);
@@ -828,12 +970,18 @@ export default function App() {
           <div className="eyebrow">football tactical demo</div>
           <h1>Detect, track, calibrate the field, and project the play.</h1>
           <p>
-            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, hybrid appearance-aware player tracking, automatic field-keypoint calibration every 10 frames, live model preview, and projected tactical overlays.
+            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, hybrid appearance-aware player tracking, per-frame field-keypoint calibration with rolling homography smoothing, live model preview, and projected tactical overlays.
           </p>
         </div>
-          <div className="hero-pills">
-          <span>frontend 4317</span>
-          <span>backend 8431</span>
+        <div className="hero-pills">
+          <span className="connection-chip online" title="This frontend is mounted and interactive">
+            <span className="chip-dot" aria-hidden="true" />
+            frontend live
+          </span>
+          <span className={`connection-chip ${backendStatus.tone}`} title={backendStatus.title}>
+            <span className="chip-dot" aria-hidden="true" />
+            {backendStatus.label}
+          </span>
           <span>wide-angle first</span>
           <div className="theme-switcher" role="group" aria-label="Theme mode">
             {['light', 'dark', 'auto'].map((mode) => (
@@ -952,9 +1100,9 @@ export default function App() {
               </label>
             </div>
 
-            <div className="field-note">
-              Field calibration is automatic now. The backend refreshes the pitch transform every 10 frames from pitch keypoints, so there is no manual homography step in the UI.
-            </div>
+          <div className="field-note">
+            Field calibration is automatic now. The backend refreshes the pitch transform every frame from pitch keypoints and smooths recent homographies, so there is no manual homography step in the UI.
+          </div>
 
             <button className="secondary-button" onClick={() => handleLoadSource()} type="button">
               {isLoadingSource ? 'Loading input clip...' : source ? 'Reload input clip' : 'Load input clip'}
@@ -1175,6 +1323,7 @@ export default function App() {
                   type="button"
                   className={`workspace-tab ${workspaceMode === mode.id ? 'active-workspace-tab' : ''}`}
                   onClick={() => setWorkspaceMode(mode.id)}
+                  disabled={mode.id === 'job' && !hasActiveJob}
                 >
                   {mode.label}
                 </button>
@@ -1200,8 +1349,13 @@ export default function App() {
                     <button className="secondary-button compact-button" type="button" onClick={handleStartLivePreview}>
                       Open live preview
                     </button>
-                    <button className="primary-button compact-button workspace-primary-action" type="button" onClick={() => setWorkspaceMode('job')}>
-                      Go to active job
+                    <button
+                      className="primary-button compact-button workspace-primary-action"
+                      type="button"
+                      onClick={() => setWorkspaceMode('job')}
+                      disabled={!hasActiveJob}
+                    >
+                      {hasActiveJob ? 'Go to active job' : 'No active job'}
                     </button>
                   </div>
                   <div className="field-note">
@@ -1250,8 +1404,13 @@ export default function App() {
                 >
                   Use active experiment clip
                 </button>
-                <button className="primary-button compact-button workspace-primary-action" type="button" onClick={() => setWorkspaceMode('job')}>
-                  Go to active job
+                <button
+                  className="primary-button compact-button workspace-primary-action"
+                  type="button"
+                  onClick={() => setWorkspaceMode('job')}
+                  disabled={!hasActiveJob}
+                >
+                  {hasActiveJob ? 'Go to active job' : 'No active job'}
                 </button>
               </div>
               {livePreviewUrl ? (
@@ -1283,12 +1442,43 @@ export default function App() {
                     <button className="secondary-button compact-button" type="button" onClick={() => setWorkspaceMode('input')}>
                       Back to input
                     </button>
+                    {canPauseJob ? (
+                      <button
+                        className="secondary-button compact-button"
+                        type="button"
+                        onClick={() => handleJobAction('pause')}
+                        disabled={jobActionPending !== ''}
+                      >
+                        {jobActionPending === 'pause' ? 'Pausing...' : 'Pause'}
+                      </button>
+                    ) : null}
+                    {canResumeJob ? (
+                      <button
+                        className="secondary-button compact-button"
+                        type="button"
+                        onClick={() => handleJobAction('resume')}
+                        disabled={jobActionPending !== ''}
+                      >
+                        {jobActionPending === 'resume' ? 'Resuming...' : 'Resume'}
+                      </button>
+                    ) : null}
+                    {canStopJob ? (
+                      <button
+                        className="secondary-button compact-button"
+                        type="button"
+                        onClick={() => handleJobAction('stop')}
+                        disabled={jobActionPending !== '' || currentJob.status === 'stopping'}
+                      >
+                        {currentJob.status === 'stopping' || jobActionPending === 'stop' ? 'Stopping...' : 'Stop'}
+                      </button>
+                    ) : null}
                     {currentJob.status === 'completed' ? (
                       <button className="primary-button compact-button workspace-primary-action" type="button" onClick={() => { setWorkspaceMode('review'); setReviewPanel('overview'); }}>
                         Review completed run
                       </button>
                     ) : null}
                   </div>
+                  {jobError ? <div className="error-box">{jobError}</div> : null}
                 </>
               ) : (
                 <div className="empty-card">No analysis running. Load a clip, then click Analyze.</div>

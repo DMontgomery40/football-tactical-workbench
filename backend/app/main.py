@@ -31,6 +31,8 @@ from ultralytics import YOLO
 from app.ai_diagnostics import generate_run_diagnostics, resolve_provider_config
 from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
 from app.wide_angle import (
+    AnalysisStoppedError,
+    CALIBRATION_REFRESH_FRAMES,
     PLAYER_MODEL_OPTIONS,
     TACTICAL_LEARN_CARDS,
     analyze_video as analyze_wide_angle_video,
@@ -48,6 +50,7 @@ RUNS_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 SOCCERNET_DIR.mkdir(parents=True, exist_ok=True)
 EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
+ACTIVE_EXPERIMENT_FRESHNESS_SECONDS = 300
 
 PERSON_CLASS_ID = 0
 BALL_CLASS_ID = 32
@@ -182,7 +185,7 @@ class JobManager:
             )
             if not job.job_id:
                 continue
-            if job.status in {"queued", "running"}:
+            if job.status in {"queued", "running", "paused", "stopping"}:
                 if job.restart_config:
                     job.status = "queued"
                     job.progress = 0.0
@@ -239,6 +242,56 @@ class JobManager:
 
 
 job_manager = JobManager(RUNS_DIR)
+
+
+class JobControl:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._pause_requested = False
+        self._stop_requested = False
+
+    def request_pause(self) -> None:
+        with self._lock:
+            self._pause_requested = True
+
+    def request_resume(self) -> None:
+        with self._lock:
+            self._pause_requested = False
+
+    def request_stop(self) -> None:
+        with self._lock:
+            self._stop_requested = True
+
+    def is_pause_requested(self) -> bool:
+        with self._lock:
+            return self._pause_requested
+
+    def is_stop_requested(self) -> bool:
+        with self._lock:
+            return self._stop_requested
+
+
+class JobControlManager:
+    def __init__(self) -> None:
+        self._controls: dict[str, JobControl] = {}
+        self._lock = threading.Lock()
+
+    def create(self, job_id: str) -> JobControl:
+        control = JobControl()
+        with self._lock:
+            self._controls[job_id] = control
+        return control
+
+    def get(self, job_id: str) -> JobControl | None:
+        with self._lock:
+            return self._controls.get(job_id)
+
+    def clear(self, job_id: str) -> None:
+        with self._lock:
+            self._controls.pop(job_id, None)
+
+
+job_control_manager = JobControlManager()
 
 
 class SourceManager:
@@ -464,7 +517,7 @@ def config() -> dict[str, Any]:
         "player_tracker_modes": PLAYER_TRACKER_MODE_OPTIONS,
         "default_player_tracker_mode": DEFAULT_PLAYER_TRACKER_MODE,
         "learn_cards": TACTICAL_LEARN_CARDS,
-        "field_calibration_refresh_frames": 10,
+        "field_calibration_refresh_frames": CALIBRATION_REFRESH_FRAMES,
         "field_calibration_mode": "automatic_keypoints",
         "soccernet_dataset_dir": str(SOCCERNET_DIR),
         "soccernet_video_files": ["1_720p.mkv", "2_720p.mkv", "1_224p.mkv", "2_224p.mkv"],
@@ -568,6 +621,51 @@ def get_job(job_id: str) -> dict[str, Any]:
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job.as_dict()
+
+
+def require_job_control(job_id: str) -> tuple[JobState, JobControl]:
+    job = job_manager.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    control = job_control_manager.get(job_id)
+    if control is None:
+        raise HTTPException(status_code=409, detail="Job is not controllable anymore")
+    return job, control
+
+
+@app.post("/api/jobs/{job_id}/pause")
+def pause_job(job_id: str) -> dict[str, Any]:
+    job, control = require_job_control(job_id)
+    if job.status not in {"queued", "running", "paused"}:
+        raise HTTPException(status_code=409, detail="Only queued or running jobs can be paused")
+    if job.status != "paused":
+        control.request_pause()
+        job_manager.update(job_id, status="paused")
+        job_manager.log(job_id, "Pause requested")
+    return job_manager.get(job_id).as_dict()
+
+
+@app.post("/api/jobs/{job_id}/resume")
+def resume_job(job_id: str) -> dict[str, Any]:
+    job, control = require_job_control(job_id)
+    if job.status != "paused":
+        raise HTTPException(status_code=409, detail="Only paused jobs can be resumed")
+    control.request_resume()
+    job_manager.update(job_id, status="running")
+    job_manager.log(job_id, "Resume requested")
+    return job_manager.get(job_id).as_dict()
+
+
+@app.post("/api/jobs/{job_id}/stop")
+def stop_job(job_id: str) -> dict[str, Any]:
+    job, control = require_job_control(job_id)
+    if job.status not in {"queued", "running", "paused", "stopping"}:
+        raise HTTPException(status_code=409, detail="Only active jobs can be stopped")
+    control.request_stop()
+    if job.status != "stopping":
+        job_manager.update(job_id, status="stopping")
+        job_manager.log(job_id, "Stop requested")
+    return job_manager.get(job_id).as_dict()
 
 
 def load_persisted_run(run_dir: Path) -> dict[str, Any]:
@@ -722,7 +820,7 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["homography_enabled"] = False
         normalized["field_registered_frames"] = 0
         normalized["field_registered_ratio"] = 0.0
-        normalized["field_calibration_refresh_frames"] = 10
+        normalized["field_calibration_refresh_frames"] = CALIBRATION_REFRESH_FRAMES
         normalized["field_calibration_refresh_attempts"] = 0
         normalized["field_calibration_refresh_successes"] = 0
         normalized["average_visible_pitch_keypoints"] = 0.0
@@ -859,6 +957,7 @@ def _read_tail_lines(path: Path, limit: int = 250) -> list[str]:
 
 def load_active_batch_experiment() -> dict[str, Any] | None:
     candidates: list[tuple[float, Path, dict[str, Any], list[str]]] = []
+    freshness_cutoff = time.time() - ACTIVE_EXPERIMENT_FRESHNESS_SECONDS
     for experiment_dir in EXPERIMENTS_DIR.iterdir():
         if not experiment_dir.is_dir():
             continue
@@ -877,8 +976,9 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
         latest_mtime = max(
             batch_log_path.stat().st_mtime,
             tmux_log_path.stat().st_mtime if tmux_log_path.exists() else 0.0,
-            manifest_path.stat().st_mtime,
         )
+        if latest_mtime < freshness_cutoff:
+            continue
         candidates.append((latest_mtime, experiment_dir, manifest, lines))
 
     if not candidates:
@@ -1160,6 +1260,7 @@ async def analyze(
     }
 
     job = job_manager.create(run_dir, restart_config=config_payload)
+    job_control_manager.create(job.job_id)
     job_manager.log(job.job_id, f"Queued run in {run_dir.name}")
     job_manager.update(job.job_id, status="running")
 
@@ -1175,17 +1276,30 @@ async def analyze(
 
 def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]) -> None:
     try:
-        summary = analyze_wide_angle_video(job_id=job_id, run_dir=run_dir, config_payload=config_payload, job_manager=job_manager)
+        control = job_control_manager.get(job_id)
+        summary = analyze_wide_angle_video(
+            job_id=job_id,
+            run_dir=run_dir,
+            config_payload=config_payload,
+            job_manager=job_manager,
+            job_control=control,
+        )
         job_manager.update(job_id, status="completed", progress=100.0, summary=summary)
         job_manager.log(job_id, "Run completed")
+    except AnalysisStoppedError:
+        job_manager.update(job_id, status="stopped", error=None)
+        job_manager.log(job_id, "Run stopped")
     except Exception as exc:
         job_manager.update(job_id, status="failed", error=str(exc))
         job_manager.log(job_id, f"Run failed: {exc}")
+    finally:
+        job_control_manager.clear(job_id)
 
 
 @app.on_event("startup")
 def resume_analysis_jobs_on_startup() -> None:
     for job_id, run_dir, config_payload in job_manager.consume_restartable_jobs():
+        job_control_manager.create(job_id)
         job_manager.update(job_id, status="running", progress=0.0, error=None)
         job_manager.log(job_id, "Restarting analysis after backend restart")
         thread = threading.Thread(

@@ -7,7 +7,7 @@ The current codebase is a wide-angle football pipeline with five core stages:
 - detects players, referees, and the ball with `soccana`
 - tracks players with a hybrid appearance-aware ReID tracker and post-pass stitcher
 - separates home and away tracks with jersey-colour clustering
-- refreshes pitch calibration every 10 frames with `soccana_keypoint`
+- refreshes pitch calibration every frame with `soccana_keypoint` and smooths recent homographies
 - writes a saved overlay run with CSV, JSON, and review artifacts
 
 This README follows the current code and verified runtime behaviour.
@@ -38,7 +38,7 @@ This README follows the current code and verified runtime behaviour.
 - field calibration model: `soccana_keypoint`
 - player tracker: `hybrid_reid`
 - ball tracker: `bytetrack.yaml`
-- calibration refresh cadence: every `10` frames
+- calibration refresh cadence: every frame, with a rolling 5-homography smooth
 - frontend dev server: `0.0.0.0:4317`
 - backend API server: `0.0.0.0:8431`
 - run storage: `backend/runs/`

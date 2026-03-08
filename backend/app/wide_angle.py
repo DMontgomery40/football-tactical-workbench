@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import time
 import zipfile
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -36,7 +36,8 @@ BROWSER_VIDEO_FOURCCS = ("avc1", "H264", "h264", "X264")
 
 DETECTOR_MODEL_DEFAULT = "soccana"
 KEYPOINT_MODEL_DEFAULT = "soccana_keypoint"
-CALIBRATION_REFRESH_FRAMES = 10
+CALIBRATION_REFRESH_FRAMES = 1
+CALIBRATION_SMOOTHING_WINDOW = 5
 CALIBRATION_MAX_AGE_FRAMES = 30
 FIELD_KEYPOINT_CONFIDENCE = 0.35
 MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5
@@ -137,7 +138,7 @@ TACTICAL_LEARN_CARDS = [
     },
     {
         "title": "4. Automatic field registration",
-        "what_it_does": "Refreshes pitch calibration from field keypoints every 10 frames so the minimap can follow a moving broadcast camera.",
+        "what_it_does": "Refreshes pitch calibration from field keypoints every frame and smooths the last few accepted homographies so the minimap can follow a moving broadcast camera without jitter.",
         "what_breaks": "If the keypoint model loses field structure during a fast cut or tight zoom, the projection has to coast on the last good calibration.",
         "what_to_try_next": "Watch the live preview for calibration dropouts instead of trusting the minimap blindly.",
     },
@@ -764,6 +765,49 @@ def homography_temporal_drift_cm(
     return float(np.median(drifts))
 
 
+def normalize_homography_matrix(homography_matrix: np.ndarray | None) -> np.ndarray | None:
+    if homography_matrix is None:
+        return None
+    normalized = homography_matrix.astype(np.float32).copy()
+    scale = float(normalized[2, 2]) if normalized.shape == (3, 3) else 0.0
+    if np.isfinite(scale) and abs(scale) > 1e-6:
+        normalized /= scale
+    if not np.isfinite(normalized).all():
+        return None
+    return normalized
+
+
+def smooth_homography_history(history: deque[np.ndarray]) -> np.ndarray | None:
+    if not history:
+        return None
+    stack = np.stack([matrix for matrix in history], axis=0).astype(np.float32)
+    averaged = np.mean(stack, axis=0)
+    if not np.isfinite(averaged).all():
+        return history[-1].copy()
+    scale = float(averaged[2, 2]) if averaged.shape == (3, 3) else 0.0
+    if np.isfinite(scale) and abs(scale) > 1e-6:
+        averaged /= scale
+    else:
+        averaged[2, 2] = 1.0
+    return averaged.astype(np.float32)
+
+
+class AnalysisStoppedError(RuntimeError):
+    pass
+
+
+def checkpoint_job_control(job_control: Any, job_id: str, job_manager: Any) -> None:
+    if job_control is None:
+        return
+
+    while True:
+        if job_control.is_stop_requested():
+            raise AnalysisStoppedError("Run stopped by user.")
+        if not job_control.is_pause_requested():
+            return
+        time.sleep(0.25)
+
+
 def detect_pitch_homography(
     frame: np.ndarray,
     keypoint_model: YOLO,
@@ -1337,6 +1381,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     tracker_runtime = appearance_embedder.describe() if appearance_embedder is not None else {}
     tracker_status_label = tracker_mode_label(tracker_mode)
     field_homography: np.ndarray | None = None
+    accepted_homographies: deque[np.ndarray] = deque(maxlen=CALIBRATION_SMOOTHING_WINDOW)
     latest_field_keypoints: np.ndarray | None = None
     latest_visible_keypoints = 0
     latest_inlier_count = 0
@@ -1366,7 +1411,11 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
                 )
                 if candidate_is_usable:
-                    field_homography = homography_candidate
+                    normalized_candidate = normalize_homography_matrix(homography_candidate)
+                    if normalized_candidate is not None:
+                        accepted_homographies.append(normalized_candidate)
+                        smoothed_homography = smooth_homography_history(accepted_homographies)
+                        field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
                     last_calibration_frame = frame_index
                     latest_reprojection_error_cm = reprojection_error
                 latest_field_keypoints = detected_keypoints
@@ -1569,7 +1618,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
         cap.release()
 
 
-def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], job_manager: Any) -> dict[str, Any]:
+def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], job_manager: Any, job_control: Any | None = None) -> dict[str, Any]:
     source_video_path = Path(config_payload["source_video_path"])
     label_path = str(config_payload.get("label_path") or "").strip()
     player_model_name = str(config_payload["player_model"])
@@ -1656,6 +1705,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     field_registered_frames = 0
     last_good_calibration_frame = -1
     active_field_homography = manual_homography_matrix
+    accepted_homographies: deque[np.ndarray] = deque(maxlen=CALIBRATION_SMOOTHING_WINDOW)
     latest_calibration_reprojection_error_cm = float("inf")
     frame_index = 0
     player_row_count = 0
@@ -1663,6 +1713,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
 
     start_time = datetime.utcnow().timestamp()
     while True:
+        checkpoint_job_control(job_control, job_id, job_manager)
         ok, frame = cap.read()
         if not ok:
             break
@@ -1681,10 +1732,16 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
             )
             if candidate_is_usable:
-                active_field_homography = homography_candidate
-                calibration_refresh_successes += 1
-                last_good_calibration_frame = frame_index
-                latest_calibration_reprojection_error_cm = reprojection_error
+                normalized_candidate = normalize_homography_matrix(homography_candidate)
+                if normalized_candidate is not None:
+                    accepted_homographies.append(normalized_candidate)
+                    smoothed_homography = smooth_homography_history(accepted_homographies)
+                    active_field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
+                    calibration_refresh_successes += 1
+                    last_good_calibration_frame = frame_index
+                    latest_calibration_reprojection_error_cm = reprojection_error
+                else:
+                    calibration_refresh_rejections += 1
             else:
                 calibration_refresh_rejections += 1
 
@@ -1859,6 +1916,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     projection_rows: list[dict[str, Any]] = []
 
     for record in frame_records:
+        checkpoint_job_control(job_control, job_id, job_manager)
         for player_row in record["players"]:
             team_info = track_team_info.get(player_row["track_id"], default_team_info())
             player_row["team_label"] = team_info["team_label"]
@@ -2004,6 +2062,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(["frame_index", "row_type", "track_id", "team_label", "field_x_cm", "field_y_cm", "map_x", "map_y", "source_x", "source_y"])
             for row in projection_rows:
+                checkpoint_job_control(job_control, job_id, job_manager)
                 csv_writer.writerow(
                     [
                         row["frame_index"],
@@ -2081,6 +2140,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             "goal_in_next_60s",
         ])
         for row in entropy_timeseries_rows:
+            checkpoint_job_control(job_control, job_id, job_manager)
             csv_writer.writerow([
                 row["second"],
                 row["seconds"],
@@ -2120,6 +2180,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(["half", "seconds", "position_ms", "game_clock_seconds", "team", "visibility", "label"])
             for event in goal_events:
+                checkpoint_job_control(job_control, job_id, job_manager)
                 csv_writer.writerow([
                     event["half"],
                     event["seconds"],
@@ -2153,6 +2214,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
 
         for track_id, rows in sorted(raw_player_rows_by_track.items(), key=lambda item: len(item[1]), reverse=True):
+            checkpoint_job_control(job_control, job_id, job_manager)
             track_length = len(rows)
             track_lengths.append(track_length)
             longest_track_length = max(longest_track_length, track_length)
@@ -2212,6 +2274,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     )
 
     for render_index, record in enumerate(frame_records):
+        checkpoint_job_control(job_control, job_id, job_manager)
         ok, frame = render_cap.read()
         if not ok:
             break
@@ -2346,6 +2409,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     writer.release()
     update_job_progress(job_manager, job_id, PROGRESS_RENDER_END)
     if finalize_overlay:
+        checkpoint_job_control(job_control, job_id, job_manager)
         job_manager.log(job_id, "Finalizing browser-ready overlay video")
         finalize_overlay_video(overlay_write_path, overlay_video_path, job_id, job_manager)
     else:
@@ -2578,6 +2642,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     }
 
     update_job_progress(job_manager, job_id, PROGRESS_VIDEO_FINALIZE_END + 1.0)
+    checkpoint_job_control(job_control, job_id, job_manager)
     ai_diagnostics, diagnostics_artifact = generate_run_diagnostics(
         summary=summary,
         heuristic_diagnostics=heuristic_diagnostics,
@@ -2596,6 +2661,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     summary["diagnostics_error"] = diagnostics_artifact.get("error", "")
     summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
 
+    checkpoint_job_control(job_control, job_id, job_manager)
     summary_json_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     zip_inputs = [overlay_video_path, detections_csv_path, track_summary_csv_path, summary_json_path]
     if projection_csv_key is not None and projection_csv_path.exists():
@@ -2608,6 +2674,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     if diagnostics_json_path.exists():
         zip_inputs.append(diagnostics_json_path)
     update_job_progress(job_manager, job_id, PROGRESS_PACKAGING_END)
+    checkpoint_job_control(job_control, job_id, job_manager)
     zip_paths(full_outputs_zip_path, zip_inputs)
     job_manager.log(job_id, f"Summary written to {summary_json_path.name}")
     return summary
