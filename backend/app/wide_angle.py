@@ -18,10 +18,21 @@ from huggingface_hub import hf_hub_download
 from ultralytics import YOLO
 
 from app.ai_diagnostics import generate_run_diagnostics
+from app.reid_tracker import (
+    BALL_TRACKER_NAME,
+    DEFAULT_PLAYER_TRACKER_MODE,
+    HybridReIDTracker,
+    LEGACY_PLAYER_TRACKER_MODE,
+    PLAYER_TRACKER_MODE_OPTIONS,
+    build_stitched_track_map,
+    normalize_player_tracker_mode,
+    tracker_mode_label,
+)
 
-DEFAULT_TRACKER = "bytetrack.yaml"
+DEFAULT_TRACKER = BALL_TRACKER_NAME
 MODEL_CACHE_DIR = Path(__file__).resolve().parent.parent / "models"
 MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+BROWSER_VIDEO_FOURCCS = ("avc1", "H264", "h264", "X264")
 
 DETECTOR_MODEL_DEFAULT = "soccana"
 KEYPOINT_MODEL_DEFAULT = "soccana_keypoint"
@@ -31,6 +42,11 @@ EXPERIMENT_WINDOW_SECONDS = 10.0
 EXPERIMENT_GRID_COLS = 6
 EXPERIMENT_GRID_ROWS = 4
 GOAL_LOOKAHEAD_SECONDS = (30, 60)
+PROGRESS_TRACKING_MAX = 68.0
+PROGRESS_RENDER_END = 90.0
+PROGRESS_VIDEO_FINALIZE_END = 94.0
+PROGRESS_DIAGNOSTICS_END = 98.0
+PROGRESS_PACKAGING_END = 99.0
 
 DETECTOR_MODEL_SOURCES = {
     "soccana": {
@@ -97,10 +113,10 @@ PITCH_REFERENCE_POINTS = np.array(
 
 TACTICAL_LEARN_CARDS = [
     {
-        "title": "1. Player detection + ByteTrack",
-        "what_it_does": "Uses football-specific detector weights so player, ball, and referee detection are trained for broadcast football rather than generic COCO classes.",
-        "what_breaks": "Crowded boxes, camera pans, and tiny distant players still fragment track IDs.",
-        "what_to_try_next": "Start with shorter clips, then raise model size or lower confidence only after you inspect churn.",
+        "title": "1. Player detection + hybrid ReID tracker",
+        "what_it_does": "Uses football-specific detection, sparse appearance embeddings, field-aware association, and a stitch pass so player IDs can survive short occlusions and re-entries.",
+        "what_breaks": "Crowded same-kit players, close-up broadcast cuts, and tiny distant crops can still create duplicate IDs.",
+        "what_to_try_next": "Inspect raw-vs-stitched ID counts and longest tracks before trusting any per-player sequence.",
     },
     {
         "title": "2. Team ID from jersey colors",
@@ -122,9 +138,9 @@ TACTICAL_LEARN_CARDS = [
     },
     {
         "title": "5. Demo first, fancy later",
-        "what_it_does": "Packages detection, tracking, team ID, and rough spatial context into one believable tactical pipeline.",
-        "what_breaks": "It is easy to jump to pose or fancy models before the wide-angle basics are stable.",
-        "what_to_try_next": "Get the overlay and minimap looking trustworthy before you add anything more ambitious.",
+        "what_it_does": "Packages detection, appearance-aware tracking, team ID, and rough spatial context into one football-first pipeline.",
+        "what_breaks": "Long match-wide identity is still harder than short tactical windows, especially across cutaways and resets.",
+        "what_to_try_next": "Treat stitched IDs as tactical tracklets first, then add jersey numbers or shot segmentation if match-long identity still matters.",
     },
 ]
 
@@ -167,11 +183,25 @@ def parse_homography_points(raw_value: str) -> dict[str, list[list[float]]] | No
     }
 
 
+def expected_model_cache_path(model_name: str, model_kind: str) -> Path | None:
+    if model_kind == "detector" and model_name in DETECTOR_MODEL_SOURCES:
+        model_info = DETECTOR_MODEL_SOURCES[model_name]
+        return (MODEL_CACHE_DIR / model_name / model_info["filename"]).resolve()
+    if model_kind == "keypoint" and model_name in KEYPOINT_MODEL_SOURCES:
+        model_info = KEYPOINT_MODEL_SOURCES[model_name]
+        return (MODEL_CACHE_DIR / model_name / model_info["filename"]).resolve()
+    return None
+
+
 @lru_cache(maxsize=8)
 def resolve_model_path(model_name: str, model_kind: str) -> str:
     model_key = model_name.strip()
     if not model_key:
         model_key = DETECTOR_MODEL_DEFAULT if model_kind == "detector" else KEYPOINT_MODEL_DEFAULT
+
+    cached_path = expected_model_cache_path(model_key, model_kind)
+    if cached_path is not None and cached_path.exists():
+        return str(cached_path)
 
     if model_kind == "detector" and model_key in DETECTOR_MODEL_SOURCES:
         model_info = DETECTOR_MODEL_SOURCES[model_key]
@@ -195,6 +225,13 @@ def resolve_model_path(model_name: str, model_kind: str) -> str:
     if candidate.exists():
         return str(candidate.resolve())
     return model_key
+
+
+def prewarm_default_models() -> dict[str, str]:
+    return {
+        "detector": resolve_model_path(DETECTOR_MODEL_DEFAULT, "detector"),
+        "field_calibration": resolve_model_path(KEYPOINT_MODEL_DEFAULT, "keypoint"),
+    }
 
 
 def resolve_detector_spec(model_name: str) -> dict[str, Any]:
@@ -247,6 +284,46 @@ def safe_int(value: object, default: int = -1) -> int:
         return default
 
 
+def resolve_player_tracker_mode(config_payload: dict[str, Any]) -> str:
+    return normalize_player_tracker_mode(config_payload.get("tracker_mode"))
+
+
+def compute_track_length_stats(rows_by_track: dict[int, list[dict[str, Any]]]) -> tuple[int, float]:
+    if not rows_by_track:
+        return 0, 0.0
+    lengths = [len(rows) for rows in rows_by_track.values()]
+    return max(lengths), float(np.mean(lengths))
+
+
+def rebuild_player_rows_by_track(frame_records: list[dict[str, Any]]) -> tuple[dict[int, list[dict[str, Any]]], set[int]]:
+    rows_by_track: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    track_ids_seen: set[int] = set()
+    for record in frame_records:
+        for player_row in record["players"]:
+            track_id = int(player_row["track_id"])
+            if track_id < 0:
+                continue
+            rows_by_track[track_id].append(player_row)
+            track_ids_seen.add(track_id)
+    return rows_by_track, track_ids_seen
+
+
+def apply_player_track_id_map(
+    frame_records: list[dict[str, Any]],
+    jersey_sample_track_ids: list[int],
+    stitched_track_map: dict[int, int],
+) -> None:
+    if not stitched_track_map:
+        return
+    for record in frame_records:
+        for player_row in record["players"]:
+            track_id = int(player_row["track_id"])
+            if track_id >= 0:
+                player_row["track_id"] = int(stitched_track_map.get(track_id, track_id))
+    for index, track_id in enumerate(jersey_sample_track_ids):
+        jersey_sample_track_ids[index] = int(stitched_track_map.get(track_id, track_id))
+
+
 def clamp_box(box: np.ndarray, frame_width: int, frame_height: int) -> tuple[int, int, int, int]:
     x1, y1, x2, y2 = [int(v) for v in box]
     x1 = max(0, min(frame_width - 1, x1))
@@ -256,16 +333,60 @@ def clamp_box(box: np.ndarray, frame_width: int, frame_height: int) -> tuple[int
     return x1, y1, x2, y2
 
 
-def draw_label(frame: np.ndarray, text: str, x1: int, y1: int, color: tuple[int, int, int]) -> None:
+def build_overlay_style(frame_width: int, frame_height: int) -> dict[str, Any]:
+    short_side = max(1, min(frame_width, frame_height))
+    margin = max(8, int(round(short_side * 0.035)))
+    label_scale = max(0.34, min(0.58, short_side / 620.0))
+    status_scale = max(0.34, min(0.82, short_side / 500.0))
+    small_status_scale = max(0.3, min(0.66, short_side / 620.0))
+    thickness = 1 if short_side < 540 else 2
+    line_gap = max(20, int(round(short_side * 0.12)))
+    minimap_width = int(min(frame_width * 0.34, frame_height * 0.42 * 105.0 / 68.0, 360.0))
+    minimap_width = max(120, minimap_width)
+    minimap_height = int(round(minimap_width * 68.0 / 105.0))
+    return {
+        "margin": margin,
+        "label_scale": label_scale,
+        "status_scale": status_scale,
+        "small_status_scale": small_status_scale,
+        "text_thickness": thickness,
+        "line_gap": line_gap,
+        "label_padding_x": max(4, int(round(short_side * 0.012))),
+        "label_padding_y": max(3, int(round(short_side * 0.01))),
+        "box_thickness": max(1, int(round(short_side / 320.0))),
+        "keypoint_radius": max(2, int(round(short_side * 0.01))),
+        "minimap_width": minimap_width,
+        "minimap_height": minimap_height,
+        "minimap_title_scale": max(0.34, min(0.58, short_side / 720.0)),
+        "minimap_point_radius": max(2, int(round(short_side * 0.008))),
+        "minimap_ball_radius": max(2, int(round(short_side * 0.006))),
+        "panel_padding": max(6, int(round(short_side * 0.02))),
+        "title_band_height": max(18, int(round(short_side * 0.08))),
+    }
+
+
+def pitch_render_margin(map_width: int, map_height: int) -> int:
+    return max(6, min(PITCH_RENDER_MARGIN, int(round(min(map_width, map_height) * 0.06))))
+
+
+def draw_label(
+    frame: np.ndarray,
+    text: str,
+    x1: int,
+    y1: int,
+    color: tuple[int, int, int],
+    scale: float = 0.55,
+    thickness: int = 2,
+    padding_x: int = 4,
+    padding_y: int = 4,
+) -> None:
     font = cv2.FONT_HERSHEY_SIMPLEX
-    scale = 0.55
-    thickness = 2
     (width, height), baseline = cv2.getTextSize(text, font, scale, thickness)
-    top = max(0, y1 - height - baseline - 8)
-    right = min(frame.shape[1] - 1, x1 + width + 8)
+    top = max(0, y1 - height - baseline - (padding_y * 2))
+    right = min(frame.shape[1] - 1, x1 + width + (padding_x * 2))
     bottom = max(0, y1)
     cv2.rectangle(frame, (x1, top), (right, bottom), (20, 20, 20), -1)
-    cv2.putText(frame, text, (x1 + 4, bottom - 4), font, scale, color, thickness, cv2.LINE_AA)
+    cv2.putText(frame, text, (x1 + padding_x, bottom - padding_y), font, scale, color, thickness, cv2.LINE_AA)
 
 
 def zip_paths(output_zip_path: Path, paths: list[Path]) -> None:
@@ -277,6 +398,59 @@ def zip_paths(output_zip_path: Path, paths: list[Path]) -> None:
                         archive.write(child, arcname=str(child.relative_to(output_zip_path.parent)))
             elif path.is_file():
                 archive.write(path, arcname=path.name)
+
+
+def try_open_video_writer(
+    output_path: Path,
+    fps: float,
+    frame_size: tuple[int, int],
+    codec_candidates: tuple[str, ...],
+) -> tuple[cv2.VideoWriter | None, str | None]:
+    for codec in codec_candidates:
+        writer = cv2.VideoWriter(
+            str(output_path),
+            cv2.VideoWriter_fourcc(*codec),
+            fps,
+            frame_size,
+        )
+        if writer.isOpened():
+            return writer, codec
+        writer.release()
+    return None, None
+
+
+def create_overlay_writer(
+    overlay_video_path: Path,
+    raw_overlay_video_path: Path,
+    fps: float,
+    frame_size: tuple[int, int],
+    job_id: str,
+    job_manager: Any,
+) -> tuple[cv2.VideoWriter, Path, bool]:
+    ffmpeg_available = shutil.which("ffmpeg") is not None
+    if not ffmpeg_available:
+        writer, codec = try_open_video_writer(overlay_video_path, fps, frame_size, BROWSER_VIDEO_FOURCCS)
+        if writer is not None and codec is not None:
+            job_manager.log(job_id, f"Using direct {codec} overlay encoding for browser playback")
+            return writer, overlay_video_path, False
+
+    writer, codec = try_open_video_writer(raw_overlay_video_path, fps, frame_size, ("mp4v",))
+    if writer is None or codec is None:
+        writer, codec = try_open_video_writer(overlay_video_path, fps, frame_size, BROWSER_VIDEO_FOURCCS)
+        if writer is not None and codec is not None:
+            job_manager.log(job_id, f"Using direct {codec} overlay encoding for browser playback")
+            return writer, overlay_video_path, False
+        raise RuntimeError(f"Could not create overlay writer: {raw_overlay_video_path}")
+
+    if ffmpeg_available:
+        job_manager.log(job_id, "Writing overlay with mp4v then transcoding to H.264")
+    else:
+        job_manager.log(job_id, "ffmpeg not found; direct browser codec unavailable, falling back to mp4v overlay output")
+    return writer, raw_overlay_video_path, True
+
+
+def update_job_progress(job_manager: Any, job_id: str, value: float) -> None:
+    job_manager.update(job_id, progress=max(0.0, min(100.0, float(value))))
 
 
 def finalize_overlay_video(raw_video_path: Path, final_video_path: Path, job_id: str, job_manager: Any) -> None:
@@ -402,20 +576,21 @@ def kmeans_two_clusters(samples: np.ndarray, max_iters: int = 25) -> tuple[np.nd
 def create_pitch_map(map_width: int, map_height: int) -> np.ndarray:
     image = np.full((map_height, map_width, 3), (38, 96, 58), dtype=np.uint8)
     line_color = (238, 238, 238)
-    margin = PITCH_RENDER_MARGIN
-    cv2.rectangle(image, (margin, margin), (map_width - margin, map_height - margin), line_color, 2)
+    margin = pitch_render_margin(map_width, map_height)
+    line_thickness = 1 if min(map_width, map_height) < 160 else 2
+    cv2.rectangle(image, (margin, margin), (map_width - margin, map_height - margin), line_color, line_thickness)
 
     center_x = map_width // 2
     center_y = map_height // 2
-    cv2.line(image, (center_x, margin), (center_x, map_height - margin), line_color, 2)
-    cv2.circle(image, (center_x, center_y), max(12, map_height // 7), line_color, 2)
+    cv2.line(image, (center_x, margin), (center_x, map_height - margin), line_color, line_thickness)
+    cv2.circle(image, (center_x, center_y), max(8, map_height // 7), line_color, line_thickness)
 
     penalty_box_width = int(round((16.5 / 105.0) * (map_width - 2 * margin)))
     penalty_box_height = int(round((40.3 / 68.0) * (map_height - 2 * margin)))
     top_box_y = center_y - penalty_box_height // 2
     bottom_box_y = center_y + penalty_box_height // 2
-    cv2.rectangle(image, (margin, top_box_y), (margin + penalty_box_width, bottom_box_y), line_color, 2)
-    cv2.rectangle(image, (map_width - margin - penalty_box_width, top_box_y), (map_width - margin, bottom_box_y), line_color, 2)
+    cv2.rectangle(image, (margin, top_box_y), (margin + penalty_box_width, bottom_box_y), line_color, line_thickness)
+    cv2.rectangle(image, (map_width - margin - penalty_box_width, top_box_y), (map_width - margin, bottom_box_y), line_color, line_thickness)
     return image
 
 
@@ -427,7 +602,7 @@ def compute_homography_matrix(homography_payload: dict[str, list[list[float]]] |
     if homography_payload.get("target"):
         destination = np.array(homography_payload["target"], dtype=np.float32)
     else:
-        margin = float(PITCH_RENDER_MARGIN)
+        margin = float(pitch_render_margin(map_width, map_height))
         destination = np.array(
             [
                 [margin, margin],
@@ -463,10 +638,11 @@ def field_point_to_minimap(field_point: tuple[float, float] | None, map_width: i
     if field_point is None:
         return None
 
-    usable_width = map_width - 2 * PITCH_RENDER_MARGIN
-    usable_height = map_height - 2 * PITCH_RENDER_MARGIN
-    x_value = PITCH_RENDER_MARGIN + (float(np.clip(field_point[0], 0.0, PITCH_LENGTH_CM)) / PITCH_LENGTH_CM) * usable_width
-    y_value = PITCH_RENDER_MARGIN + (float(np.clip(field_point[1], 0.0, PITCH_WIDTH_CM)) / PITCH_WIDTH_CM) * usable_height
+    margin = pitch_render_margin(map_width, map_height)
+    usable_width = map_width - 2 * margin
+    usable_height = map_height - 2 * margin
+    x_value = margin + (float(np.clip(field_point[0], 0.0, PITCH_LENGTH_CM)) / PITCH_LENGTH_CM) * usable_width
+    y_value = margin + (float(np.clip(field_point[1], 0.0, PITCH_WIDTH_CM)) / PITCH_WIDTH_CM) * usable_height
     return float(x_value), float(y_value)
 
 
@@ -504,28 +680,44 @@ def detect_pitch_homography(
     return homography_matrix.astype(np.float32), keypoints, visible_count, inlier_count
 
 
-def overlay_minimap(frame: np.ndarray, minimap: np.ndarray) -> None:
+def overlay_minimap(frame: np.ndarray, minimap: np.ndarray, style: dict[str, Any]) -> None:
     inset_height, inset_width = minimap.shape[:2]
-    margin = 18
-    panel_top = max(0, frame.shape[0] - inset_height - margin - 26)
-    panel_left = max(0, frame.shape[1] - inset_width - margin - 10)
-    panel_bottom = min(frame.shape[0], panel_top + inset_height + 34)
-    panel_right = min(frame.shape[1], panel_left + inset_width + 20)
+    margin = style["margin"]
+    panel_padding = style["panel_padding"]
+    title_band_height = style["title_band_height"]
+    panel_top = max(0, frame.shape[0] - inset_height - margin - title_band_height - panel_padding * 2)
+    panel_left = max(0, frame.shape[1] - inset_width - margin - panel_padding * 2)
+    panel_bottom = min(frame.shape[0], panel_top + inset_height + title_band_height + panel_padding * 2)
+    panel_right = min(frame.shape[1], panel_left + inset_width + panel_padding * 2)
     cv2.rectangle(frame, (panel_left, panel_top), (panel_right, panel_bottom), (18, 18, 18), -1)
 
-    map_top = panel_top + 26
-    map_left = panel_left + 10
+    map_top = panel_top + title_band_height + panel_padding
+    map_left = panel_left + panel_padding
     frame[map_top:map_top + inset_height, map_left:map_left + inset_width] = minimap
-    cv2.putText(frame, "Minimap", (panel_left + 10, panel_top + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (245, 245, 245), 2, cv2.LINE_AA)
+    cv2.putText(
+        frame,
+        "Minimap",
+        (panel_left + panel_padding, panel_top + title_band_height - max(4, panel_padding // 2)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        style["minimap_title_scale"],
+        (245, 245, 245),
+        style["text_thickness"],
+        cv2.LINE_AA,
+    )
 
 
-def draw_detected_field_keypoints(frame: np.ndarray, keypoints: np.ndarray | None, confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE) -> None:
+def draw_detected_field_keypoints(
+    frame: np.ndarray,
+    keypoints: np.ndarray | None,
+    style: dict[str, Any],
+    confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE,
+) -> None:
     if keypoints is None:
         return
     for x_value, y_value, confidence in keypoints:
         if confidence < confidence_threshold:
             continue
-        cv2.circle(frame, (int(round(x_value)), int(round(y_value))), 4, (120, 220, 255), -1, cv2.LINE_AA)
+        cv2.circle(frame, (int(round(x_value)), int(round(y_value))), style["keypoint_radius"], (120, 220, 255), -1, cv2.LINE_AA)
 
 
 def default_team_info() -> dict[str, Any]:
@@ -764,10 +956,31 @@ def build_geometric_volatility_experiment(frame_records: list[dict[str, Any]], f
     return second_rows, experiment_card
 
 
-def load_soccernet_goal_events(source_video_path: Path) -> tuple[list[dict[str, Any]], str | None]:
-    parent = source_video_path.parent
-    label_candidates = [parent / "Labels-v2.json", parent / "Labels.json"]
-    label_path = next((path for path in label_candidates if path.exists()), None)
+def resolve_goal_label_path(source_video_path: Path, explicit_label_path: str = "") -> Path | None:
+    candidate_paths: list[Path] = []
+
+    def add_candidate(path: Path) -> None:
+        try:
+            normalized = path.expanduser().resolve()
+        except Exception:
+            normalized = path.expanduser()
+        if normalized not in candidate_paths:
+            candidate_paths.append(normalized)
+
+    if explicit_label_path.strip():
+        add_candidate(Path(explicit_label_path.strip()))
+
+    search_directories: list[Path] = [source_video_path.parent]
+    search_directories.extend(list(source_video_path.parents[:4]))
+    for directory in search_directories:
+        add_candidate(directory / "Labels-v2.json")
+        add_candidate(directory / "Labels.json")
+
+    return next((path for path in candidate_paths if path.exists() and path.is_file()), None)
+
+
+def load_soccernet_goal_events(source_video_path: Path, explicit_label_path: str = "") -> tuple[list[dict[str, Any]], str | None]:
+    label_path = resolve_goal_label_path(source_video_path, explicit_label_path)
     if label_path is None:
         return [], None
 
@@ -916,12 +1129,96 @@ def _compute_online_track_team_info(
     return team_info_by_track, cluster_distance
 
 
+def detect_players_for_frame(
+    frame: np.ndarray,
+    player_model: YOLO,
+    detector_spec: dict[str, Any],
+    detector_device: str,
+    player_conf: float,
+    iou: float,
+    frame_width: int,
+    frame_height: int,
+    field_homography: np.ndarray | None,
+    frame_index: int,
+    tracker_mode: str,
+    player_tracker: HybridReIDTracker | None,
+) -> list[dict[str, Any]]:
+    detections: list[dict[str, Any]] = []
+
+    if tracker_mode == LEGACY_PLAYER_TRACKER_MODE:
+        player_results = player_model.track(
+            source=frame,
+            persist=True,
+            tracker=DEFAULT_TRACKER,
+            conf=player_conf,
+            iou=iou,
+            device=detector_device,
+            classes=[detector_spec["player_class_id"]],
+            verbose=False,
+        )
+        player_boxes = player_results[0].boxes
+        if player_boxes is None or len(player_boxes) == 0:
+            return detections
+        xyxy = player_boxes.xyxy.cpu().numpy()
+        confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
+        track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
+        for index, box in enumerate(xyxy):
+            x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
+            anchor = (float((x1 + x2) / 2.0), float(y2))
+            detections.append(
+                {
+                    "track_id": int(track_ids[index]),
+                    "confidence": float(confidences[index]),
+                    "bbox": (x1, y1, x2, y2),
+                    "anchor": anchor,
+                    "field_point": project_point(anchor, field_homography),
+                }
+            )
+        return detections
+
+    if player_tracker is None:
+        raise RuntimeError("Hybrid player tracker was requested without an initialized tracker instance.")
+
+    player_results = player_model(
+        source=frame,
+        conf=player_conf,
+        iou=iou,
+        device=detector_device,
+        classes=[detector_spec["player_class_id"]],
+        verbose=False,
+    )
+    player_boxes = player_results[0].boxes
+    if player_boxes is None or len(player_boxes) == 0:
+        return detections
+
+    xyxy = player_boxes.xyxy.cpu().numpy()
+    confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
+    for index, box in enumerate(xyxy):
+        x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
+        anchor = (float((x1 + x2) / 2.0), float(y2))
+        detections.append(
+            {
+                "track_id": -1,
+                "confidence": float(confidences[index]),
+                "bbox": (x1, y1, x2, y2),
+                "anchor": anchor,
+                "field_point": project_point(anchor, field_homography),
+            }
+        )
+
+    track_ids = player_tracker.update(frame=frame, detections=detections, frame_index=frame_index)
+    for detection, track_id in zip(detections, track_ids):
+        detection["track_id"] = int(track_id)
+    return detections
+
+
 def generate_live_preview_stream(source_video_path: Path, config_payload: dict[str, Any]):
     detector_spec = resolve_detector_spec(str(config_payload.get("player_model") or DETECTOR_MODEL_DEFAULT))
     include_ball = bool(config_payload["include_ball"])
     player_conf = float(config_payload["player_conf"])
     ball_conf = float(config_payload["ball_conf"])
     iou = float(config_payload["iou"])
+    tracker_mode = resolve_player_tracker_mode(config_payload)
 
     detector_device = choose_device()
     keypoint_device = choose_keypoint_device(detector_device)
@@ -938,8 +1235,21 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
         fps = 25.0
     frame_width = safe_int(cap.get(cv2.CAP_PROP_FRAME_WIDTH), 1280)
     frame_height = safe_int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT), 720)
-    minimap_width = max(240, min(360, frame_width // 4))
-    minimap_height = int(round(minimap_width * 68 / 105))
+    style = build_overlay_style(frame_width, frame_height)
+    minimap_width = style["minimap_width"]
+    minimap_height = style["minimap_height"]
+    player_tracker = (
+        HybridReIDTracker(
+            fps=fps,
+            frame_size=(frame_width, frame_height),
+            detection_confidence_floor=player_conf,
+            device=detector_device,
+        )
+        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        else None
+    )
+    tracker_runtime = player_tracker.describe_backend() if player_tracker is not None else {}
+    tracker_status_label = tracker_mode_label(tracker_mode)
     field_homography: np.ndarray | None = None
     latest_field_keypoints: np.ndarray | None = None
     latest_visible_keypoints = 0
@@ -970,43 +1280,39 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             current_players: list[dict[str, Any]] = []
             current_ball: dict[str, Any] | None = None
 
-            player_results = player_model.track(
-                source=frame,
-                persist=True,
-                tracker=DEFAULT_TRACKER,
-                conf=player_conf,
+            player_detections = detect_players_for_frame(
+                frame=frame,
+                player_model=player_model,
+                detector_spec=detector_spec,
+                detector_device=detector_device,
+                player_conf=player_conf,
                 iou=iou,
-                device=detector_device,
-                classes=[detector_spec["player_class_id"]],
-                verbose=False,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                field_homography=field_homography,
+                frame_index=frame_index,
+                tracker_mode=tracker_mode,
+                player_tracker=player_tracker,
             )
-            player_boxes = player_results[0].boxes
-            if player_boxes is not None and len(player_boxes) > 0:
-                xyxy = player_boxes.xyxy.cpu().numpy()
-                confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
-                track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
+            for detection in player_detections:
+                x1, y1, x2, y2 = detection["bbox"]
+                track_id = int(detection["track_id"])
+                feature = extract_jersey_feature(frame, (x1, y1, x2, y2))
+                if feature is not None and track_id >= 0:
+                    jersey_samples.append(feature)
+                    jersey_sample_track_ids.append(track_id)
 
-                for index, box in enumerate(xyxy):
-                    x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
-                    track_id = int(track_ids[index])
-                    confidence = float(confidences[index])
-                    anchor = (float((x1 + x2) / 2.0), float(y2))
-                    feature = extract_jersey_feature(frame, (x1, y1, x2, y2))
-                    if feature is not None and track_id >= 0:
-                        jersey_samples.append(feature)
-                        jersey_sample_track_ids.append(track_id)
-
-                    current_players.append(
-                        {
-                            "track_id": track_id,
-                            "confidence": confidence,
-                            "bbox": (x1, y1, x2, y2),
-                            "anchor": anchor,
-                            "team_label": "unassigned",
-                            "team_vote_ratio": 0.0,
-                            "pitch_point": None,
-                        }
-                    )
+                current_players.append(
+                    {
+                        "track_id": track_id,
+                        "confidence": float(detection["confidence"]),
+                        "bbox": (x1, y1, x2, y2),
+                        "anchor": detection["anchor"],
+                        "team_label": "unassigned",
+                        "team_vote_ratio": 0.0,
+                        "pitch_point": None,
+                    }
+                )
 
             if include_ball and ball_model is not None:
                 ball_results = ball_model.track(
@@ -1038,7 +1344,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 team_info_by_track, _ = _compute_online_track_team_info(jersey_samples, jersey_sample_track_ids)
 
             annotated = frame.copy()
-            draw_detected_field_keypoints(annotated, latest_field_keypoints)
+            draw_detected_field_keypoints(annotated, latest_field_keypoints, style)
 
             for player_row in current_players:
                 team_info = team_info_by_track.get(player_row["track_id"], default_team_info())
@@ -1048,26 +1354,48 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 player_row["pitch_point"] = field_point_to_minimap(player_row["field_point"], minimap_width, minimap_height)
                 x1, y1, x2, y2 = player_row["bbox"]
                 color = TEAM_BOX_COLORS.get(player_row["team_label"], TEAM_BOX_COLORS["unassigned"])
-                cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), color, style["box_thickness"])
                 label = f"{player_row['team_label']} #{player_row['track_id']}" if player_row["track_id"] >= 0 else player_row["team_label"]
-                draw_label(annotated, label, x1, y1, (255, 255, 255))
+                draw_label(
+                    annotated,
+                    label,
+                    x1,
+                    y1,
+                    (255, 255, 255),
+                    scale=style["label_scale"],
+                    thickness=style["text_thickness"],
+                    padding_x=style["label_padding_x"],
+                    padding_y=style["label_padding_y"],
+                )
 
             if current_ball is not None:
                 current_ball["field_point"] = project_point(current_ball["anchor"], field_homography)
                 current_ball["pitch_point"] = field_point_to_minimap(current_ball["field_point"], minimap_width, minimap_height)
                 x1, y1, x2, y2 = current_ball["bbox"]
-                cv2.rectangle(annotated, (x1, y1), (x2, y2), TEAM_BOX_COLORS["ball"], 2)
+                cv2.rectangle(annotated, (x1, y1), (x2, y2), TEAM_BOX_COLORS["ball"], style["box_thickness"])
                 ball_label = f"ball #{current_ball['track_id']}" if current_ball["track_id"] >= 0 else "ball"
-                draw_label(annotated, ball_label, x1, y1, (255, 245, 200))
+                draw_label(
+                    annotated,
+                    ball_label,
+                    x1,
+                    y1,
+                    (255, 245, 200),
+                    scale=style["label_scale"],
+                    thickness=style["text_thickness"],
+                    padding_x=style["label_padding_x"],
+                    padding_y=style["label_padding_y"],
+                )
 
+            text_x = style["margin"]
+            first_line_y = style["margin"] + style["line_gap"]
             cv2.putText(
                 annotated,
                 f"live preview frame {frame_index + 1}",
-                (20, 32),
+                (text_x, first_line_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.82,
+                style["status_scale"],
                 (255, 255, 255),
-                2,
+                style["text_thickness"],
                 cv2.LINE_AA,
             )
             status_text = (
@@ -1078,23 +1406,34 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             cv2.putText(
                 annotated,
                 status_text,
-                (20, 64),
+                (text_x, first_line_y + style["line_gap"]),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
+                style["small_status_scale"],
                 (220, 238, 248),
-                2,
+                style["text_thickness"],
                 cv2.LINE_AA,
             )
             cv2.putText(
                 annotated,
-                f"refresh every {CALIBRATION_REFRESH_FRAMES} frames · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}",
-                (20, 94),
+                f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}",
+                (text_x, first_line_y + style["line_gap"] * 2),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.62,
+                style["small_status_scale"],
                 (220, 238, 248),
-                2,
+                style["text_thickness"],
                 cv2.LINE_AA,
             )
+            if player_tracker is not None:
+                cv2.putText(
+                    annotated,
+                    f"id source {tracker_runtime.get('embedding_source', 'hsv_hist_only')}",
+                    (text_x, first_line_y + style["line_gap"] * 3),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    style["small_status_scale"],
+                    (220, 238, 248),
+                    style["text_thickness"],
+                    cv2.LINE_AA,
+                )
 
             if field_homography is not None:
                 minimap = create_pitch_map(minimap_width, minimap_height)
@@ -1103,11 +1442,11 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                         continue
                     point = (int(round(player_row["pitch_point"][0])), int(round(player_row["pitch_point"][1])))
                     color = TEAM_BOX_COLORS.get(player_row["team_label"], TEAM_BOX_COLORS["unassigned"])
-                    cv2.circle(minimap, point, 4, color, -1)
+                    cv2.circle(minimap, point, style["minimap_point_radius"], color, -1)
                 if current_ball is not None and current_ball["pitch_point"] is not None:
                     point = (int(round(current_ball["pitch_point"][0])), int(round(current_ball["pitch_point"][1])))
-                    cv2.circle(minimap, point, 3, TEAM_BOX_COLORS["ball"], -1)
-                overlay_minimap(annotated, minimap)
+                    cv2.circle(minimap, point, style["minimap_ball_radius"], TEAM_BOX_COLORS["ball"], -1)
+                overlay_minimap(annotated, minimap, style)
 
             ok, encoded = cv2.imencode(".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
             if not ok:
@@ -1130,7 +1469,9 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
 
 def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], job_manager: Any) -> dict[str, Any]:
     source_video_path = Path(config_payload["source_video_path"])
+    label_path = str(config_payload.get("label_path") or "").strip()
     player_model_name = str(config_payload["player_model"])
+    tracker_mode = resolve_player_tracker_mode(config_payload)
     include_ball = bool(config_payload["include_ball"])
     player_conf = float(config_payload["player_conf"])
     ball_conf = float(config_payload["ball_conf"])
@@ -1167,8 +1508,9 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     frame_height = safe_int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT), 720)
     total_frames = safe_int(cap.get(cv2.CAP_PROP_FRAME_COUNT), 0)
 
-    minimap_width = max(240, min(360, frame_width // 4))
-    minimap_height = int(round(minimap_width * 68 / 105))
+    style = build_overlay_style(frame_width, frame_height)
+    minimap_width = style["minimap_width"]
+    minimap_height = style["minimap_height"]
     manual_homography_matrix, _ = compute_homography_matrix(homography_points, minimap_width, minimap_height)
     detector_spec = resolve_detector_spec(player_model_name)
     detector_path = detector_spec["weights_path"]
@@ -1177,6 +1519,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     job_manager.log(job_id, f"Loading field calibration weights: {KEYPOINT_MODEL_DEFAULT}")
     keypoint_model = YOLO(keypoint_model_path)
     player_model = YOLO(detector_path)
+    player_tracker = (
+        HybridReIDTracker(
+            fps=fps,
+            frame_size=(frame_width, frame_height),
+            detection_confidence_floor=player_conf,
+            device=detector_device,
+        )
+        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        else None
+    )
+    tracker_backend = player_tracker.describe_backend() if player_tracker is not None else {
+        "embedding_source": "none",
+        "embedding_error": None,
+        "deep_feature_updates": 0,
+        "deep_feature_interval": 0,
+    }
+    job_manager.log(job_id, f"Player tracker mode: {tracker_mode_label(tracker_mode)}")
+    if player_tracker is not None:
+        job_manager.log(job_id, f"Identity embedding source: {tracker_backend['embedding_source']}")
+        if tracker_backend.get("embedding_error"):
+            job_manager.log(job_id, f"Identity embedding fallback active: {tracker_backend['embedding_error']}")
     ball_model: YOLO | None = None
     if include_ball:
         job_manager.log(job_id, "Ball tracking enabled through the shared football detector")
@@ -1186,7 +1549,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
 
     frame_records: list[dict[str, Any]] = []
     player_rows_by_track: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    player_track_ids_seen: set[int] = set()
+    raw_player_track_ids_seen: set[int] = set()
     ball_track_ids_seen: set[int] = set()
     player_detections_per_frame: list[int] = []
     ball_detections_per_frame: list[int] = []
@@ -1226,57 +1589,52 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         current_visible_keypoints = calibration_visible_counts[-1] if calibration_visible_counts else 0
         current_inlier_count = calibration_inlier_counts[-1] if calibration_inlier_counts else 0
 
-        player_results = player_model.track(
-            source=frame,
-            persist=True,
-            tracker=DEFAULT_TRACKER,
-            conf=player_conf,
+        player_detections = detect_players_for_frame(
+            frame=frame,
+            player_model=player_model,
+            detector_spec=detector_spec,
+            detector_device=detector_device,
+            player_conf=player_conf,
             iou=iou,
-            device=detector_device,
-            classes=[detector_spec["player_class_id"]],
-            verbose=False,
+            frame_width=frame_width,
+            frame_height=frame_height,
+            field_homography=active_field_homography,
+            frame_index=frame_index,
+            tracker_mode=tracker_mode,
+            player_tracker=player_tracker,
         )
-        player_boxes = player_results[0].boxes
-        if player_boxes is not None and len(player_boxes) > 0:
-            xyxy = player_boxes.xyxy.cpu().numpy()
-            confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
-            track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
+        for detection in player_detections:
+            x1, y1, x2, y2 = detection["bbox"]
+            confidence = float(detection["confidence"])
+            track_id = int(detection["track_id"])
+            color_feature = extract_jersey_feature(frame, (x1, y1, x2, y2))
+            if color_feature is not None and track_id >= 0:
+                jersey_samples.append(color_feature)
+                jersey_sample_track_ids.append(track_id)
 
-            for index, box in enumerate(xyxy):
-                x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
-                confidence = float(confidences[index])
-                track_id = int(track_ids[index])
-                anchor_x = float((x1 + x2) / 2.0)
-                anchor_y = float(y2)
-                color_feature = extract_jersey_feature(frame, (x1, y1, x2, y2))
-                if color_feature is not None and track_id >= 0:
-                    jersey_samples.append(color_feature)
-                    jersey_sample_track_ids.append(track_id)
-
-                field_point = project_point((anchor_x, anchor_y), active_field_homography)
-                pitch_point = field_point_to_minimap(field_point, minimap_width, minimap_height)
-                row = {
-                    "frame_index": frame_index,
-                    "row_type": "player",
-                    "track_id": track_id,
-                    "class_name": "player",
-                    "confidence": confidence,
-                    "bbox": (x1, y1, x2, y2),
-                    "anchor": (anchor_x, anchor_y),
-                    "feature": color_feature,
-                    "team_label": "unassigned",
-                    "team_vote_ratio": 0.0,
-                    "field_point": field_point,
-                    "pitch_point": pitch_point,
-                }
-                frame_players.append(row)
-                if track_id >= 0:
-                    player_rows_by_track[track_id].append(row)
-                    player_track_ids_seen.add(track_id)
-                if field_point is not None:
-                    field_registered_frames += 1
-                player_detection_count += 1
-                player_row_count += 1
+            pitch_point = field_point_to_minimap(detection["field_point"], minimap_width, minimap_height)
+            row = {
+                "frame_index": frame_index,
+                "row_type": "player",
+                "track_id": track_id,
+                "class_name": "player",
+                "confidence": confidence,
+                "bbox": (x1, y1, x2, y2),
+                "anchor": detection["anchor"],
+                "feature": color_feature,
+                "team_label": "unassigned",
+                "team_vote_ratio": 0.0,
+                "field_point": detection["field_point"],
+                "pitch_point": pitch_point,
+            }
+            frame_players.append(row)
+            if track_id >= 0:
+                player_rows_by_track[track_id].append(row)
+                raw_player_track_ids_seen.add(track_id)
+            if detection["field_point"] is not None:
+                field_registered_frames += 1
+            player_detection_count += 1
+            player_row_count += 1
 
         if include_ball and ball_model is not None:
             ball_results = ball_model.track(
@@ -1335,8 +1693,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         frame_index += 1
 
         if total_frames > 0:
-            progress = max(1.0, min(60.0, (frame_index / total_frames) * 60.0))
-            job_manager.update(job_id, progress=progress)
+            progress = max(1.0, min(PROGRESS_TRACKING_MAX, (frame_index / total_frames) * PROGRESS_TRACKING_MAX))
+            update_job_progress(job_manager, job_id, progress)
         if frame_index % 25 == 0:
             elapsed = datetime.utcnow().timestamp() - start_time
             fps_effective = frame_index / elapsed if elapsed > 0 else 0.0
@@ -1345,6 +1703,29 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     cap.release()
     if frame_index == 0:
         raise RuntimeError("No frames were decoded from the source video.")
+
+    raw_unique_player_track_ids = len(raw_player_track_ids_seen)
+    raw_longest_track_length, raw_average_track_length = compute_track_length_stats(player_rows_by_track)
+    stitched_track_map: dict[int, int] = {}
+    stitch_stats = {
+        "merge_count": 0,
+        "raw_track_count": raw_unique_player_track_ids,
+        "stitched_track_count": raw_unique_player_track_ids,
+        "max_gap_frames": 0,
+    }
+    if player_tracker is not None:
+        stitched_track_map, stitch_stats = build_stitched_track_map(player_tracker.export_tracklets(), fps=fps)
+        if stitch_stats["merge_count"] > 0:
+            apply_player_track_id_map(frame_records, jersey_sample_track_ids, stitched_track_map)
+            job_manager.log(
+                job_id,
+                f"Stitched {stitch_stats['merge_count']} fragmented player tracklets into {stitch_stats['stitched_track_count']} canonical IDs",
+            )
+        else:
+            job_manager.log(job_id, "No player tracklet merges passed the stitcher gates")
+        tracker_backend = player_tracker.describe_backend()
+    player_rows_by_track, player_track_ids_seen = rebuild_player_rows_by_track(frame_records)
+    longest_track_length, average_track_length = compute_track_length_stats(player_rows_by_track)
 
     track_team_info, team_cluster_distance = _compute_online_track_team_info(jersey_samples, jersey_sample_track_ids)
     if track_team_info:
@@ -1524,7 +1905,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         projection_csv_key = f"/runs/{run_dir.name}/outputs/projections.csv"
 
     entropy_timeseries_rows, experiment_card = build_geometric_volatility_experiment(frame_records, fps if fps > 0 else 25.0)
-    goal_events, goal_label_source = load_soccernet_goal_events(source_video_path)
+    goal_events, goal_label_source = load_soccernet_goal_events(source_video_path, label_path)
     entropy_timeseries_rows, goal_metrics = attach_goal_targets(entropy_timeseries_rows, goal_events)
     experiment_card["metrics"].extend(
         [
@@ -1553,7 +1934,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     with entropy_timeseries_csv_path.open("w", newline="", encoding="utf-8") as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow([
-            "frame_index",
+            "second",
             "seconds",
             "home_player_count",
             "away_player_count",
@@ -1700,18 +2081,19 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         average_track_length = float(np.mean(track_lengths))
 
     job_manager.log(job_id, "Rendering tactical overlay")
+    update_job_progress(job_manager, job_id, PROGRESS_TRACKING_MAX + 1.0)
     render_cap = cv2.VideoCapture(str(source_video_path))
     if not render_cap.isOpened():
         raise RuntimeError(f"Could not reopen video for rendering: {source_video_path}")
 
-    writer = cv2.VideoWriter(
-        str(raw_overlay_video_path),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (frame_width, frame_height),
+    writer, overlay_write_path, finalize_overlay = create_overlay_writer(
+        overlay_video_path=overlay_video_path,
+        raw_overlay_video_path=raw_overlay_video_path,
+        fps=fps,
+        frame_size=(frame_width, frame_height),
+        job_id=job_id,
+        job_manager=job_manager,
     )
-    if not writer.isOpened():
-        raise RuntimeError(f"Could not create overlay writer: {raw_overlay_video_path}")
 
     for render_index, record in enumerate(frame_records):
         ok, frame = render_cap.read()
@@ -1724,29 +2106,60 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             x1, y1, x2, y2 = player_row["bbox"]
             team_label = str(player_row["team_label"])
             color = TEAM_BOX_COLORS.get(team_label, TEAM_BOX_COLORS["unassigned"])
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, style["box_thickness"])
             label = f"{team_label} #{player_row['track_id']}" if player_row["track_id"] >= 0 else team_label
-            draw_label(annotated, label, x1, y1, (255, 255, 255))
+            draw_label(
+                annotated,
+                label,
+                x1,
+                y1,
+                (255, 255, 255),
+                scale=style["label_scale"],
+                thickness=style["text_thickness"],
+                padding_x=style["label_padding_x"],
+                padding_y=style["label_padding_y"],
+            )
 
         ball_row = record["ball"]
         if ball_row is not None:
             x1, y1, x2, y2 = ball_row["bbox"]
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), TEAM_BOX_COLORS["ball"], 2)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), TEAM_BOX_COLORS["ball"], style["box_thickness"])
             ball_label = f"ball #{ball_row['track_id']}" if ball_row["track_id"] >= 0 else "ball"
-            draw_label(annotated, ball_label, x1, y1, (255, 245, 200))
+            draw_label(
+                annotated,
+                ball_label,
+                x1,
+                y1,
+                (255, 245, 200),
+                scale=style["label_scale"],
+                thickness=style["text_thickness"],
+                padding_x=style["label_padding_x"],
+                padding_y=style["label_padding_y"],
+            )
 
+        text_x = style["margin"]
+        first_line_y = style["margin"] + style["line_gap"]
         status = f"frame {render_index + 1}"
         if total_frames > 0:
             status += f"/{total_frames}"
-        cv2.putText(annotated, status, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(
             annotated,
-            f"tracks {len(player_track_ids_seen)}  home {home_tracks}  away {away_tracks}",
-            (20, 64),
+            status,
+            (text_x, first_line_y),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.72,
+            style["status_scale"],
+            (255, 255, 255),
+            style["text_thickness"],
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            annotated,
+            f"tracks {len(player_track_ids_seen)}  raw {raw_unique_player_track_ids}  home {home_tracks}  away {away_tracks}",
+            (text_x, first_line_y + style["line_gap"]),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            style["small_status_scale"],
             (220, 238, 248),
-            2,
+            style["text_thickness"],
             cv2.LINE_AA,
         )
         field_status = (
@@ -1754,17 +2167,37 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             if record["field_calibration_active"]
             else f"field calib waiting ({record['visible_pitch_keypoints']} kp)"
         )
-        cv2.putText(annotated, field_status, (20, 94), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (220, 238, 248), 2, cv2.LINE_AA)
         cv2.putText(
             annotated,
-            f"refresh every {CALIBRATION_REFRESH_FRAMES} frames · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}",
-            (20, 122),
+            field_status,
+            (text_x, first_line_y + style["line_gap"] * 2),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.58,
+            style["small_status_scale"],
             (220, 238, 248),
-            2,
+            style["text_thickness"],
             cv2.LINE_AA,
         )
+        cv2.putText(
+            annotated,
+            f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}",
+            (text_x, first_line_y + style["line_gap"] * 3),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            style["small_status_scale"],
+            (220, 238, 248),
+            style["text_thickness"],
+            cv2.LINE_AA,
+        )
+        if player_tracker is not None:
+            cv2.putText(
+                annotated,
+                f"id source {tracker_backend.get('embedding_source', 'hsv_hist_only')} · merges {stitch_stats['merge_count']}",
+                (text_x, first_line_y + style["line_gap"] * 4),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                style["small_status_scale"],
+                (220, 238, 248),
+                style["text_thickness"],
+                cv2.LINE_AA,
+            )
 
         if record["field_calibration_active"]:
             minimap = create_pitch_map(minimap_width, minimap_height)
@@ -1774,26 +2207,34 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 team_label = str(player_row["team_label"])
                 color = TEAM_BOX_COLORS.get(team_label, TEAM_BOX_COLORS["unassigned"])
                 point = (int(round(player_row["pitch_point"][0])), int(round(player_row["pitch_point"][1])))
-                cv2.circle(minimap, point, 4, color, -1)
+                cv2.circle(minimap, point, style["minimap_point_radius"], color, -1)
 
             if ball_row is not None and ball_row["pitch_point"] is not None:
                 point = (int(round(ball_row["pitch_point"][0])), int(round(ball_row["pitch_point"][1])))
-                cv2.circle(minimap, point, 3, TEAM_BOX_COLORS["ball"], -1)
+                cv2.circle(minimap, point, style["minimap_ball_radius"], TEAM_BOX_COLORS["ball"], -1)
 
-            overlay_minimap(annotated, minimap)
+            overlay_minimap(annotated, minimap, style)
 
         writer.write(annotated)
 
         if total_frames > 0:
-            progress = 60.0 + min(39.0, (render_index + 1) / total_frames * 39.0)
-            job_manager.update(job_id, progress=progress)
+            render_span = PROGRESS_RENDER_END - PROGRESS_TRACKING_MAX
+            progress = PROGRESS_TRACKING_MAX + min(render_span, (render_index + 1) / total_frames * render_span)
+            update_job_progress(job_manager, job_id, progress)
 
     render_cap.release()
     writer.release()
-    finalize_overlay_video(raw_overlay_video_path, overlay_video_path, job_id, job_manager)
+    update_job_progress(job_manager, job_id, PROGRESS_RENDER_END)
+    if finalize_overlay:
+        job_manager.log(job_id, "Finalizing browser-ready overlay video")
+        finalize_overlay_video(overlay_write_path, overlay_video_path, job_id, job_manager)
+    else:
+        job_manager.log(job_id, f"Overlay video written directly to {overlay_write_path.name}")
+    update_job_progress(job_manager, job_id, PROGRESS_VIDEO_FINALIZE_END)
 
     diagnostics: list[dict[str, str]] = []
     churn_ratio = len(player_track_ids_seen) / max(frame_index, 1)
+    raw_churn_ratio = raw_unique_player_track_ids / max(frame_index, 1)
     avg_players = float(np.mean(player_detections_per_frame)) if player_detections_per_frame else 0.0
     avg_ball = float(np.mean(ball_detections_per_frame)) if ball_detections_per_frame else 0.0
     avg_visible_pitch_keypoints = float(np.mean(calibration_visible_counts)) if calibration_visible_counts else 0.0
@@ -1805,16 +2246,37 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     ]
     average_team_vote_ratio = float(np.mean(assigned_vote_ratios)) if assigned_vote_ratios else 0.0
 
+    if player_tracker is not None:
+        diagnostics.append(
+            {
+                "level": "good" if stitch_stats["merge_count"] > 0 else "warn",
+                "title": "Identity stitching"
+                if stitch_stats["merge_count"] > 0
+                else "Identity stitching: no merges",
+                "message": (
+                    f"Player tracker ran in {tracker_mode_label(tracker_mode)} mode with "
+                    f"{tracker_backend.get('embedding_source', 'hsv_hist_only')}. "
+                    f"Raw track IDs dropped from {raw_unique_player_track_ids} to {len(player_track_ids_seen)} after "
+                    f"{stitch_stats['merge_count']} accepted merges."
+                ),
+                "next_step": (
+                    "Inspect long same-kit occlusions and restart phases to verify the stitched IDs stay on the same players."
+                    if stitch_stats["merge_count"] > 0
+                    else "If IDs still fragment, validate broadcast-cut segments and consider adding jersey-number evidence before using match-long identity."
+                ),
+            }
+        )
+
     if churn_ratio > 0.1:
         diagnostics.append(
             {
                 "level": "warn",
                 "title": "Tracking stability: fragmented",
                 "message": (
-                    f"{len(player_track_ids_seen)} unique player track IDs across {frame_index} frames "
-                    f"(longest track {longest_track_length} frames, mean {average_track_length:.1f})."
+                    f"{len(player_track_ids_seen)} stitched player track IDs across {frame_index} frames "
+                    f"(raw {raw_unique_player_track_ids}, longest {longest_track_length}, mean {average_track_length:.1f})."
                 ),
-                "next_step": "Use a steadier wide-angle phase or retune confidence before trusting downstream team or pitch metrics.",
+                "next_step": "Use a steadier wide-angle phase or inspect cutaways before trusting downstream team or pitch metrics.",
             }
         )
     else:
@@ -1823,8 +2285,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "level": "good",
                 "title": "Tracking stability: acceptable",
                 "message": (
-                    f"{len(player_track_ids_seen)} unique player track IDs across {frame_index} frames "
-                    f"(longest track {longest_track_length} frames, mean {average_track_length:.1f})."
+                    f"{len(player_track_ids_seen)} stitched player track IDs across {frame_index} frames "
+                    f"(raw {raw_unique_player_track_ids}, longest {longest_track_length}, mean {average_track_length:.1f})."
                 ),
                 "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players.",
             }
@@ -1936,7 +2398,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "device": detector_device,
         "field_calibration_device": keypoint_device,
         "player_model": detector_spec["name"],
+        "player_tracker_mode": tracker_mode_label(tracker_mode),
+        "player_tracker_backend": tracker_backend.get("embedding_source"),
+        "player_tracker_embedding_error": tracker_backend.get("embedding_error"),
         "ball_model": detector_spec["name"] if include_ball else "off",
+        "ball_tracker_mode": DEFAULT_TRACKER,
         "field_calibration_model": KEYPOINT_MODEL_DEFAULT,
         "include_ball": include_ball,
         "player_conf": player_conf,
@@ -1947,6 +2413,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "player_rows": player_row_count,
         "ball_rows": ball_row_count,
         "unique_player_track_ids": len(player_track_ids_seen),
+        "raw_unique_player_track_ids": raw_unique_player_track_ids,
         "unique_ball_track_ids": len(ball_track_ids_seen),
         "home_tracks": home_tracks,
         "away_tracks": away_tracks,
@@ -1955,6 +2422,19 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "average_ball_detections_per_frame": round(float(avg_ball), 4),
         "longest_track_length": longest_track_length,
         "average_track_length": round(float(average_track_length), 4),
+        "raw_longest_track_length": raw_longest_track_length,
+        "raw_average_track_length": round(float(raw_average_track_length), 4),
+        "player_track_churn_ratio": round(float(churn_ratio), 6),
+        "raw_player_track_churn_ratio": round(float(raw_churn_ratio), 6),
+        "tracklet_merges_applied": stitch_stats["merge_count"],
+        "stitched_track_id_reduction": round(
+            float((raw_unique_player_track_ids - len(player_track_ids_seen)) / raw_unique_player_track_ids),
+            6,
+        )
+        if raw_unique_player_track_ids > 0
+        else 0.0,
+        "identity_embedding_updates": int(tracker_backend.get("deep_feature_updates") or 0),
+        "identity_embedding_interval_frames": int(tracker_backend.get("deep_feature_interval") or 0),
         "projected_player_points": projected_player_points,
         "projected_ball_points": projected_ball_points,
         "field_registered_frames": field_registered_frames,
@@ -1976,6 +2456,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
 
+    update_job_progress(job_manager, job_id, PROGRESS_VIDEO_FINALIZE_END + 1.0)
     ai_diagnostics, diagnostics_artifact = generate_run_diagnostics(
         summary=summary,
         heuristic_diagnostics=heuristic_diagnostics,
@@ -1983,6 +2464,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         job_id=job_id,
         job_manager=job_manager,
     )
+    update_job_progress(job_manager, job_id, PROGRESS_DIAGNOSTICS_END)
     summary["diagnostics"] = ai_diagnostics
     summary["heuristic_diagnostics"] = heuristic_diagnostics
     summary["diagnostics_source"] = "ai" if diagnostics_artifact.get("status") == "completed" else "heuristic"
@@ -2004,6 +2486,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     diagnostics_json_path = outputs_dir / "diagnostics_ai.json"
     if diagnostics_json_path.exists():
         zip_inputs.append(diagnostics_json_path)
+    update_job_progress(job_manager, job_id, PROGRESS_PACKAGING_END)
     zip_paths(full_outputs_zip_path, zip_inputs)
     job_manager.log(job_id, f"Summary written to {summary_json_path.name}")
     return summary

@@ -7,7 +7,8 @@ This repository is a browser-first football analysis tool. Keep the UI and the b
 - This is no longer a pose-first project.
 - The active pipeline is:
   - `soccana` object detection
-  - ByteTrack tracking
+  - hybrid appearance-aware player tracking plus tracklet stitching
+  - ByteTrack ball tracking
   - jersey-color clustering for home/away separation
   - `soccana_keypoint` field registration
   - automatic pitch calibration refresh every **10 frames**
@@ -29,8 +30,13 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - `backend/app/wide_angle.py`
   - core video analysis pipeline
   - Soccana detector and field-keypoint model resolution
+  - player ReID tracking and tracklet stitching
   - live preview generation
   - overlay rendering and CSV/summary export
+- `backend/app/reid_tracker.py`
+  - sparse appearance embedding extraction
+  - field-aware player association
+  - post-pass tracklet stitching
 - `backend/models/`
   - local model cache
   - active detector: `backend/models/soccana/Model/weights/best.pt`
@@ -47,11 +53,14 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 
 - Default detector choice is `soccana`.
 - Default field calibration model is `soccana_keypoint`.
+- Default player tracker mode is `hybrid_reid`.
+- Keep the legacy `bytetrack` player mode available as an explicit comparison fallback, not as the silent default.
 - Pitch calibration is automatic and refreshed every 10 frames.
 - Ball detection uses the same soccer-specific detector unless the user explicitly asks to change that.
 - AI diagnostics are a real post-run path now. Do not revert to heuristic-only diagnostics unless explicitly requested.
 - Keep diagnostics provider/model/source fields aligned between backend summary output and frontend display.
 - Keep all user-visible status in job logs and `summary.json`; the frontend depends on that.
+- When tracking changes, keep `raw_*` and stitched identity metrics both available in `summary.json` so regression review can compare them.
 - If you change the exported summary shape, update the frontend in the same turn.
 
 ## Frontend rules
@@ -117,11 +126,13 @@ When changing the pipeline:
 - Full matches are long-running jobs. Do not assume they will finish quickly.
 - Use short clips for iteration, then full matches for end-to-end validation.
 - If you add a heavier model step, surface that cost in logs or UI text.
+- Sparse appearance embeddings are acceptable; per-detection deep ReID on every frame is not.
 
 ## Common pitfalls
 
 - Do not silently fall back to generic `yolo11n.pt` / `yolo11n-pose.pt` without telling the user.
 - Do not mix outdated README/UI copy from the old pose/windows prototype into the current app.
+- Do not describe stitched player IDs as full match-long identity unless the metrics actually support it.
 - Do not change the browser workflow in a way that makes it harder to tell whether the tracker, ball detector, or field calibration is actually working.
 - Do not treat visual polish as success if the interaction model is still confusing.
 - Do not hide the most important evidence, especially the overlay video, behind weak layout ratios.

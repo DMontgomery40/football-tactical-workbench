@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import ssl
 import shutil
 import subprocess
@@ -27,20 +28,25 @@ from pydantic import BaseModel
 from ultralytics import YOLO
 
 from app.ai_diagnostics import generate_run_diagnostics, resolve_provider_config
+from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
 from app.wide_angle import (
     PLAYER_MODEL_OPTIONS,
     TACTICAL_LEARN_CARDS,
     analyze_video as analyze_wide_angle_video,
     generate_live_preview_stream,
+    prewarm_default_models,
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 RUNS_DIR = BASE_DIR / "runs"
 UPLOADS_DIR = BASE_DIR / "uploads"
 SOCCERNET_DIR = BASE_DIR / "datasets" / "soccernet"
+EXPERIMENTS_DIR = BASE_DIR / "experiments"
+SOURCE_REGISTRY_PATH = UPLOADS_DIR / "sources.json"
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 SOCCERNET_DIR.mkdir(parents=True, exist_ok=True)
+EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 PERSON_CLASS_ID = 0
 BALL_CLASS_ID = 32
@@ -108,6 +114,7 @@ class JobState:
     run_dir: str = ""
     summary: dict[str, Any] | None = None
     error: str | None = None
+    restart_config: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -121,16 +128,77 @@ class JobState:
             "error": self.error,
         }
 
+    def persistence_dict(self) -> dict[str, Any]:
+        payload = self.as_dict()
+        payload["restart_config"] = self.restart_config
+        return payload
+
 
 class JobManager:
-    def __init__(self) -> None:
+    def __init__(self, runs_dir: Path) -> None:
         self._jobs: dict[str, JobState] = {}
         self._lock = threading.Lock()
+        self._runs_dir = runs_dir
+        self._restartable_job_ids: list[str] = []
+        self._restore()
 
-    def create(self, run_dir: Path) -> JobState:
-        job = JobState(job_id=uuid.uuid4().hex[:12], run_dir=str(run_dir))
+    def _job_state_path(self, run_dir: str) -> Path:
+        return Path(run_dir) / "job_state.json"
+
+    def _persist_locked(self, job: JobState) -> None:
+        run_dir = Path(job.run_dir)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        self._job_state_path(job.run_dir).write_text(json.dumps(job.persistence_dict(), indent=2), encoding="utf-8")
+
+    def _restore(self) -> None:
+        if not self._runs_dir.exists():
+            return
+
+        restored_at = datetime.utcnow().strftime("%H:%M:%S")
+        for run_dir in sorted(self._runs_dir.iterdir()):
+            if not run_dir.is_dir():
+                continue
+            state_path = run_dir / "job_state.json"
+            if not state_path.exists():
+                continue
+            try:
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+
+            job = JobState(
+                job_id=str(payload.get("job_id", "")),
+                status=str(payload.get("status", "queued")),
+                created_at=str(payload.get("created_at", datetime.utcnow().isoformat() + "Z")),
+                progress=float(payload.get("progress", 0.0) or 0.0),
+                logs=list(payload.get("logs") or []),
+                run_dir=str(payload.get("run_dir", run_dir)),
+                summary=payload.get("summary"),
+                error=payload.get("error"),
+                restart_config=payload.get("restart_config") if isinstance(payload.get("restart_config"), dict) else None,
+            )
+            if not job.job_id:
+                continue
+            if job.status in {"queued", "running"}:
+                if job.restart_config:
+                    job.status = "queued"
+                    job.progress = 0.0
+                    job.error = None
+                    job.summary = None
+                    job.logs.append(f"[{restored_at}] Backend restarted; restarting analysis from frame 0.")
+                    self._restartable_job_ids.append(job.job_id)
+                else:
+                    job.status = "failed"
+                    job.error = job.error or "Backend restarted before the job finished."
+                    job.logs.append(f"[{restored_at}] Backend restarted before the job finished.")
+            self._jobs[job.job_id] = job
+            self._persist_locked(job)
+
+    def create(self, run_dir: Path, restart_config: dict[str, Any] | None = None) -> JobState:
+        job = JobState(job_id=uuid.uuid4().hex[:12], run_dir=str(run_dir), restart_config=restart_config)
         with self._lock:
             self._jobs[job.job_id] = job
+            self._persist_locked(job)
         return job
 
     def get(self, job_id: str) -> JobState | None:
@@ -146,21 +214,78 @@ class JobManager:
             job = self._jobs[job_id]
             for key, value in kwargs.items():
                 setattr(job, key, value)
+            self._persist_locked(job)
 
     def log(self, job_id: str, message: str) -> None:
         stamp = datetime.utcnow().strftime("%H:%M:%S")
         with self._lock:
             job = self._jobs[job_id]
             job.logs.append(f"[{stamp}] {message}")
+            self._persist_locked(job)
+
+    def consume_restartable_jobs(self) -> list[tuple[str, Path, dict[str, Any]]]:
+        with self._lock:
+            recovered: list[tuple[str, Path, dict[str, Any]]] = []
+            for job_id in self._restartable_job_ids:
+                job = self._jobs.get(job_id)
+                if job is None or not job.restart_config:
+                    continue
+                recovered.append((job.job_id, Path(job.run_dir), dict(job.restart_config)))
+            self._restartable_job_ids = []
+            return recovered
 
 
-job_manager = JobManager()
+job_manager = JobManager(RUNS_DIR)
 
 
 class SourceManager:
-    def __init__(self) -> None:
+    def __init__(self, registry_path: Path) -> None:
         self._sources: dict[str, SourceState] = {}
         self._lock = threading.Lock()
+        self._registry_path = registry_path
+        self._restore()
+
+    def _persist_locked(self) -> None:
+        payload: list[dict[str, Any]] = []
+        for source in self._sources.values():
+            source_path = Path(source.path).expanduser()
+            if not source_path.exists() or not source_path.is_file():
+                continue
+            payload.append(
+                {
+                    "source_id": source.source_id,
+                    "path": source.path,
+                    "display_name": source.display_name,
+                    "created_at": source.created_at,
+                    "uploaded": source.uploaded,
+                }
+            )
+        self._registry_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def _restore(self) -> None:
+        if not self._registry_path.exists():
+            return
+        try:
+            payload = json.loads(self._registry_path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        if not isinstance(payload, list):
+            return
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            source_path = Path(str(item.get("path", ""))).expanduser()
+            if not source_path.exists() or not source_path.is_file():
+                continue
+            source = SourceState(
+                source_id=str(item.get("source_id", "")),
+                path=str(source_path.resolve()),
+                display_name=str(item.get("display_name") or source_path.name),
+                created_at=str(item.get("created_at") or datetime.utcnow().isoformat() + "Z"),
+                uploaded=bool(item.get("uploaded", False)),
+            )
+            if source.source_id:
+                self._sources[source.source_id] = source
 
     def register(self, path: Path, display_name: str, uploaded: bool = False) -> SourceState:
         source = SourceState(
@@ -171,6 +296,7 @@ class SourceManager:
         )
         with self._lock:
             self._sources[source.source_id] = source
+            self._persist_locked()
         return source
 
     def get(self, source_id: str) -> SourceState | None:
@@ -178,7 +304,7 @@ class SourceManager:
             return self._sources.get(source_id)
 
 
-source_manager = SourceManager()
+source_manager = SourceManager(SOURCE_REGISTRY_PATH)
 
 
 @dataclass
@@ -250,7 +376,7 @@ class DownloadJobManager:
 download_job_manager = DownloadJobManager()
 
 
-app = FastAPI(title="Football Pose Workbench API")
+app = FastAPI(title="Football Tactical Workbench API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -259,6 +385,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/runs", StaticFiles(directory=RUNS_DIR), name="runs")
+
+
+@app.on_event("startup")
+def prewarm_models_on_startup() -> None:
+    try:
+        prewarm_default_models()
+    except Exception as exc:
+        print(f"[startup] model prewarm skipped: {exc}")
 
 
 LEARN_CARDS = [
@@ -311,7 +445,9 @@ def config() -> dict[str, Any]:
     return {
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
-        "tracker": DEFAULT_TRACKER,
+        "tracker": DEFAULT_PLAYER_TRACKER_MODE,
+        "player_tracker_modes": PLAYER_TRACKER_MODE_OPTIONS,
+        "default_player_tracker_mode": DEFAULT_PLAYER_TRACKER_MODE,
         "learn_cards": TACTICAL_LEARN_CARDS,
         "field_calibration_refresh_frames": 10,
         "field_calibration_mode": "automatic_keypoints",
@@ -326,6 +462,14 @@ def config() -> dict[str, Any]:
 @app.get("/api/jobs")
 def list_jobs() -> list[dict[str, Any]]:
     return job_manager.list()
+
+
+@app.get("/api/experiments/active")
+def active_experiment() -> dict[str, Any]:
+    experiment = load_active_batch_experiment()
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="No active experiment found")
+    return experiment
 
 
 @app.get("/api/soccernet/config")
@@ -438,6 +582,101 @@ def load_persisted_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def make_persisted_run_id(run_dir: Path) -> str:
+    experiment_runs_root = EXPERIMENTS_DIR.resolve()
+    resolved = run_dir.resolve()
+    try:
+        relative = resolved.relative_to(experiment_runs_root)
+    except ValueError:
+        return run_dir.name
+
+    parts = list(relative.parts)
+    if len(parts) >= 3 and parts[1] == "runs":
+        experiment_name = parts[0]
+        run_name = parts[2]
+        return f"exp--{experiment_name}--{run_name}"
+    return run_dir.name
+
+
+def parse_persisted_run_id(run_id: str) -> tuple[str | None, str]:
+    if run_id.startswith("exp--"):
+        _, experiment_name, run_name = run_id.split("--", 2)
+        return experiment_name, run_name
+    return None, run_id
+
+
+def hydrate_persisted_run(run_dir: Path) -> dict[str, Any]:
+    payload = load_persisted_run(run_dir)
+    run_id = make_persisted_run_id(run_dir)
+    payload["run_id"] = run_id
+    summary = dict(payload.get("summary") or {})
+
+    def rewrite_output_url(current_value: Any) -> Any:
+        if not current_value:
+            return current_value
+        name = Path(str(current_value)).name
+        if not name:
+            return current_value
+        return f"/api/runs/{run_id}/outputs/{name}"
+
+    for key in (
+        "overlay_video",
+        "detections_csv",
+        "track_summary_csv",
+        "projection_csv",
+        "entropy_timeseries_csv",
+        "goal_events_csv",
+        "summary_json",
+        "all_outputs_zip",
+        "diagnostics_json",
+    ):
+        if key in summary:
+            summary[key] = rewrite_output_url(summary.get(key))
+    payload["summary"] = summary
+
+    try:
+        relative = run_dir.resolve().relative_to(EXPERIMENTS_DIR.resolve())
+    except ValueError:
+        payload["experiment_batch"] = None
+    else:
+        parts = list(relative.parts)
+        payload["experiment_batch"] = parts[0] if parts else None
+    return payload
+
+
+def iter_persisted_run_dirs() -> list[Path]:
+    run_dirs: list[Path] = []
+    if RUNS_DIR.exists():
+        run_dirs.extend([path for path in RUNS_DIR.iterdir() if path.is_dir()])
+    if EXPERIMENTS_DIR.exists():
+        for experiment_dir in EXPERIMENTS_DIR.iterdir():
+            if not experiment_dir.is_dir():
+                continue
+            batch_runs_dir = experiment_dir / "runs"
+            if not batch_runs_dir.exists() or not batch_runs_dir.is_dir():
+                continue
+            run_dirs.extend([path for path in batch_runs_dir.iterdir() if path.is_dir()])
+    return run_dirs
+
+
+def resolve_persisted_run_dir(run_id: str) -> Path:
+    experiment_name, run_name = parse_persisted_run_id(run_id)
+    if experiment_name is None:
+        run_dir = (RUNS_DIR / run_name).resolve()
+        try:
+            run_dir.relative_to(RUNS_DIR.resolve())
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid run id") from exc
+        return run_dir
+
+    experiment_dir = (EXPERIMENTS_DIR / experiment_name / "runs" / run_name).resolve()
+    try:
+        experiment_dir.relative_to(EXPERIMENTS_DIR.resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid run id") from exc
+    return experiment_dir
+
+
 def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(summary)
     normalized["learn_cards"] = TACTICAL_LEARN_CARDS
@@ -450,6 +689,10 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["diagnostics_summary_line"] = normalized.get("diagnostics_summary_line", "")
     normalized["diagnostics_error"] = normalized.get("diagnostics_error", "")
     normalized["diagnostics_json"] = normalized.get("diagnostics_json")
+    normalized["player_tracker_mode"] = normalized.get("player_tracker_mode", DEFAULT_PLAYER_TRACKER_MODE)
+    normalized["raw_unique_player_track_ids"] = normalized.get("raw_unique_player_track_ids", normalized.get("unique_player_track_ids", 0))
+    normalized["tracklet_merges_applied"] = normalized.get("tracklet_merges_applied", 0)
+    normalized["player_tracker_backend"] = normalized.get("player_tracker_backend")
 
     is_legacy = "field_calibration_refresh_frames" not in normalized
     if is_legacy:
@@ -471,6 +714,9 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["last_good_calibration_frame"] = -1
         normalized["entropy_timeseries_csv"] = None
         normalized["experiments"] = []
+        normalized["player_tracker_mode"] = "legacy"
+        normalized["raw_unique_player_track_ids"] = normalized.get("unique_player_track_ids", 0)
+        normalized["tracklet_merges_applied"] = 0
         normalized["legacy_summary"] = True
     else:
         normalized["legacy_summary"] = False
@@ -578,15 +824,124 @@ def _run_soccernet_download_job(job_id: str, split: str, game: str, files: list[
 
 def list_persisted_runs(limit: int = 8) -> list[dict[str, Any]]:
     persisted_runs: list[dict[str, Any]] = []
-    for run_dir in RUNS_DIR.iterdir():
-        if not run_dir.is_dir():
-            continue
+    for run_dir in iter_persisted_run_dirs():
         try:
-            persisted_runs.append(load_persisted_run(run_dir))
+            persisted_runs.append(hydrate_persisted_run(run_dir))
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             continue
     persisted_runs.sort(key=lambda item: str(item.get("created_at", "")), reverse=True)
     return persisted_runs[: max(limit, 1)]
+
+
+def _read_tail_lines(path: Path, limit: int = 250) -> list[str]:
+    if not path.exists():
+        return []
+    try:
+        return path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:]
+    except Exception:
+        return []
+
+
+def load_active_batch_experiment() -> dict[str, Any] | None:
+    candidates: list[tuple[float, Path, dict[str, Any], list[str]]] = []
+    for experiment_dir in EXPERIMENTS_DIR.iterdir():
+        if not experiment_dir.is_dir():
+            continue
+        manifest_path = experiment_dir / "manifest.json"
+        batch_log_path = experiment_dir / "batch.log"
+        tmux_log_path = experiment_dir / "tmux_stdout.log"
+        if not manifest_path.exists() or not batch_log_path.exists():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        lines = _read_tail_lines(batch_log_path, limit=400)
+        if any("completed batch" in line for line in lines[-25:]):
+            continue
+        latest_mtime = max(
+            batch_log_path.stat().st_mtime,
+            tmux_log_path.stat().st_mtime if tmux_log_path.exists() else 0.0,
+            manifest_path.stat().st_mtime,
+        )
+        candidates.append((latest_mtime, experiment_dir, manifest, lines))
+
+    if not candidates:
+        return None
+
+    _mtime, experiment_dir, manifest, lines = max(candidates, key=lambda item: item[0])
+    games = list(manifest.get("games") or [])
+    files = list(manifest.get("files") or [])
+    half_files = [file_name for file_name in files if str(file_name).startswith(("1_", "2_"))]
+    total_halves = max(len(games) * max(len(half_files), 1), 1)
+
+    runs_csv_path = experiment_dir / "runs.csv"
+    halves_processed = 0
+    if runs_csv_path.exists():
+        try:
+            halves_processed = max(sum(1 for _ in runs_csv_path.open("r", encoding="utf-8")) - 1, 0)
+        except Exception:
+            halves_processed = 0
+
+    current_game = ""
+    current_game_index = 0
+    current_half_tag = ""
+    current_half_progress = 0.0
+    progress_pattern = re.compile(r"\[(game-(\d{3})-([12]))\] progress=(\d+(?:\.\d+)?)")
+    game_pattern = re.compile(r"\[(game-(\d{3}))\] processing (.+)")
+
+    for line in lines:
+        game_match = game_pattern.search(line)
+        if game_match:
+            current_game_index = int(game_match.group(2))
+            current_game = game_match.group(3).strip()
+        progress_match = progress_pattern.search(line)
+        if progress_match:
+            current_game_index = int(progress_match.group(2))
+            current_half_tag = progress_match.group(3)
+            current_half_progress = float(progress_match.group(4))
+
+    if not current_game and current_game_index > 0 and current_game_index <= len(games):
+        current_game = str(games[current_game_index - 1])
+
+    current_half_file = ""
+    if current_half_tag:
+        current_half_file = next((file_name for file_name in half_files if str(file_name).startswith(f"{current_half_tag}_")), "")
+    current_source_video_path = ""
+    current_label_path = ""
+    if current_game and current_half_file:
+        current_source_video_path = str((SOCCERNET_DIR / current_game / current_half_file).resolve())
+    label_file = next((file_name for file_name in files if str(file_name).lower().endswith(".json")), "")
+    if current_game and label_file:
+        current_label_path = str((SOCCERNET_DIR / current_game / label_file).resolve())
+
+    progress = (halves_processed / total_halves) * 100.0
+    if current_half_progress > 0.0 and halves_processed < total_halves:
+        progress = ((halves_processed + (current_half_progress / 100.0)) / total_halves) * 100.0
+
+    logs = lines[-250:] if lines else [f"Batch {experiment_dir.name} is active."]
+    return {
+        "job_id": f"batch-{experiment_dir.name}",
+        "status": "running",
+        "created_at": str(manifest.get("created_at") or datetime.utcfromtimestamp((experiment_dir / "manifest.json").stat().st_mtime).isoformat() + "Z"),
+        "progress": round(progress, 2),
+        "logs": logs,
+        "run_dir": str(experiment_dir),
+        "summary": {
+            "batch_name": experiment_dir.name,
+            "games_requested": len(games),
+            "halves_total": total_halves,
+            "halves_processed": halves_processed,
+            "current_game": current_game,
+            "current_game_index": current_game_index,
+            "current_half_tag": current_half_tag,
+            "current_half_file": current_half_file,
+            "current_source_video_path": current_source_video_path,
+            "current_label_path": current_label_path,
+            "files": files,
+        },
+        "error": None,
+    }
 
 
 @app.get("/api/runs/recent")
@@ -632,37 +987,48 @@ def get_source_video(source_id: str) -> FileResponse:
 
 @app.get("/api/runs/{run_id}")
 def get_persisted_run(run_id: str) -> dict[str, Any]:
-    run_dir = (RUNS_DIR / run_id).resolve()
-    try:
-        run_dir.relative_to(RUNS_DIR.resolve())
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid run id") from exc
-
+    run_dir = resolve_persisted_run_dir(run_id)
     if not run_dir.exists() or not run_dir.is_dir():
         raise HTTPException(status_code=404, detail="Run not found")
 
     try:
-        return load_persisted_run(run_dir)
+        return hydrate_persisted_run(run_dir)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run summary not found") from exc
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=500, detail="Run summary is not valid JSON") from exc
 
 
+@app.get("/api/runs/{run_id}/outputs/{filename}")
+def get_persisted_run_output(run_id: str, filename: str) -> FileResponse:
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    run_dir = resolve_persisted_run_dir(run_id)
+    if not run_dir.exists() or not run_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    output_path = (run_dir / "outputs" / filename).resolve()
+    try:
+        output_path.relative_to((run_dir / "outputs").resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid output path") from exc
+
+    if not output_path.exists() or not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Output file not found")
+
+    return FileResponse(path=output_path, filename=output_path.name)
+
+
 @app.post("/api/runs/{run_id}/refresh-diagnostics")
 def refresh_persisted_run_diagnostics(run_id: str) -> dict[str, Any]:
-    run_dir = (RUNS_DIR / run_id).resolve()
-    try:
-        run_dir.relative_to(RUNS_DIR.resolve())
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid run id") from exc
-
+    run_dir = resolve_persisted_run_dir(run_id)
     if not run_dir.exists() or not run_dir.is_dir():
         raise HTTPException(status_code=404, detail="Run not found")
 
     try:
         refresh_run_diagnostics(run_dir)
-        return load_persisted_run(run_dir)
+        return hydrate_persisted_run(run_dir)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run summary not found") from exc
     except json.JSONDecodeError as exc:
@@ -677,6 +1043,7 @@ def live_preview(
     local_video_path: str = Query(default=""),
     detector_model: str = Query(default="soccana"),
     player_model: str = Query(default=""),
+    tracker_mode: str = Query(default=DEFAULT_PLAYER_TRACKER_MODE),
     include_ball: bool = Query(default=True),
     player_conf: float = Query(default=0.25),
     ball_conf: float = Query(default=0.20),
@@ -689,6 +1056,7 @@ def live_preview(
         config_payload={
             "player_model": detector_model.strip() or player_model.strip() or "soccana",
             "ball_model": detector_model.strip() or player_model.strip() or "soccana",
+            "tracker_mode": tracker_mode,
             "include_ball": include_ball,
             "player_conf": float(player_conf),
             "ball_conf": float(ball_conf),
@@ -734,8 +1102,10 @@ async def analyze(
     video_file: UploadFile | None = File(default=None),
     local_video_path: str = Form(default=""),
     source_id: str = Form(default=""),
+    label_path: str = Form(default=""),
     detector_model: str = Form(default="soccana"),
     player_model: str = Form(default=""),
+    tracker_mode: str = Form(default=DEFAULT_PLAYER_TRACKER_MODE),
     include_ball: bool = Form(default=True),
     player_conf: float = Form(default=0.25),
     ball_conf: float = Form(default=0.20),
@@ -761,19 +1131,21 @@ async def analyze(
     else:
         source_video_path = resolve_source_path(local_video_path=local_video_path)
 
-    job = job_manager.create(run_dir)
-    job_manager.log(job.job_id, f"Queued run in {run_dir.name}")
-    job_manager.update(job.job_id, status="running")
-
     config_payload = {
         "source_video_path": str(source_video_path),
+        "label_path": label_path.strip(),
         "player_model": detector_model.strip() or player_model.strip() or "soccana",
         "ball_model": detector_model.strip() or player_model.strip() or "soccana",
+        "tracker_mode": tracker_mode,
         "include_ball": include_ball,
         "player_conf": float(player_conf),
         "ball_conf": float(ball_conf),
         "iou": float(iou),
     }
+
+    job = job_manager.create(run_dir, restart_config=config_payload)
+    job_manager.log(job.job_id, f"Queued run in {run_dir.name}")
+    job_manager.update(job.job_id, status="running")
 
     thread = threading.Thread(
         target=_run_analysis_job,
@@ -793,6 +1165,19 @@ def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]
     except Exception as exc:
         job_manager.update(job_id, status="failed", error=str(exc))
         job_manager.log(job_id, f"Run failed: {exc}")
+
+
+@app.on_event("startup")
+def resume_analysis_jobs_on_startup() -> None:
+    for job_id, run_dir, config_payload in job_manager.consume_restartable_jobs():
+        job_manager.update(job_id, status="running", progress=0.0, error=None)
+        job_manager.log(job_id, "Restarting analysis after backend restart")
+        thread = threading.Thread(
+            target=_run_analysis_job,
+            args=(job_id, run_dir, config_payload),
+            daemon=True,
+        )
+        thread.start()
 
 
 def choose_device() -> str:

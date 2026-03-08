@@ -168,6 +168,8 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "detector": summary.get("player_model"),
             "ball": summary.get("ball_model"),
             "field_calibration": summary.get("field_calibration_model"),
+            "player_tracker_mode": summary.get("player_tracker_mode"),
+            "player_tracker_backend": summary.get("player_tracker_backend"),
             "device": summary.get("device"),
             "field_calibration_device": summary.get("field_calibration_device"),
         },
@@ -177,6 +179,7 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "player_rows": summary.get("player_rows"),
             "ball_rows": summary.get("ball_rows"),
             "unique_player_track_ids": summary.get("unique_player_track_ids"),
+            "raw_unique_player_track_ids": summary.get("raw_unique_player_track_ids"),
             "unique_ball_track_ids": summary.get("unique_ball_track_ids"),
             "home_tracks": summary.get("home_tracks"),
             "away_tracks": summary.get("away_tracks"),
@@ -185,6 +188,10 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "average_ball_detections_per_frame": summary.get("average_ball_detections_per_frame"),
             "longest_track_length": summary.get("longest_track_length"),
             "average_track_length": summary.get("average_track_length"),
+            "raw_longest_track_length": summary.get("raw_longest_track_length"),
+            "raw_average_track_length": summary.get("raw_average_track_length"),
+            "tracklet_merges_applied": summary.get("tracklet_merges_applied"),
+            "stitched_track_id_reduction": summary.get("stitched_track_id_reduction"),
             "projected_player_points": summary.get("projected_player_points"),
             "projected_ball_points": summary.get("projected_ball_points"),
             "field_registered_frames": summary.get("field_registered_frames"),
@@ -357,6 +364,27 @@ def sanitize_diagnostics(candidate: Any, fallback: list[dict[str, str]]) -> list
     return sanitized[:5] if sanitized else fallback
 
 
+def build_heuristic_summary_line(summary: dict[str, Any]) -> str:
+    frames_processed = int(summary.get("frames_processed") or 0)
+    unique_player_track_ids = int(summary.get("unique_player_track_ids") or 0)
+    raw_unique_player_track_ids = int(summary.get("raw_unique_player_track_ids") or unique_player_track_ids)
+    field_registered_ratio = float(summary.get("field_registered_ratio") or 0.0)
+    average_ball_detections_per_frame = float(summary.get("average_ball_detections_per_frame") or 0.0)
+    experiment_count = len(summary.get("experiments") or [])
+
+    parts = [
+        f"{frames_processed}-frame run",
+        f"{unique_player_track_ids} player IDs",
+        f"{field_registered_ratio * 100:.1f}% field registration",
+        f"{average_ball_detections_per_frame:.2f} ball detections/frame",
+    ]
+    if raw_unique_player_track_ids > unique_player_track_ids:
+        parts.insert(2, f"{raw_unique_player_track_ids}->{unique_player_track_ids} raw-to-stitched IDs")
+    if experiment_count:
+        parts.append(f"{experiment_count} experiment card{'s' if experiment_count != 1 else ''}")
+    return ", ".join(parts) + "."
+
+
 def generate_run_diagnostics(
     summary: dict[str, Any],
     heuristic_diagnostics: list[dict[str, str]],
@@ -373,7 +401,7 @@ def generate_run_diagnostics(
         "status": "disabled",
         "provider": None,
         "model": None,
-        "summary_line": "",
+        "summary_line": build_heuristic_summary_line(summary),
         "error": "",
         "raw_text": "",
         "diagnostics": heuristic_diagnostics,
@@ -414,7 +442,7 @@ def generate_run_diagnostics(
             "status": "failed",
             "provider": config.provider,
             "model": config.model,
-            "summary_line": "",
+            "summary_line": build_heuristic_summary_line(summary),
             "error": str(exc),
             "raw_text": "",
             "diagnostics": heuristic_diagnostics,

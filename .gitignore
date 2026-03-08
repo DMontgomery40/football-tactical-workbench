@@ -21,8 +21,12 @@ backend/experiments/
 backend/models/
 backend/runs/
 
+workflows.md
+WORKFLOWS.md
+
 *.mp4
 *.mov
 *.mkv
 *.avi
 *.zip
+*

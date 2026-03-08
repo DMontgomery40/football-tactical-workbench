@@ -4,13 +4,17 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8431';
 
 const defaultForm = {
   localVideoPath: '',
+  labelPath: '',
   folderPath: '',
   detectorModel: 'soccana',
+  trackerMode: 'hybrid_reid',
   includeBall: true,
   playerConf: '0.25',
   ballConf: '0.20',
   iou: '0.50',
 };
+
+const DEFAULT_SOCCERNET_FILES = ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
 
 const STORAGE_KEYS = {
   themeMode: 'fpw.themeMode',
@@ -23,10 +27,10 @@ const STORAGE_KEYS = {
 };
 
 const WORKSPACE_MODES = [
-  { id: 'input', label: 'Input', hint: 'Raw clip before inference' },
-  { id: 'live', label: 'Live Preview', hint: 'Ephemeral backend stream' },
-  { id: 'job', label: 'Active Job', hint: 'Current analysis progress' },
-  { id: 'review', label: 'Run Review', hint: 'Saved overlay and outputs' },
+  { id: 'input', label: 'Input' },
+  { id: 'live', label: 'Live Preview' },
+  { id: 'job', label: 'Active Job' },
+  { id: 'review', label: 'Run Review' },
 ];
 
 const REVIEW_PANELS = [
@@ -55,6 +59,20 @@ function readStoredString(key, fallback = '') {
 function basenameFromPath(value) {
   if (!value) return '';
   return String(value).split('/').filter(Boolean).pop() || String(value);
+}
+
+function parseSoccerNetGame(raw) {
+  if (!raw) return { match: raw, league: '', season: '', date: '', raw };
+  const parts = raw.split('/').filter(Boolean);
+  if (parts.length < 3) return { match: raw, league: '', season: '', date: '', raw };
+  const league = parts[0].replace(/_/g, ' ');
+  const season = parts[1];
+  const matchSegment = parts.slice(2).join('/');
+  const m = matchSegment.match(/^(\d{4}-\d{2}-\d{2})\s*-\s*\d{2}-\d{2}\s+(.+)$/);
+  if (m) {
+    return { match: m[2], league, season, date: m[1], raw };
+  }
+  return { match: matchSegment, league, season, date: '', raw };
 }
 
 function friendlyProviderName(value) {
@@ -194,7 +212,7 @@ export default function App() {
   const [soccerNetPassword, setSoccerNetPassword] = useState('');
   const [soccerNetFiles, setSoccerNetFiles] = useState(() => {
     const stored = readStoredJson(STORAGE_KEYS.soccerNetFiles, null);
-    return Array.isArray(stored) && stored.length > 0 ? stored : ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
+    return Array.isArray(stored) && stored.length > 0 ? stored : DEFAULT_SOCCERNET_FILES;
   });
   const [soccerNetError, setSoccerNetError] = useState('');
   const [soccerNetLoadingGames, setSoccerNetLoadingGames] = useState(false);
@@ -216,6 +234,7 @@ export default function App() {
   const [reviewError, setReviewError] = useState('');
   const [isRefreshingDiagnostics, setIsRefreshingDiagnostics] = useState(false);
   const [job, setJob] = useState(null);
+  const [activeExperiment, setActiveExperiment] = useState(null);
   const [jobError, setJobError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState('input');
@@ -227,7 +246,13 @@ export default function App() {
   useEffect(() => {
     fetch(`${API_BASE}/api/config`)
       .then((response) => response.json())
-      .then((data) => setConfig(data))
+      .then((data) => {
+        setConfig(data);
+        setForm((current) => ({
+          ...current,
+          trackerMode: current.trackerMode || data.default_player_tracker_mode || defaultForm.trackerMode,
+        }));
+      })
       .catch((error) => {
         console.error(error);
         setJobError('Could not reach the backend. Start backend first.');
@@ -253,6 +278,10 @@ export default function App() {
 
   useEffect(() => {
     loadRecentRuns();
+  }, []);
+
+  useEffect(() => {
+    loadBackendJobs({ hydrateActive: true });
   }, []);
 
   useEffect(() => {
@@ -300,6 +329,13 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handle = window.setInterval(() => {
+      loadBackendJobs({ hydrateActive: true });
+    }, 10000);
+    return () => window.clearInterval(handle);
+  }, [job?.job_id, job?.status]);
+
   const currentJob = job;
   const reviewedRun = selectedRun;
   const summary = reviewedRun?.summary || null;
@@ -308,7 +344,14 @@ export default function App() {
     : selectedFile?.name || basenameFromPath(form.localVideoPath) || '';
   const reviewedRunId = reviewedRun?.run_id || '';
   const reviewedClipName = basenameFromPath(summary?.input_video);
+  const activeExperimentSourcePath = activeExperiment?.summary?.current_source_video_path || '';
+  const activeExperimentLabelPath = activeExperiment?.summary?.current_label_path || '';
+  const activeExperimentClipName = basenameFromPath(activeExperimentSourcePath);
+  const previewMatchesActiveExperiment = Boolean(
+    source?.path && activeExperimentSourcePath && source.path === activeExperimentSourcePath,
+  );
   const detectorModelOptions = config.detector_models?.length ? config.detector_models : config.player_models || [];
+  const playerTrackerModes = config.player_tracker_modes?.length ? config.player_tracker_modes : ['hybrid_reid', 'bytetrack'];
   const visibleSoccerNetGames = useMemo(
     () => soccerNetGames.slice(0, soccerNetResultLimit),
     [soccerNetGames, soccerNetResultLimit],
@@ -322,8 +365,9 @@ export default function App() {
     return [
       ['Clip', reviewedClipName || 'Unknown'],
       ['Frames', summary.frames_processed || 0],
+      ['Tracker', summary.player_tracker_mode || 'n/a'],
       ['Calibration', `${summary.field_calibration_refresh_successes || 0}/${summary.field_calibration_refresh_attempts || 0}`],
-      ['Player IDs', summary.unique_player_track_ids || 0],
+      ['Player IDs', `${summary.raw_unique_player_track_ids ?? summary.unique_player_track_ids ?? 0} -> ${summary.unique_player_track_ids || 0}`],
       ['Teams', `${summary.home_tracks || 0} home / ${summary.away_tracks || 0} away`],
       ['Ball / frame', summary.average_ball_detections_per_frame ?? 'n/a'],
     ];
@@ -333,7 +377,10 @@ export default function App() {
     if (!summary) return [];
     return [
       ['Frames', summary.frames_processed || 0, 'Decoded frames pushed through detection and tracking'],
-      ['Player track IDs', summary.unique_player_track_ids || 0, 'Tracker stability is more important than raw box count'],
+      ['Tracker mode', summary.player_tracker_mode || 'n/a', 'Hybrid ReID adds appearance features and a stitch pass; ByteTrack is the legacy fallback'],
+      ['Player track IDs', summary.unique_player_track_ids || 0, 'Canonical stitched IDs after any tracklet merges'],
+      ['Raw player IDs', summary.raw_unique_player_track_ids ?? summary.unique_player_track_ids ?? 0, 'Unstitched online tracker IDs before the merge pass'],
+      ['Tracklet merges', summary.tracklet_merges_applied ?? 0, 'Accepted raw-to-canonical identity merges'],
       ['Home tracks', summary.home_tracks || 0, 'Unsupervised jersey-color split, not official metadata'],
       ['Away tracks', summary.away_tracks || 0, 'Should roughly match the second main kit cluster'],
       ['Projected player anchors', summary.projected_player_points || 0, 'Per-frame player anchor samples that landed on the pitch map, not unique players'],
@@ -516,6 +563,7 @@ export default function App() {
     const params = new URLSearchParams({
       source_id: source.source_id,
       detector_model: form.detectorModel,
+      tracker_mode: form.trackerMode,
       include_ball: String(form.includeBall),
       player_conf: form.playerConf,
       ball_conf: form.ballConf,
@@ -536,9 +584,81 @@ export default function App() {
     }
   }
 
+  async function loadBackendJobs({ hydrateActive = false } = {}) {
+    try {
+      const response = await fetch(`${API_BASE}/api/jobs`);
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data)) {
+        throw new Error('Could not load backend jobs');
+      }
+
+      if (!hydrateActive) {
+        return data;
+      }
+
+      const activeJob = data.find((item) => item?.status === 'running' || item?.status === 'queued') || null;
+      if (activeJob) {
+        setJob((current) => {
+          if (current?.job_id === activeJob.job_id && (current?.status === 'running' || current?.status === 'queued')) {
+            return current;
+          }
+          return activeJob;
+        });
+        if (activeJob.status === 'running' || activeJob.status === 'queued') {
+          startPolling(activeJob.job_id);
+        }
+        return data;
+      }
+
+      try {
+        const experimentResponse = await fetch(`${API_BASE}/api/experiments/active`);
+        if (experimentResponse.ok) {
+          const experiment = await experimentResponse.json();
+          setActiveExperiment(experiment);
+          if (hydrateActive && experiment?.status === 'running') {
+            setJob(experiment);
+            return data;
+          }
+        } else {
+          setActiveExperiment(null);
+        }
+      } catch (error) {
+        console.error(error);
+        setActiveExperiment(null);
+      }
+
+      if (!job && data.length > 0) {
+        setJob(data[0]);
+      }
+      return data;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  }
+
   function resetLoadedSource() {
     setSource(null);
     setLivePreviewUrl('');
+  }
+
+  async function handleUseActiveExperimentClip() {
+    if (!activeExperimentSourcePath) {
+      return;
+    }
+    if (activeExperimentLabelPath) {
+      updateForm('labelPath', activeExperimentLabelPath);
+    }
+    updateForm('localVideoPath', activeExperimentSourcePath);
+    resetLoadedSource();
+    await handleLoadSource(activeExperimentSourcePath);
+  }
+
+  function handleResetSavedWorkspace() {
+    try {
+      Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key));
+    } catch {}
+    window.location.reload();
   }
 
   async function loadRecentRuns() {
@@ -616,7 +736,9 @@ export default function App() {
       payload.append('video_file', selectedFile);
     }
     payload.append('local_video_path', source?.source_id ? '' : form.localVideoPath);
+    payload.append('label_path', form.labelPath);
     payload.append('detector_model', form.detectorModel);
+    payload.append('tracker_mode', form.trackerMode);
     payload.append('include_ball', String(form.includeBall));
     payload.append('player_conf', form.playerConf);
     payload.append('ball_conf', form.ballConf);
@@ -662,6 +784,7 @@ export default function App() {
             setReviewPanel('overview');
           }
           loadRecentRuns();
+          loadBackendJobs({ hydrateActive: true });
         }
       } catch (error) {
         console.error(error);
@@ -674,22 +797,15 @@ export default function App() {
 
   return (
     <div className="page-shell">
-      <div className="notice-strip">
-        <div className="notice-label">Pre-launch workbench</div>
-        <div className="notice-text">
-          Wide-angle tracking and experiment workflows are being refined against real clips and SoccerNet data before a public release.
-        </div>
-      </div>
-
       <header className="hero card">
         <div>
           <div className="eyebrow">football tactical demo</div>
           <h1>Detect, track, calibrate the field, and project the play.</h1>
           <p>
-            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, automatic field-keypoint calibration every 10 frames, live model preview, and projected tactical overlays.
+            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, hybrid appearance-aware player tracking, automatic field-keypoint calibration every 10 frames, live model preview, and projected tactical overlays.
           </p>
         </div>
-        <div className="hero-pills">
+          <div className="hero-pills">
           <span>frontend 4317</span>
           <span>backend 8431</span>
           <span>wide-angle first</span>
@@ -704,11 +820,14 @@ export default function App() {
                 {mode}
               </button>
             ))}
+            <button type="button" className="theme-chip" onClick={handleResetSavedWorkspace}>
+              Reset
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="layout-grid">
+      <main className={`layout-grid${workspaceMode === 'review' ? ' sidebar-hidden' : ''}`}>
         <aside className="left-sidebar">
           <section className="left-column">
             <form className="card form-card" onSubmit={handleSubmit}>
@@ -739,6 +858,16 @@ export default function App() {
             </label>
 
             <label>
+              <span>Optional label path</span>
+              <input
+                type="text"
+                value={form.labelPath}
+                onChange={(event) => updateForm('labelPath', event.target.value)}
+                placeholder="/Users/you/path/to/Labels-v2.json"
+              />
+            </label>
+
+            <label>
               <span>Detector weights</span>
               <input
                 list="detector-models"
@@ -749,6 +878,20 @@ export default function App() {
             </label>
             <div className="field-note">
               `soccana` is the default detector for players, ball, and referees.
+            </div>
+
+            <label>
+              <span>Player tracker</span>
+              <select value={form.trackerMode} onChange={(event) => updateForm('trackerMode', event.target.value)}>
+                {playerTrackerModes.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="field-note">
+              `hybrid_reid` uses sparse appearance embeddings plus a stitch pass. `bytetrack` is the legacy baseline for comparison.
             </div>
 
             <datalist id="detector-models">
@@ -837,18 +980,26 @@ export default function App() {
                     {visibleSoccerNetGames.length === 0 ? (
                       <div className="muted">Load a split to browse games.</div>
                     ) : (
-                      visibleSoccerNetGames.map((game) => (
-                        <button
-                          key={game}
-                          type="button"
-                          title={game}
-                          className={`game-row ${soccerNetSelectedGame === game ? 'active-game-row' : ''}`}
-                          aria-pressed={soccerNetSelectedGame === game}
-                          onClick={() => setSoccerNetSelectedGame(game)}
-                        >
-                          {game}
-                        </button>
-                      ))
+                      visibleSoccerNetGames.map((game) => {
+                        const parsed = parseSoccerNetGame(game);
+                        return (
+                          <button
+                            key={game}
+                            type="button"
+                            title={game}
+                            className={`game-row ${soccerNetSelectedGame === game ? 'active-game-row' : ''}`}
+                            aria-pressed={soccerNetSelectedGame === game}
+                            onClick={() => setSoccerNetSelectedGame(game)}
+                          >
+                            <div className="game-row-match">{parsed.match}</div>
+                            {(parsed.league || parsed.season || parsed.date) ? (
+                              <div className="game-row-meta">
+                                {[parsed.league, parsed.season, parsed.date].filter(Boolean).join(' \u00b7 ')}
+                              </div>
+                            ) : null}
+                          </button>
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -864,7 +1015,10 @@ export default function App() {
                 </div>
               ) : null}
               {soccerNetSelectedGame ? (
-                <div className="selected-game-path">{soccerNetSelectedGame}</div>
+                <div className="selected-game-path">
+                  <div className="selected-game-match">{parseSoccerNetGame(soccerNetSelectedGame).match}</div>
+                  <div className="selected-game-detail">{soccerNetSelectedGame}</div>
+                </div>
               ) : null}
 
               <label>
@@ -959,11 +1113,19 @@ export default function App() {
                     ))}
                   </div>
                   <div className="micro-label">Possible labels or notes</div>
-                  <div className="path-list plain-text-list">
+                  <div className="path-list">
                     {folderScan.annotations.slice(0, 20).map((item) => (
-                      <div key={item.path}>{item.path}</div>
+                      <button
+                        key={item.path}
+                        type="button"
+                        className={`path-chip ${form.labelPath === item.path ? 'active-chip' : ''}`}
+                        onClick={() => updateForm('labelPath', item.path)}
+                      >
+                        {basenameFromPath(item.path)}
+                      </button>
                     ))}
                   </div>
+                  {form.labelPath ? <div className="field-note">Selected label file: {form.labelPath}</div> : null}
                 </div>
               ) : null}
             </section>
@@ -973,27 +1135,8 @@ export default function App() {
         <section className="right-column">
           <section className="card workspace-shell">
             <div className="workspace-header">
-              <div>
-                <div className="eyebrow">workspace</div>
-                <div className="section-title">Analysis Workspace</div>
-                <div className="field-note workspace-subtitle">
-                  The right side is mode-driven. Input clip, live preview, active job, and saved run review are separate states.
-                </div>
-              </div>
-              <div className="workspace-snapshot-grid">
-                <div className={`snapshot-card ${workspaceMode === 'input' ? 'active-snapshot' : ''}`}>
-                  <span className="micro-label">Input</span>
-                  <span className="snapshot-value">{sourceLabel || 'None loaded'}</span>
-                </div>
-                <div className={`snapshot-card ${workspaceMode === 'job' ? 'active-snapshot' : ''}`}>
-                  <span className="micro-label">Job</span>
-                  <span className="snapshot-value">{currentJob?.status || 'idle'}</span>
-                </div>
-                <div className={`snapshot-card ${workspaceMode === 'review' ? 'active-snapshot' : ''}`}>
-                  <span className="micro-label">Reviewed run</span>
-                  <span className="snapshot-value">{reviewedRunId || 'None selected'}</span>
-                </div>
-              </div>
+              <div className="eyebrow">workspace</div>
+              <div className="section-title">Analysis Workspace</div>
             </div>
 
             <div className="workspace-tabs">
@@ -1004,8 +1147,7 @@ export default function App() {
                   className={`workspace-tab ${workspaceMode === mode.id ? 'active-workspace-tab' : ''}`}
                   onClick={() => setWorkspaceMode(mode.id)}
                 >
-                  <span>{mode.label}</span>
-                  <span className="workspace-tab-hint">{mode.hint}</span>
+                  {mode.label}
                 </button>
               ))}
             </div>
@@ -1034,11 +1176,11 @@ export default function App() {
                     </button>
                   </div>
                   <div className="field-note">
-                    This panel is only the raw input video. It is separate from the saved overlay produced by analysis.
+                    This panel shows the raw input clip. Completed analysis runs appear in Run Review as saved overlays with per-run diagnostics.
                   </div>
                 </>
               ) : (
-                <div className="empty-card">Load an input clip from the left sidebar. Nothing on the run-review side changes until you explicitly load or complete a run.</div>
+                <div className="empty-card">Upload or paste a local path in the sidebar to load a clip.</div>
               )}
             </section>
           ) : null}
@@ -1049,12 +1191,35 @@ export default function App() {
                 <div className="section-title">Live Inference Preview</div>
                 <div className="muted">{livePreviewUrl ? 'Streaming from backend' : 'Idle'}</div>
               </div>
+              <div className="field-note">
+                Preview source: {source ? `${source.display_name}` : 'No clip loaded'}
+              </div>
+              {activeExperiment ? (
+                <div className="field-note">
+                  Active experiment clip: {activeExperimentClipName || 'Unknown clip'}
+                  {activeExperiment?.summary?.current_game ? ` · ${activeExperiment.summary.current_game}` : ''}
+                  {activeExperiment?.summary?.current_half_file ? ` · ${activeExperiment.summary.current_half_file}` : ''}
+                </div>
+              ) : null}
+              {activeExperimentSourcePath && !previewMatchesActiveExperiment ? (
+                <div className="error-box">
+                  Live preview is showing a different clip than the active experiment.
+                </div>
+              ) : null}
               <div className="workspace-actions">
                 <button className="secondary-button compact-button" type="button" onClick={handleStartLivePreview} disabled={!source?.source_id}>
                   Start live preview
                 </button>
                 <button className="secondary-button compact-button" type="button" onClick={handleStopLivePreview} disabled={!livePreviewUrl}>
                   Stop live preview
+                </button>
+                <button
+                  className="secondary-button compact-button"
+                  type="button"
+                  onClick={handleUseActiveExperimentClip}
+                  disabled={!activeExperimentSourcePath}
+                >
+                  Use active experiment clip
                 </button>
                 <button className="primary-button compact-button workspace-primary-action" type="button" onClick={() => setWorkspaceMode('job')}>
                   Go to active job
@@ -1063,7 +1228,7 @@ export default function App() {
               {livePreviewUrl ? (
                 <img src={livePreviewUrl} alt="Live model preview" className="video-player live-preview-frame" />
               ) : (
-                <div className="empty-card">Start live preview after loading an input clip. This stream is ephemeral and is not the saved review output.</div>
+                <div className="empty-card">Start live preview after loading an input clip. Completed analysis runs create the saved review output.</div>
               )}
             </section>
           ) : null}
@@ -1097,7 +1262,7 @@ export default function App() {
                   </div>
                 </>
               ) : (
-                <div className="empty-card">No analysis job has been started from this browser session yet. Loading an input clip does not create a run.</div>
+                <div className="empty-card">No analysis running. Load a clip, then click Analyze.</div>
               )}
             </section>
           ) : null}
@@ -1201,8 +1366,8 @@ export default function App() {
                         ) : null}
                         <div className="diagnostics-meta">
                           {summary.diagnostics_source === 'ai'
-                            ? `Model-generated via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
-                            : 'Fallback diagnostics are showing because model generation is unavailable for this run.'}
+                            ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
+                            : 'Heuristic run diagnostics are showing for this run.'}
                           {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
                         </div>
                         <div className="overview-facts-grid">
@@ -1217,11 +1382,13 @@ export default function App() {
                           {headlineDiagnostics.length > 0 ? headlineDiagnostics.map((item) => (
                             <div key={item.title} className={`overview-callout ${item.level === 'warn' ? 'warn' : 'good'}`}>
                               <div className="overview-callout-title">{item.title}</div>
-                              <div className="overview-callout-text">{item.message}</div>
                             </div>
                           )) : (
                             <div className="empty-card">No diagnostics available for the selected run.</div>
                           )}
+                          {headlineDiagnostics.length > 0 ? (
+                            <div className="muted" style={{ fontSize: '0.8rem', marginTop: 4 }}>Full details in Detailed Diagnostics below</div>
+                          ) : null}
                         </div>
                       </section>
                     </div>

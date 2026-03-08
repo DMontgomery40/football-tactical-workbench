@@ -1,307 +1,173 @@
 # Football Tactical Workbench
 
-A local Mac-friendly workbench for wide-angle football analysis with a real UI, live model preview, and automatic pitch calibration.
+Browser-first football analysis workbench built with React and FastAPI.
 
-## What it does
+The current codebase is a wide-angle football pipeline with five core stages:
 
-- React UI on **http://127.0.0.1:4317**
-- FastAPI backend on **http://127.0.0.1:8431**
-- Football-specific detection with **Soccana** weights
-- Player, ball, and referee detection
-- ByteTrack-based multi-object tracking
-- Unsupervised home/away separation from jersey colors
-- Automatic field-keypoint calibration with **Soccana_Keypoint**
-- Pitch projection refreshed every **10 frames**
-- Live model preview in the browser while the clip plays
-- AI-generated run diagnostics when a provider is configured
-- Saved overlay video plus CSV diagnostics and summaries
+- detects players, referees, and the ball with `soccana`
+- tracks players with a hybrid appearance-aware ReID tracker and post-pass stitcher
+- separates home and away tracks with jersey-colour clustering
+- refreshes pitch calibration every 10 frames with `soccana_keypoint`
+- writes a saved overlay run with CSV, JSON, and review artifacts
 
-## Current model stack
-
-- Detector: `backend/models/soccana/Model/weights/best.pt`
-- Field calibration: `backend/models/soccana_keypoint/Model/weights/best.pt`
-
-These are local `.pt` files. The backend can also resolve them from Hugging Face if missing. Local model weights and cached downloads are not meant to be committed to git.
-
-## What the UI is for
-
-The UI is the primary debugging surface.
-
-You should be able to tell from the browser:
-
-- whether player tracking is stable
-- whether the ball detector is firing or hallucinating
-- whether team clustering looks plausible
-- whether field calibration is locking and staying locked
-- whether the projected minimap matches the play
-
-This repo is not meant to be “terminal only”.
+This README follows the current code and verified runtime behaviour.
 
 ## Screenshots
 
-Overview:
-
 ![Workbench dashboard](docs/screenshots/workbench-dashboard.png)
 
-Run review:
+![Workbench full page](docs/screenshots/workbench-fullpage.png)
 
-![Run review with experimental signal, overlay, and diagnostics](docs/screenshots/workbench-run-review.png)
+![Workbench run review](docs/screenshots/workbench-run-review.png)
 
-## Fastest way to run
+## What The App Does
 
-### One command
+- load a football clip from upload or local filesystem path
+- stream a live preview from `/api/live-preview`
+- run a saved analysis job through `/api/analyze`
+- review completed runs from `backend/runs/<run_id>/outputs`
+- generate AI-curated per-run diagnostics and run briefs when a provider is configured
+- browse and download SoccerNet halves and label files from the UI
+- scan a local dataset folder for videos and annotations
+- export overlay video, detections, track summaries, pitch projections, experiment data, and a zipped run bundle
 
-```bash
-echo "starting workbench" && cd . && bash run_all.sh
-```
+## Current Defaults
 
-### Two terminal method
+- player detector: `soccana`
+- ball detector: shared `soccana` detector
+- field calibration model: `soccana_keypoint`
+- player tracker: `hybrid_reid`
+- ball tracker: `bytetrack.yaml`
+- calibration refresh cadence: every `10` frames
+- frontend dev server: `127.0.0.1:4317`
+- backend API server: `127.0.0.1:8431`
+- run storage: `backend/runs/`
+- model cache: `backend/models/`
 
-Terminal 1:
+## Quick Start
 
-```bash
-echo "starting backend" && cd backend && bash run_backend.sh
-```
-
-Terminal 2:
-
-```bash
-echo "starting frontend" && cd frontend && bash run_frontend.sh
-```
-
-## AI diagnostics
-
-Run diagnostics can be generated from the actual completed run summary through a model provider instead of fixed threshold text.
-
-- Supported providers: OpenAI, OpenRouter, Anthropic, or a local OpenAI-compatible endpoint
-- Provider selection is environment-driven through `.env`
-- If generation fails or no provider is configured, the backend falls back to heuristic diagnostics
-- Existing saved runs can be upgraded in the UI with `Regenerate diagnostics`
-
-Example env keys:
+### 1. Install backend dependencies
 
 ```bash
-AI_DIAGNOSTICS_PROVIDER=auto
-AI_DIAGNOSTICS_MODEL=
-OPENAI_API_KEY=
-OPENROUTER_API_KEY=
-ANTHROPIC_API_KEY=
-AI_DIAGNOSTICS_BASE_URL=
-AI_DIAGNOSTICS_API_KEY=
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-## Typical workflow
+### 2. Install frontend dependencies
 
-1. Load a clip from disk or upload one in the UI.
-2. Click `Load clip`.
-3. Start `Live model preview`.
-4. Watch the browser overlay for:
-   - player and ball boxes
-   - team labels
-   - calibration status
-   - minimap behavior
-5. If the preview looks sane, click `Run tactical demo`.
-6. Review the saved overlay and diagnostics after completion.
+```bash
+cd frontend
+npm install
+```
 
-## Good first use
+### 3. Optional environment file
 
-Start with a short clip first.
+```bash
+cp .env.example .env
+```
 
-- 10 to 30 seconds
-- one broadcast camera phase
-- wide-angle view with visible field structure
-- minimal replay cuts
+You only need `.env` if you want:
 
-Full matches are supported, but they are long-running jobs and should be treated like batch work.
+- SoccerNet downloads through the batch launcher
+- AI diagnostics through OpenAI, OpenRouter, Anthropic, or a local OpenAI-compatible endpoint
 
-## Where to point it
+### 4. Start the app
 
-You have two choices in the UI:
+Backend:
 
-1. upload a video file
-2. paste a local path to a video on your Mac
+```bash
+cd backend
+./run_backend.sh
+```
 
-You can also scan a dataset folder and click one of the discovered videos to auto-fill the path field.
+Frontend:
 
-## Common local data locations
+```bash
+cd frontend
+./run_frontend.sh
+```
 
-- Bundesliga sample clips: `backend/datasets/bundesliga_sample`
-- YouTube match downloads: `backend/datasets/youtube_clips`
-- SoccerNet workspace root: `backend/datasets/soccernet`
+Or run both together:
 
-These are local working directories and are not meant to be committed to git.
-The repository does **not** ship SoccerNet footage.
+```bash
+./run_all.sh
+```
 
-## SoccerNet access
+To stop a backend started through `run_all.sh`:
 
-SoccerNet video access is not public in the normal sense.
+```bash
+./stop_backend.sh
+```
 
-- This repository provides the platform and tooling to work with SoccerNet data.
-- This repository does **not** provide, bundle, or redistribute SoccerNet videos or labels.
-- It is password protected.
-- You must have your **own** SoccerNet NDA-approved access.
-- You must use your **own** SoccerNet password/credentials.
-- Access is tied to the SoccerNet terms you personally agreed to, including non-commercial usage restrictions.
+## First Run Workflow
 
-Do not share downloaded SoccerNet videos or credentials through this repo.
+1. Open `http://127.0.0.1:4317`.
+2. Load a clip from upload or paste a local filesystem path.
+3. Optionally open the live preview workspace to stream the detector output.
+4. Click `Analyze loaded clip`.
+5. Watch the active job logs until the run completes.
+6. Switch to `Run Review` and inspect the overlay, run brief, diagnostics, tracks, and exported files.
+
+## Runtime Behaviour
+
+- Backend startup prewarms the default detector and field-calibration models from the local model cache or configured model source.
+- The default player tracker now uses sparse appearance embeddings plus a tracklet stitch pass; run summaries report both raw IDs and stitched canonical IDs.
+- The first `hybrid_reid` run may need to populate torchvision appearance weights in the local torch cache before tracking starts.
+- Overlay export targets browser playback: the backend transcodes to H.264 when `ffmpeg` is available and also attempts direct browser-codec writing when it is not.
+- Loaded sources and job snapshots are persisted, so sources survive restarts and interrupted jobs resume automatically instead of disappearing.
+- Every completed run stores a run brief and diagnostics artifact. With a provider configured, the run brief and diagnostics are AI-curated for that run.
+- Goal-aligned experiment inputs can come from discovered label files or from an explicit label path selected in the UI.
+- The UI includes a `Reset` control for clearing saved theme and form state from browser local storage.
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md)
+- [Workflows](docs/workflows.md)
+- [Outputs, API, and Batch Experiments](docs/outputs-and-api.md)
+
+## Repository Map
+
+- `backend/app/main.py`
+  FastAPI entrypoint, source loading, SoccerNet endpoints, run loading, live preview, and analysis job creation.
+- `backend/app/wide_angle.py`
+  Active football analysis pipeline, hybrid ReID player tracking, live preview generator, overlay rendering, experiment export, and diagnostics integration.
+- `backend/app/reid_tracker.py`
+  Appearance-aware player tracking, sparse embedding extraction, field-aware association, and post-pass tracklet stitching.
+- `backend/app/ai_diagnostics.py`
+  Provider selection, prompt construction, OpenAI-compatible/Anthropic calls, and diagnostics artifact writing.
+- `backend/scripts/soccernet_batch_experiment.py`
+  Batch SoccerNet downloader plus repeated analysis runner.
+- `backend/scripts/start_soccernet_batch_tmux.sh`
+  Convenience launcher for long SoccerNet batch experiments in `tmux`.
+- `frontend/src/App.jsx`
+  Single-page application for clip loading, live preview, active jobs, run review, folder scan, and SoccerNet browsing.
+- `frontend/src/styles.css`
+  Complete UI styling, theme tokens, responsive layout, and review workspace presentation.
+
+## SoccerNet
+
+The application has first-class SoccerNet support in code:
+
+- it lists train, valid, test, and challenge splits
+- it searches official game paths
+- it downloads halves and labels into `backend/datasets/soccernet/`
+- it can scan that folder directly from the UI
+- it prefers `Labels-v2.json` for goal-aligned experiment work
+
+If you want to evaluate the geometric volatility experiment against actual goals, use a source clip with SoccerNet labels nearby or select an explicit label path in the UI.
 
 ## Acknowledgements
 
-- Bundesliga clip samples used during UI and pipeline iteration came from `dbal0503/BundesLiga` on Hugging Face.
-- Detection and pitch-keypoint workbench defaults are built around Adit Jain's `soccana` and `Soccana_Keypoint` weights on Hugging Face.
-- SoccerNet provides the password-protected match video and event-label ecosystem that makes the goal-aligned experiment possible for approved users.
+- [SoccerNet](https://www.soccer-net.org/) for match data structure, labels, and downloader tooling
+- [Soccana](https://huggingface.co/Adit-jain/soccana) for football-specific detector weights
+- [Soccana Keypoint](https://huggingface.co/Adit-jain/Soccana_Keypoint) for pitch keypoint weights
+- [Ultralytics](https://www.ultralytics.com/) for the YOLO runtime used by the detector and keypoint models
+- ByteTrack via Ultralytics tracker integration for the current ball-tracking path and the legacy player-tracking fallback
+- Torchvision ResNet-18 weights for sparse appearance embeddings in the player ReID path
 
-## Experiments
+## License
 
-This workbench is meant to help people run their own football experiments on top of a stable detection, tracking, and pitch-calibration pipeline.
-
-The current repository includes one example experiment: a goal-aligned **geometric volatility index** built from projected player positions on the pitch. It is not the product definition and it is not the only intended use of the repo. It is just one concrete example of the kind of analysis you can layer on top once the wide-angle pipeline is working.
-
-In plain language, the current experiment asks a simple question:
-
-- how much are team shape and pitch occupation changing from second to second
-- does that volatility rise in the build-up to goals
-
-If you want to use the workbench for different ideas, that is the point. You can swap in different labels, different match-state features, different summaries, or a completely different downstream task.
-
-## Example Experiment Math
-
-The current example experiment samples projected player positions at **1 Hz**, summarizes team shape and whole-pitch occupation, measures how quickly those values change, and then aligns the resulting signal against goal timestamps.
-
-### Per-team, per-second features
-
-For each team with projected player positions $p_i = (x_i, y_i)$:
-
-- Centroid:
-
-$$
-\bar{p}_t = \frac{1}{n}\sum_{i=1}^{n} p_i
-$$
-
-- Spread RMS:
-
-$$
-S_t = \sqrt{\frac{1}{n}\sum_{i=1}^{n} \|p_i - \bar{p}_t\|^2}
-$$
-
-- Team length along the pitch axis:
-
-$$
-L_t = Q_{0.90}(x) - Q_{0.10}(x)
-$$
-
-- Team width across the pitch:
-
-$$
-W_t = Q_{0.90}(y) - Q_{0.10}(y)
-$$
-
-where $Q_q$ is the empirical quantile, which is more robust than a raw max-minus-min range.
-
-### Match-state features
-
-- Inter-team centroid distance:
-
-$$
-D_t = \|\bar{p}^{(home)}_t - \bar{p}^{(away)}_t\|
-$$
-
-- Spatial entropy over a fixed pitch grid:
-
-$$
-H_t = -\sum_{j=1}^{k} p_j \log(p_j)
-$$
-
-where $p_j$ is the fraction of all projected players falling in grid cell $j$.
-
-### Volatility features
-
-The experiment samples the match state at **1 Hz**.
-
-For each scalar feature series $x_t$, compute the absolute first difference:
-
-$$
-\Delta x_t = |x_t - x_{t-1}|
-$$
-
-Then compute a rolling 10-second mean absolute delta:
-
-$$
-V_x(t) = \frac{1}{w}\sum_{\tau=t-w+1}^{t} \Delta x_{\tau}
-$$
-
-with $w = 10$ seconds.
-
-The current feature set includes:
-
-- home spread volatility
-- away spread volatility
-- home length volatility
-- away length volatility
-- inter-team centroid-distance volatility
-- spatial-entropy volatility
-
-### Combined volatility index
-
-Each volatility feature is z-scored within the half:
-
-$$
-Z_x(t) = \frac{V_x(t) - \mu_x}{\sigma_x}
-$$
-
-Then the combined volatility index is:
-
-$$
-\text{VolIndex}_t = \frac{1}{m}\sum_{x \in \mathcal{F}} Z_x(t)
-$$
-
-where $\mathcal{F}$ is the active feature set and $m$ is the number of finite z-scores at time $t$.
-
-### Goal alignment
-
-From SoccerNet `Labels-v2.json`, each goal event is aligned to the current half using the provided `position` timestamp in milliseconds.
-
-For each second $t$, the experiment derives:
-
-- `seconds_to_next_goal`
-- `goal_in_next_30s`
-- `goal_in_next_60s`
-
-### Example validation metric
-
-Define
-
-$$
-\mu_{\text{goal}} = \mathbb{E}[\text{VolIndex}_t \mid Y_t = 1], \qquad
-\mu_{\text{base}} = \mathbb{E}[\text{VolIndex}_t \mid Y_t = 0]
-$$
-
-where $Y_t = 1$ indicates that a goal occurs in the next 30 seconds and $Y_t = 0$ indicates that no goal occurs in the next 30 seconds.
-
-Report relative lift as:
-
-$$
-\text{Uplift}_{30s}
-=
-\frac{\mu_{\text{goal}} - \mu_{\text{base}}}{\mu_{\text{base}}}
-=
-\frac{\mu_{\text{goal}}}{\mu_{\text{base}}} - 1
-$$
-
-Worked example:
-
-- if $\mu_{\text{goal}} = 1.8$ and $\mu_{\text{base}} = 1.2$, then
-
-$$
-\text{Uplift}_{30s} = \frac{1.8 - 1.2}{1.2} = 0.5
-$$
-
-- an uplift of $0.5$ means the average volatility is `50%` higher in pre-goal windows than in baseline windows
-- an uplift of `0` means no separation
-- a negative uplift means pre-goal windows are less volatile than baseline windows
-
-## Stop the background backend
-
-```bash
-echo "stopping backend" && cd . && bash stop_backend.sh
-```
+MIT. See [LICENSE](LICENSE).
