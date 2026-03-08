@@ -151,7 +151,6 @@ select[size] {
 .two-col,
 .three-col,
 .summary-grid,
-.two-panel-grid,
 .experiment-grid {
   display: grid;
   gap: 14px;
@@ -167,10 +166,6 @@ select[size] {
 
 .summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.two-panel-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .experiment-grid {
@@ -391,20 +386,6 @@ select[size] {
   font-size: 0.96rem;
 }
 
-.learn-card {
-  padding-bottom: 10px;
-}
-
-.learn-card summary {
-  cursor: pointer;
-}
-
-.learn-row {
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 .diagnostic {
   margin-bottom: 12px;
 }
@@ -552,7 +533,6 @@ select[size] {
 
 @media (max-width: 1200px) {
   .layout-grid,
-  .two-panel-grid,
   .summary-grid,
   .experiment-grid,
   .calibration-grid,

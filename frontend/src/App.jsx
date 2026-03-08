@@ -22,28 +22,6 @@ function StatCard({ label, value, hint }) {
   );
 }
 
-function StageCard({ card }) {
-  return (
-    <details className="card learn-card">
-      <summary>{card.title}</summary>
-      <div className="learn-row">
-        <div>
-          <div className="micro-label">What it does</div>
-          <p>{card.what_it_does}</p>
-        </div>
-        <div>
-          <div className="micro-label">What breaks</div>
-          <p>{card.what_breaks}</p>
-        </div>
-        <div>
-          <div className="micro-label">What to try next</div>
-          <p>{card.what_to_try_next}</p>
-        </div>
-      </div>
-    </details>
-  );
-}
-
 function DiagnosticCard({ item }) {
   return (
     <div className={`card diagnostic ${item.level === 'warn' ? 'warn' : 'good'}`}>
@@ -900,16 +878,10 @@ export default function App() {
             )}
           </section>
 
-          <div className="two-panel-grid">
-            <div>
-              <div className="section-title inset-title">Diagnostics</div>
-              {summary?.diagnostics?.length ? summary.diagnostics.map((item) => <DiagnosticCard key={item.title} item={item} />) : <div className="card empty-card">No diagnostics yet.</div>}
-            </div>
-            <div>
-              <div className="section-title inset-title">Why this demo is built this way</div>
-              {(config.learn_cards || summary?.learn_cards || []).map((card) => <StageCard key={card.title} card={card} />)}
-            </div>
-          </div>
+          <section>
+            <div className="section-title inset-title">Diagnostics</div>
+            {summary?.diagnostics?.length ? summary.diagnostics.map((item) => <DiagnosticCard key={item.title} item={item} />) : <div className="card empty-card">No diagnostics yet.</div>}
+          </section>
 
           <TrackTable tracks={summary?.top_tracks || []} />
           <FileLinks summary={summary} />
