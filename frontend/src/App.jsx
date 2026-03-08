@@ -535,7 +535,7 @@ export default function App() {
           <div className="eyebrow">football tactical demo</div>
           <h1>Detect, track, calibrate the field, and project the play.</h1>
           <p>
-            Local React + FastAPI demo for wide-angle football analysis with soccer-specific detection, automatic field-keypoint calibration every 10 frames, live model preview, and projected tactical overlays.
+            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, automatic field-keypoint calibration every 10 frames, live model preview, and projected tactical overlays.
           </p>
         </div>
         <div className="hero-pills">
@@ -620,7 +620,7 @@ export default function App() {
             </div>
 
             <div className="field-note">
-              Field calibration is automatic now. The backend refreshes the pitch transform every 10 frames from soccer field keypoints, so there is no manual homography step in the UI.
+              Field calibration is automatic now. The backend refreshes the pitch transform every 10 frames from pitch keypoints, so there is no manual homography step in the UI.
             </div>
 
             <button className="secondary-button" onClick={handleLoadSource} type="button">

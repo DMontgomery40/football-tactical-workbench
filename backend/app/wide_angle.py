@@ -96,7 +96,7 @@ PITCH_REFERENCE_POINTS = np.array(
 TACTICAL_LEARN_CARDS = [
     {
         "title": "1. Player detection + ByteTrack",
-        "what_it_does": "Uses soccer-specific detector weights so player, ball, and referee detection are trained for broadcast football rather than generic COCO classes.",
+        "what_it_does": "Uses football-specific detector weights so player, ball, and referee detection are trained for broadcast football rather than generic COCO classes.",
         "what_breaks": "Crowded boxes, camera pans, and tiny distant players still fragment track IDs.",
         "what_to_try_next": "Start with shorter clips, then raise model size or lower confidence only after you inspect churn.",
     },
@@ -1172,7 +1172,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     player_model = YOLO(detector_path)
     ball_model: YOLO | None = None
     if include_ball:
-        job_manager.log(job_id, "Ball tracking enabled through the shared soccer detector")
+        job_manager.log(job_id, "Ball tracking enabled through the shared football detector")
         ball_model = YOLO(detector_path)
     else:
         job_manager.log(job_id, "Ball stage disabled")
