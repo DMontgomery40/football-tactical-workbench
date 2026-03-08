@@ -36,6 +36,16 @@ You should be able to tell from the browser:
 
 This repo is not meant to be “terminal only”.
 
+## Screenshots
+
+Overview:
+
+![Workbench dashboard](docs/screenshots/workbench-dashboard.png)
+
+Run review:
+
+![Run review with experimental signal, overlay, and diagnostics](docs/screenshots/workbench-run-review.png)
+
 ## Fastest way to run
 
 ### One command
@@ -91,13 +101,13 @@ You have two choices in the UI:
 
 You can also scan a dataset folder and click one of the discovered videos to auto-fill the path field.
 
-## Included local data
+## Common local data locations
 
 - Bundesliga sample clips: `backend/datasets/bundesliga_sample`
 - YouTube match downloads: `backend/datasets/youtube_clips`
-- SoccerNet workspace: `backend/datasets/soccernet`
+- SoccerNet workspace root: `backend/datasets/soccernet`
 
-These are local working datasets and are not meant to be committed to git.
+These are local working directories and are not meant to be committed to git.
 The repository does **not** ship SoccerNet footage.
 
 ## SoccerNet access
@@ -113,116 +123,28 @@ SoccerNet video access is not public in the normal sense.
 
 Do not share downloaded SoccerNet videos or credentials through this repo.
 
-### Local secret setup
+## Acknowledgements
 
-Use a local `.env` file at the repo root:
+- Bundesliga clip samples used during UI and pipeline iteration came from `dbal0503/BundesLiga` on Hugging Face.
+- Detection and pitch-keypoint workbench defaults are built around Adit Jain's `soccana` and `Soccana_Keypoint` weights on Hugging Face.
+- SoccerNet provides the password-protected match video and event-label ecosystem that makes the goal-aligned experiment possible for approved users.
 
-```bash
-SOCCERNET_PASSWORD=...
-```
+## Experiments
 
-- `.env` is ignored by git
-- `.env.example` is committed as a template
-- batch download scripts should source `.env` rather than embedding the password in commands
+This workbench is meant to help people run their own football experiments on top of a stable detection, tracking, and pitch-calibration pipeline.
 
-## SoccerNet labels for the experiment
+The current repository includes one example experiment: a goal-aligned **geometric volatility index** built from projected player positions on the pitch. It is not the product definition and it is not the only intended use of the repo. It is just one concrete example of the kind of analysis you can layer on top once the wide-angle pipeline is working.
 
-For the spatial-entropy volatility experiment, the important file is:
+In plain language, the current experiment asks a simple question:
 
-- `Labels-v2.json`
+- how much are team shape and pitch occupation changing from second to second
+- does that volatility rise in the build-up to goals
 
-That file contains event timestamps, including goals, at 1-second resolution. The backend now prefers `Labels-v2.json` when it is present and aligns goal events to the current half so the experiment can compare volatility in pre-goal windows against baseline match state.
+If you want to use the workbench for different ideas, that is the point. You can swap in different labels, different match-state features, different summaries, or a completely different downstream task.
 
-## What files you get
+## Example Experiment Math
 
-Inside each run folder under `backend/runs/<run_id>/outputs/`:
-
-- `overlay.mp4`
-- `detections.csv`
-- `track_summary.csv`
-- `projections.csv` when field registration is active
-- `entropy_timeseries.csv` for the experimental volatility signal
-- `goal_events.csv` when SoccerNet goal labels are available
-- `summary.json`
-- `all_outputs.zip`
-
-## What to look at first
-
-### If `unique_player_track_ids` is huge
-
-The tracker is fragmenting players.
-
-### If `average_ball_detections_per_frame` is near zero
-
-The ball stage is too weak to trust as a tactical signal.
-
-### If `field_calibration_refresh_successes` is low
-
-The pitch-keypoint model is not seeing enough field structure to keep projection stable.
-
-### If `field_registered_ratio` is low
-
-Most player anchors are not landing on the pitch model, so spatial metrics downstream are weak.
-
-### If `team_cluster_distance` is low
-
-The jersey-color split is noisy and home/away labels should be treated carefully.
-
-### If `goal_events_count` is zero
-
-The experiment is not attached to scoring events for that run. Without goal labels, the volatility signal is exploratory only and not yet meaningful for outcome modeling.
-
-## Validation commands
-
-Backend syntax check:
-
-```bash
-echo "checking backend" && cd backend && python -m py_compile app/main.py app/wide_angle.py
-```
-
-Frontend production build:
-
-```bash
-echo "building frontend" && cd frontend && npm run build
-```
-
-## Current batch run
-
-The current real SoccerNet overnight batch is running in `tmux`.
-
-- Session: `sn_train_20_20260308_002646`
-- Batch directory: `backend/experiments/soccernet_train_20_goalaligned_v1_20260308_002646`
-- Log file: `backend/experiments/soccernet_train_20_goalaligned_v1_20260308_002646/tmux_stdout.log`
-
-Monitor it with:
-
-```bash
-echo "attach batch" && tmux attach -t sn_train_20_20260308_002646
-```
-
-or
-
-```bash
-echo "tail batch log" && tail -f backend/experiments/soccernet_train_20_goalaligned_v1_20260308_002646/tmux_stdout.log
-```
-
-Preferred way to launch future batches:
-
-```bash
-echo "start SoccerNet batch" && cd backend && bash scripts/start_soccernet_batch_tmux.sh train 20 0
-```
-
-This batch is using:
-
-- `1_224p.mkv`
-- `2_224p.mkv`
-- `Labels-v2.json`
-
-224p is intentional for throughput and storage on this machine. The run is still real, still goal-aligned, and still uses the production experiment codepath.
-
-## Experiment math
-
-The current experiment is a goal-aligned **geometric volatility index** built from projected player positions on the pitch.
+The current example experiment samples projected player positions at **1 Hz**, summarizes team shape and whole-pitch occupation, measures how quickly those values change, and then aligns the resulting signal against goal timestamps.
 
 ### Per-team, per-second features
 
@@ -323,9 +245,9 @@ For each second $t$, the experiment derives:
 - `goal_in_next_30s`
 - `goal_in_next_60s`
 
-### First real validation metric
+### Example validation metric
 
-The simplest real test is the 30-second uplift:
+One simple way to evaluate the signal is the 30-second uplift:
 
 $$
 \text{Uplift}_{30s} =
@@ -336,8 +258,6 @@ $$
 \mathbb{E}[\text{VolIndex}_t \mid \text{no goal in next 30s}]
 }
 $$
-
-That is the exact goal-aligned signal the current batch is computing.
 
 ## Stop the background backend
 
