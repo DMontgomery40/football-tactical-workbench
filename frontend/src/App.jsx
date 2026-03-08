@@ -27,7 +27,7 @@ function DiagnosticCard({ item }) {
     <div className={`card diagnostic ${item.level === 'warn' ? 'warn' : 'good'}`}>
       <div className="diagnostic-title">{item.title}</div>
       <p>{item.message}</p>
-      <div className="diagnostic-next">Next: {item.next_step}</div>
+      <div className="diagnostic-next">Suggested check: {item.next_step}</div>
     </div>
   );
 }
@@ -144,6 +144,7 @@ export default function App() {
   const [source, setSource] = useState(null);
   const [sourceError, setSourceError] = useState('');
   const [isLoadingSource, setIsLoadingSource] = useState(false);
+  const [isLoadedClipOpen, setIsLoadedClipOpen] = useState(true);
   const [livePreviewUrl, setLivePreviewUrl] = useState('');
   const [folderScan, setFolderScan] = useState(null);
   const [scanError, setScanError] = useState('');
@@ -201,7 +202,7 @@ export default function App() {
       ['Player track IDs', summary.unique_player_track_ids || 0, 'Tracker stability is more important than raw box count'],
       ['Home tracks', summary.home_tracks || 0, 'Unsupervised jersey-color split, not official metadata'],
       ['Away tracks', summary.away_tracks || 0, 'Should roughly match the second main kit cluster'],
-      ['Calibrated players', summary.projected_player_points || 0, 'Player anchors that actually landed on the pitch map'],
+      ['Projected player anchors', summary.projected_player_points || 0, 'Per-frame player anchor samples that landed on the pitch map, not unique players'],
       ['Avg pitch keypoints', summary.average_visible_pitch_keypoints || 0, 'Visible field keypoints on each 10-frame calibration refresh'],
     ];
   }, [summary]);
@@ -799,13 +800,21 @@ export default function App() {
           </section>
 
           <section className="card video-card">
-            <div className="row-between">
-              <div className="section-title">Loaded clip</div>
-              <div className="muted">
-                {source ? `${source.display_name} · ${source.width || 0}x${source.height || 0}` : 'Load a clip first'}
-              </div>
-            </div>
-            {source ? (
+            <button
+              className="section-toggle"
+              type="button"
+              onClick={() => setIsLoadedClipOpen((current) => !current)}
+              aria-expanded={isLoadedClipOpen}
+            >
+              <span className="section-title">Loaded clip</span>
+              <span className="section-toggle-meta">
+                <span className="muted">
+                  {source ? `${source.display_name} · ${source.width || 0}x${source.height || 0}` : 'Load a clip first'}
+                </span>
+                <span className="toggle-chevron" aria-hidden="true">▾</span>
+              </span>
+            </button>
+            {isLoadedClipOpen ? (source ? (
               <>
                 <div className="video-stage">
                   <video ref={sourceVideoRef} controls src={`${API_BASE}${source.video_url}`} className="video-player" />
@@ -821,7 +830,7 @@ export default function App() {
               </>
             ) : (
               <div className="empty-card">Load a clip to preview the source video before starting the live model stream.</div>
-            )}
+            )) : null}
           </section>
 
           <section className="card video-card">

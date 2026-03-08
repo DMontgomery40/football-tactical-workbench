@@ -247,17 +247,36 @@ For each second $t$, the experiment derives:
 
 ### Example validation metric
 
-One simple way to evaluate the signal is the 30-second uplift:
+Define
 
 $$
-\text{Uplift}_{30s} =
-\frac{
-\mathbb{E}[\text{VolIndex}_t \mid \text{goal in next 30s}] -
-\mathbb{E}[\text{VolIndex}_t \mid \text{no goal in next 30s}]
-}{
-\mathbb{E}[\text{VolIndex}_t \mid \text{no goal in next 30s}]
-}
+\mu_{\text{goal}} = \mathbb{E}[\text{VolIndex}_t \mid Y_t = 1], \qquad
+\mu_{\text{base}} = \mathbb{E}[\text{VolIndex}_t \mid Y_t = 0]
 $$
+
+where $Y_t = 1$ indicates that a goal occurs in the next 30 seconds and $Y_t = 0$ indicates that no goal occurs in the next 30 seconds.
+
+Report relative lift as:
+
+$$
+\text{Uplift}_{30s}
+=
+\frac{\mu_{\text{goal}} - \mu_{\text{base}}}{\mu_{\text{base}}}
+=
+\frac{\mu_{\text{goal}}}{\mu_{\text{base}}} - 1
+$$
+
+Worked example:
+
+- if $\mu_{\text{goal}} = 1.8$ and $\mu_{\text{base}} = 1.2$, then
+
+$$
+\text{Uplift}_{30s} = \frac{1.8 - 1.2}{1.2} = 0.5
+$$
+
+- an uplift of $0.5$ means the average volatility is `50%` higher in pre-goal windows than in baseline windows
+- an uplift of `0` means no separation
+- a negative uplift means pre-goal windows are less volatile than baseline windows
 
 ## Stop the background backend
 

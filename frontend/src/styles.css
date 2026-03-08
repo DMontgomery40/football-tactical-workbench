@@ -236,6 +236,35 @@ select[size] {
   align-items: center;
 }
 
+.section-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-toggle-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-chevron {
+  color: #8fb5cf;
+  transition: transform 160ms ease;
+}
+
+.section-toggle[aria-expanded="false"] .toggle-chevron {
+  transform: rotate(-90deg);
+}
+
 .status-pill.idle { color: #cad6e3; }
 .status-pill.running { color: #fff2c8; border-color: rgba(255, 212, 107, 0.38); }
 .status-pill.completed { color: #c9ffd4; border-color: rgba(117, 255, 147, 0.32); }

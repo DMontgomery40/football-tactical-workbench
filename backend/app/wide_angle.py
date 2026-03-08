@@ -1791,23 +1791,35 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     avg_ball = float(np.mean(ball_detections_per_frame)) if ball_detections_per_frame else 0.0
     avg_visible_pitch_keypoints = float(np.mean(calibration_visible_counts)) if calibration_visible_counts else 0.0
     registered_frame_ratio = field_registered_frames / max(player_row_count, 1)
+    assigned_vote_ratios = [
+        float(team_info["team_vote_ratio"])
+        for team_info in track_team_info.values()
+        if str(team_info["team_label"]) in {"home", "away"}
+    ]
+    average_team_vote_ratio = float(np.mean(assigned_vote_ratios)) if assigned_vote_ratios else 0.0
 
     if churn_ratio > 0.1:
         diagnostics.append(
             {
                 "level": "warn",
-                "title": "Tracker churn is still high",
-                "message": f"{len(player_track_ids_seen)} tracked player IDs across {frame_index} frames is a noisy tactical demo.",
-                "next_step": "Trim to a steadier wide-angle phase before touching anything more ambitious.",
+                "title": "Tracking stability: fragmented",
+                "message": (
+                    f"{len(player_track_ids_seen)} unique player track IDs across {frame_index} frames "
+                    f"(longest track {longest_track_length} frames, mean {average_track_length:.1f})."
+                ),
+                "next_step": "Use a steadier wide-angle phase or retune confidence before trusting downstream team or pitch metrics.",
             }
         )
     else:
         diagnostics.append(
             {
                 "level": "good",
-                "title": "Tracker churn is workable",
-                "message": f"{len(player_track_ids_seen)} tracked player IDs across {frame_index} frames is believable for a demo overlay.",
-                "next_step": "Inspect the longest tracks and decide whether the story on the overlay matches the play.",
+                "title": "Tracking stability: acceptable",
+                "message": (
+                    f"{len(player_track_ids_seen)} unique player track IDs across {frame_index} frames "
+                    f"(longest track {longest_track_length} frames, mean {average_track_length:.1f})."
+                ),
+                "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players.",
             }
         )
 
@@ -1815,18 +1827,24 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         diagnostics.append(
             {
                 "level": "good",
-                "title": "Team color split produced two groups",
-                "message": f"Assigned {home_tracks} home tracks and {away_tracks} away tracks from {len(jersey_samples)} jersey crops.",
-                "next_step": "Sanity-check goalkeepers and referees, because unsupervised color clustering will still lie sometimes.",
+                "title": "Team clustering: separated",
+                "message": (
+                    f"{home_tracks} home tracks and {away_tracks} away tracks from {len(jersey_samples)} jersey crops "
+                    f"(cluster distance {team_cluster_distance:.3f}, mean vote ratio {average_team_vote_ratio:.2f})."
+                ),
+                "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean.",
             }
         )
     else:
         diagnostics.append(
             {
                 "level": "warn",
-                "title": "Team color clustering is weak",
-                "message": "The jersey crops did not cleanly separate into two teams.",
-                "next_step": "Use clips with better kit contrast or larger player crops before trusting home versus away labels.",
+                "title": "Team clustering: weak separation",
+                "message": (
+                    f"{home_tracks} home tracks and {away_tracks} away tracks from {len(jersey_samples)} jersey crops "
+                    f"(cluster distance {team_cluster_distance:.3f}, mean vote ratio {average_team_vote_ratio:.2f})."
+                ),
+                "next_step": "Use clips with better kit contrast or larger player crops before relying on team labels.",
             }
         )
 
@@ -1835,18 +1853,18 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             diagnostics.append(
                 {
                     "level": "warn",
-                    "title": "Ball tracking is sparse",
-                    "message": f"Average ball detections per frame is {avg_ball:.2f}.",
-                    "next_step": "Treat the ball overlay as context only until it stops blinking in and out.",
+                    "title": "Ball detections: sparse",
+                    "message": f"Average ball detections per frame {avg_ball:.2f}; projected ball anchors {projected_ball_points}.",
+                    "next_step": "Treat ball output as context only and inspect the overlay for missed frames before using it analytically.",
                 }
             )
         else:
             diagnostics.append(
                 {
                     "level": "good",
-                    "title": "Ball stage adds context",
-                    "message": f"Average ball detections per frame is {avg_ball:.2f}.",
-                    "next_step": "Check whether the highlighted ball follows the play instead of bright noise in the stands.",
+                    "title": "Ball detections: usable",
+                    "message": f"Average ball detections per frame {avg_ball:.2f}; projected ball anchors {projected_ball_points}.",
+                    "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts.",
                 }
             )
 
@@ -1854,45 +1872,43 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         diagnostics.append(
             {
                 "level": "good",
-                "title": "Automatic field calibration is active",
-                "message": f"Refreshed calibration {calibration_refresh_successes} times over {calibration_refresh_attempts} attempts using {avg_visible_pitch_keypoints:.1f} visible pitch keypoints on average.",
-                "next_step": "If the minimap drifts, watch the live preview for calibration dropouts before touching player tracking.",
+                "title": "Field calibration: active",
+                "message": (
+                    f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded; "
+                    f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}; "
+                    f"{registered_frame_ratio * 100:.1f}% of player detections projected."
+                ),
+                "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings.",
             }
         )
     else:
         diagnostics.append(
             {
                 "level": "warn",
-                "title": "Field registration never locked on",
-                "message": "The pitch keypoint model did not produce a stable calibration during this clip.",
-                "next_step": "Try a wider camera phase with clearer field markings. The minimap depends on visible pitch structure.",
+                "title": "Field calibration: no stable lock",
+                "message": (
+                    f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded; "
+                    f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}."
+                ),
+                "next_step": "Use a wider camera phase with clearer pitch markings if you need reliable minimap projection.",
             }
         )
-
-    diagnostics.append(
-        {
-            "level": "warn",
-            "title": "Experimental signal is exploratory",
-            "message": "Spatial entropy volatility is an experiment layered on top of the core tracking pipeline, not a production betting model.",
-            "next_step": "Use the experimental panel to compare spikes against the overlay before treating the metric as actionable.",
-        }
-    )
     if goal_events:
         diagnostics.append(
             {
                 "level": "good",
-                "title": "Goal labels attached to the experiment",
-                "message": f"Loaded {len(goal_events)} SoccerNet goal events from {Path(goal_label_source).name if goal_label_source else 'labels'}.",
-                "next_step": "Use the entropy timeseries CSV to compare volatility in pre-goal windows against the rest of the half.",
+                "title": "Goal labels: loaded",
+                "message": f"{len(goal_events)} aligned goal events loaded from {Path(goal_label_source).name if goal_label_source else 'labels'}.",
+                "next_step": "Use the experiment outputs to compare pre-goal windows against baseline match state.",
             }
         )
     else:
         diagnostics.append(
             {
                 "level": "warn",
-                "title": "No goal labels attached",
-                "message": "This run has no aligned SoccerNet goal events, so the volatility experiment cannot be evaluated against scoring windows yet.",
-                "next_step": "Run the pipeline on SoccerNet halves with Labels-v2.json available if you want meaningful experimental evaluation.",
+                "title": "Goal labels: missing",
+                "message": "No aligned SoccerNet goal events were found for this clip.",
+                "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals.",
             }
         )
 
