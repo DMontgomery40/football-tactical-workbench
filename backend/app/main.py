@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import mimetypes
 import re
 import ssl
 import shutil
@@ -117,8 +118,10 @@ class JobState:
     restart_config: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
+        run_id = Path(self.run_dir).name if self.run_dir else ""
         return {
             "job_id": self.job_id,
+            "run_id": run_id,
             "status": self.status,
             "created_at": self.created_at,
             "progress": round(self.progress, 2),
@@ -288,16 +291,28 @@ class SourceManager:
                 self._sources[source.source_id] = source
 
     def register(self, path: Path, display_name: str, uploaded: bool = False) -> SourceState:
-        source = SourceState(
-            source_id=uuid.uuid4().hex[:12],
-            path=str(path),
-            display_name=display_name,
-            uploaded=uploaded,
-        )
+        resolved_path = str(path.expanduser().resolve())
         with self._lock:
+            for source in self._sources.values():
+                try:
+                    existing_path = str(Path(source.path).expanduser().resolve())
+                except Exception:
+                    existing_path = str(source.path)
+                if existing_path == resolved_path:
+                    source.display_name = display_name or source.display_name
+                    source.uploaded = bool(source.uploaded or uploaded)
+                    self._persist_locked()
+                    return source
+
+            source = SourceState(
+                source_id=uuid.uuid4().hex[:12],
+                path=resolved_path,
+                display_name=display_name,
+                uploaded=uploaded,
+            )
             self._sources[source.source_id] = source
             self._persist_locked()
-        return source
+            return source
 
     def get(self, source_id: str) -> SourceState | None:
         with self._lock:
@@ -380,7 +395,7 @@ app = FastAPI(title="Football Tactical Workbench API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -982,7 +997,8 @@ def get_source_video(source_id: str) -> FileResponse:
     if not source_path.exists() or not source_path.is_file():
         raise HTTPException(status_code=404, detail="Source file no longer exists")
 
-    return FileResponse(path=source_path, media_type="video/mp4", filename=source.display_name)
+    media_type = mimetypes.guess_type(str(source_path))[0] or "application/octet-stream"
+    return FileResponse(path=source_path, media_type=media_type, filename=source.display_name)
 
 
 @app.get("/api/runs/{run_id}")

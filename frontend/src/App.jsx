@@ -58,7 +58,7 @@ function readStoredString(key, fallback = '') {
 
 function basenameFromPath(value) {
   if (!value) return '';
-  return String(value).split('/').filter(Boolean).pop() || String(value);
+  return String(value).split(/[\\/]+/).filter(Boolean).pop() || String(value);
 }
 
 function parseSoccerNetGame(raw) {
@@ -527,16 +527,26 @@ export default function App() {
     }
   }
 
-  async function handleLoadSource(overridePath = null) {
+  async function handleLoadSource(overridePathOrEvent = null) {
+    const overridePath = typeof overridePathOrEvent === 'string' ? overridePathOrEvent : null;
+    const localVideoPath = String(overridePath ?? form.localVideoPath ?? '').trim();
+    const useSelectedFile = !overridePath && selectedFile && !localVideoPath;
+
+    if (!useSelectedFile && !localVideoPath) {
+      setSourceError('Choose a video file or enter a local path first.');
+      return;
+    }
+
     setSourceError('');
     setIsLoadingSource(true);
     setLivePreviewUrl('');
     try {
       const payload = new FormData();
-      if (!overridePath && selectedFile) {
+      if (useSelectedFile) {
         payload.append('video_file', selectedFile);
+      } else {
+        payload.append('local_video_path', localVideoPath);
       }
-      payload.append('local_video_path', overridePath ?? form.localVideoPath);
 
       const response = await fetch(`${API_BASE}/api/source`, {
         method: 'POST',
@@ -598,6 +608,7 @@ export default function App() {
 
       const activeJob = data.find((item) => item?.status === 'running' || item?.status === 'queued') || null;
       if (activeJob) {
+        setActiveExperiment(null);
         setJob((current) => {
           if (current?.job_id === activeJob.job_id && (current?.status === 'running' || current?.status === 'queued')) {
             return current;
@@ -729,13 +740,21 @@ export default function App() {
     setIsSubmitting(true);
     setLivePreviewUrl('');
 
+    const localVideoPath = String(form.localVideoPath || '').trim();
+    const useSelectedFile = !source?.source_id && selectedFile && !localVideoPath;
+    if (!source?.source_id && !useSelectedFile && !localVideoPath) {
+      setJobError('Load an input clip or pick a file/path first.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload = new FormData();
     if (source?.source_id) {
       payload.append('source_id', source.source_id);
-    } else if (selectedFile) {
+    } else if (useSelectedFile) {
       payload.append('video_file', selectedFile);
     }
-    payload.append('local_video_path', source?.source_id ? '' : form.localVideoPath);
+    payload.append('local_video_path', source?.source_id ? '' : localVideoPath);
     payload.append('label_path', form.labelPath);
     payload.append('detector_model', form.detectorModel);
     payload.append('tracker_mode', form.trackerMode);
@@ -775,10 +794,15 @@ export default function App() {
       try {
         const response = await fetch(`${API_BASE}/api/jobs/${jobId}`);
         const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Could not poll analysis job');
+        }
         setJob(data);
         if (data.status === 'completed' || data.status === 'failed') {
           clearPolling();
-          if (data.status === 'completed' && data.summary) {
+          if (data.status === 'completed' && data.run_id) {
+            await handleLoadRun(data.run_id);
+          } else if (data.status === 'completed' && data.summary) {
             setSelectedRun(data);
             setWorkspaceMode('review');
             setReviewPanel('overview');
@@ -839,6 +863,7 @@ export default function App() {
                 accept="video/*"
                 onChange={(event) => {
                   resetLoadedSource();
+                  updateForm('localVideoPath', '');
                   setSelectedFile(event.target.files?.[0] || null);
                 }}
               />
@@ -851,6 +876,7 @@ export default function App() {
                 value={form.localVideoPath}
                 onChange={(event) => {
                   resetLoadedSource();
+                  setSelectedFile(null);
                   updateForm('localVideoPath', event.target.value);
                 }}
                 placeholder="/Users/you/path/to/video.mp4"
@@ -928,7 +954,7 @@ export default function App() {
               Field calibration is automatic now. The backend refreshes the pitch transform every 10 frames from pitch keypoints, so there is no manual homography step in the UI.
             </div>
 
-            <button className="secondary-button" onClick={handleLoadSource} type="button">
+            <button className="secondary-button" onClick={() => handleLoadSource()} type="button">
               {isLoadingSource ? 'Loading input clip...' : source ? 'Reload input clip' : 'Load input clip'}
             </button>
             {sourceError ? <div className="error-box">{sourceError}</div> : null}
@@ -1104,6 +1130,7 @@ export default function App() {
                       className="path-chip"
                       onClick={async () => {
                         resetLoadedSource();
+                        setSelectedFile(null);
                         updateForm('localVideoPath', video.path);
                         await handleLoadSource(video.path);
                       }}
@@ -1165,7 +1192,7 @@ export default function App() {
                     <video ref={sourceVideoRef} controls src={`${API_BASE}${source.video_url}`} className="video-player" />
                   </div>
                   <div className="workspace-actions">
-                    <button className="secondary-button compact-button" type="button" onClick={handleLoadSource}>
+                    <button className="secondary-button compact-button" type="button" onClick={() => handleLoadSource()}>
                       {isLoadingSource ? 'Loading input clip...' : 'Reload input clip'}
                     </button>
                     <button className="secondary-button compact-button" type="button" onClick={handleStartLivePreview}>

@@ -211,6 +211,7 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "goal_aligned_experiment": bool(goal_events_count > 0),
             "has_experiments": bool(experiments),
         },
+        "heuristic_diagnostics": heuristic_diagnostics[:5],
         "experiments": experiments,
         "top_tracks": top_tracks[:8],
     }
