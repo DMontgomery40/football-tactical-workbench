@@ -21,9 +21,9 @@ from app.ai_diagnostics import generate_run_diagnostics
 from app.reid_tracker import (
     BALL_TRACKER_NAME,
     DEFAULT_PLAYER_TRACKER_MODE,
-    HybridReIDTracker,
     LEGACY_PLAYER_TRACKER_MODE,
     PLAYER_TRACKER_MODE_OPTIONS,
+    SparseAppearanceEmbedder,
     build_stitched_track_map,
     normalize_player_tracker_mode,
     tracker_mode_label,
@@ -322,6 +322,63 @@ def apply_player_track_id_map(
                 player_row["track_id"] = int(stitched_track_map.get(track_id, track_id))
     for index, track_id in enumerate(jersey_sample_track_ids):
         jersey_sample_track_ids[index] = int(stitched_track_map.get(track_id, track_id))
+
+
+def export_player_tracklets_from_rows(rows_by_track: dict[int, list[dict[str, Any]]]) -> dict[int, dict[str, Any]]:
+    tracklets: dict[int, dict[str, Any]] = {}
+    for track_id, rows in rows_by_track.items():
+        if not rows:
+            continue
+        sorted_rows = sorted(rows, key=lambda row: int(row["frame_index"]))
+        confidences = [float(row["confidence"]) for row in sorted_rows]
+        bbox_areas = [
+            float((row["bbox"][2] - row["bbox"][0]) * (row["bbox"][3] - row["bbox"][1]))
+            for row in sorted_rows
+        ]
+        identity_features = [
+            np.asarray(row["identity_feature"], dtype=np.float32)
+            for row in sorted_rows
+            if row.get("identity_feature") is not None
+        ]
+        mean_feature = None
+        if identity_features:
+            mean_feature = np.mean(np.stack(identity_features, axis=0), axis=0).astype(np.float32)
+            norm = float(np.linalg.norm(mean_feature))
+            if norm > 1e-8:
+                mean_feature = mean_feature / norm
+            else:
+                mean_feature = None
+        tracklets[int(track_id)] = {
+            "track_id": int(track_id),
+            "first_frame": int(sorted_rows[0]["frame_index"]),
+            "last_frame": int(sorted_rows[-1]["frame_index"]),
+            "first_anchor": tuple(sorted_rows[0]["anchor"]),
+            "last_anchor": tuple(sorted_rows[-1]["anchor"]),
+            "first_field_point": sorted_rows[0].get("field_point"),
+            "last_field_point": sorted_rows[-1].get("field_point"),
+            "average_confidence": float(np.mean(confidences)) if confidences else 0.0,
+            "average_bbox_area": float(np.mean(bbox_areas)) if bbox_areas else 0.0,
+            "observation_count": len(sorted_rows),
+            "mean_feature": mean_feature,
+        }
+    return tracklets
+
+
+def group_rows_by_canonical_track(
+    rows_by_track: dict[int, list[dict[str, Any]]],
+    stitched_track_map: dict[int, int],
+) -> dict[int, list[dict[str, Any]]]:
+    if not stitched_track_map:
+        return rows_by_track
+
+    grouped: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for raw_track_id, rows in rows_by_track.items():
+        canonical_track_id = int(stitched_track_map.get(raw_track_id, raw_track_id))
+        grouped[canonical_track_id].extend(rows)
+
+    for rows in grouped.values():
+        rows.sort(key=lambda row: int(row["frame_index"]))
+    return grouped
 
 
 def clamp_box(box: np.ndarray, frame_width: int, frame_height: int) -> tuple[int, int, int, int]:
@@ -1141,46 +1198,13 @@ def detect_players_for_frame(
     field_homography: np.ndarray | None,
     frame_index: int,
     tracker_mode: str,
-    player_tracker: HybridReIDTracker | None,
+    appearance_embedder: SparseAppearanceEmbedder | None,
 ) -> list[dict[str, Any]]:
     detections: list[dict[str, Any]] = []
-
-    if tracker_mode == LEGACY_PLAYER_TRACKER_MODE:
-        player_results = player_model.track(
-            source=frame,
-            persist=True,
-            tracker=DEFAULT_TRACKER,
-            conf=player_conf,
-            iou=iou,
-            device=detector_device,
-            classes=[detector_spec["player_class_id"]],
-            verbose=False,
-        )
-        player_boxes = player_results[0].boxes
-        if player_boxes is None or len(player_boxes) == 0:
-            return detections
-        xyxy = player_boxes.xyxy.cpu().numpy()
-        confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
-        track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
-        for index, box in enumerate(xyxy):
-            x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
-            anchor = (float((x1 + x2) / 2.0), float(y2))
-            detections.append(
-                {
-                    "track_id": int(track_ids[index]),
-                    "confidence": float(confidences[index]),
-                    "bbox": (x1, y1, x2, y2),
-                    "anchor": anchor,
-                    "field_point": project_point(anchor, field_homography),
-                }
-            )
-        return detections
-
-    if player_tracker is None:
-        raise RuntimeError("Hybrid player tracker was requested without an initialized tracker instance.")
-
-    player_results = player_model(
+    player_results = player_model.track(
         source=frame,
+        persist=True,
+        tracker=DEFAULT_TRACKER,
         conf=player_conf,
         iou=iou,
         device=detector_device,
@@ -1193,22 +1217,31 @@ def detect_players_for_frame(
 
     xyxy = player_boxes.xyxy.cpu().numpy()
     confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
+    track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
+    bboxes: list[tuple[int, int, int, int]] = []
+    anchors: list[tuple[float, float]] = []
     for index, box in enumerate(xyxy):
         x1, y1, x2, y2 = clamp_box(box, frame_width, frame_height)
         anchor = (float((x1 + x2) / 2.0), float(y2))
+        bboxes.append((x1, y1, x2, y2))
+        anchors.append(anchor)
+
+    identity_features = (
+        appearance_embedder.encode(frame, bboxes, frame_index)
+        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE and appearance_embedder is not None
+        else [None] * len(bboxes)
+    )
+    for index, bbox in enumerate(bboxes):
         detections.append(
             {
-                "track_id": -1,
+                "track_id": int(track_ids[index]),
                 "confidence": float(confidences[index]),
-                "bbox": (x1, y1, x2, y2),
-                "anchor": anchor,
-                "field_point": project_point(anchor, field_homography),
+                "bbox": bbox,
+                "anchor": anchors[index],
+                "field_point": project_point(anchors[index], field_homography),
+                "identity_feature": identity_features[index],
             }
         )
-
-    track_ids = player_tracker.update(frame=frame, detections=detections, frame_index=frame_index)
-    for detection, track_id in zip(detections, track_ids):
-        detection["track_id"] = int(track_id)
     return detections
 
 
@@ -1238,17 +1271,8 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     style = build_overlay_style(frame_width, frame_height)
     minimap_width = style["minimap_width"]
     minimap_height = style["minimap_height"]
-    player_tracker = (
-        HybridReIDTracker(
-            fps=fps,
-            frame_size=(frame_width, frame_height),
-            detection_confidence_floor=player_conf,
-            device=detector_device,
-        )
-        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
-        else None
-    )
-    tracker_runtime = player_tracker.describe_backend() if player_tracker is not None else {}
+    appearance_embedder = SparseAppearanceEmbedder(device=detector_device) if tracker_mode != LEGACY_PLAYER_TRACKER_MODE else None
+    tracker_runtime = appearance_embedder.describe() if appearance_embedder is not None else {}
     tracker_status_label = tracker_mode_label(tracker_mode)
     field_homography: np.ndarray | None = None
     latest_field_keypoints: np.ndarray | None = None
@@ -1292,7 +1316,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 field_homography=field_homography,
                 frame_index=frame_index,
                 tracker_mode=tracker_mode,
-                player_tracker=player_tracker,
+                appearance_embedder=appearance_embedder,
             )
             for detection in player_detections:
                 x1, y1, x2, y2 = detection["bbox"]
@@ -1423,7 +1447,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 style["text_thickness"],
                 cv2.LINE_AA,
             )
-            if player_tracker is not None:
+            if appearance_embedder is not None:
                 cv2.putText(
                     annotated,
                     f"id source {tracker_runtime.get('embedding_source', 'hsv_hist_only')}",
@@ -1519,24 +1543,15 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     job_manager.log(job_id, f"Loading field calibration weights: {KEYPOINT_MODEL_DEFAULT}")
     keypoint_model = YOLO(keypoint_model_path)
     player_model = YOLO(detector_path)
-    player_tracker = (
-        HybridReIDTracker(
-            fps=fps,
-            frame_size=(frame_width, frame_height),
-            detection_confidence_floor=player_conf,
-            device=detector_device,
-        )
-        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
-        else None
-    )
-    tracker_backend = player_tracker.describe_backend() if player_tracker is not None else {
+    appearance_embedder = SparseAppearanceEmbedder(device=detector_device) if tracker_mode != LEGACY_PLAYER_TRACKER_MODE else None
+    tracker_backend = appearance_embedder.describe() if appearance_embedder is not None else {
         "embedding_source": "none",
         "embedding_error": None,
         "deep_feature_updates": 0,
         "deep_feature_interval": 0,
     }
     job_manager.log(job_id, f"Player tracker mode: {tracker_mode_label(tracker_mode)}")
-    if player_tracker is not None:
+    if appearance_embedder is not None:
         job_manager.log(job_id, f"Identity embedding source: {tracker_backend['embedding_source']}")
         if tracker_backend.get("embedding_error"):
             job_manager.log(job_id, f"Identity embedding fallback active: {tracker_backend['embedding_error']}")
@@ -1601,7 +1616,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             field_homography=active_field_homography,
             frame_index=frame_index,
             tracker_mode=tracker_mode,
-            player_tracker=player_tracker,
+            appearance_embedder=appearance_embedder,
         )
         for detection in player_detections:
             x1, y1, x2, y2 = detection["bbox"]
@@ -1622,6 +1637,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "bbox": (x1, y1, x2, y2),
                 "anchor": detection["anchor"],
                 "feature": color_feature,
+                "identity_feature": detection.get("identity_feature"),
                 "team_label": "unassigned",
                 "team_vote_ratio": 0.0,
                 "field_point": detection["field_point"],
@@ -1704,8 +1720,9 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     if frame_index == 0:
         raise RuntimeError("No frames were decoded from the source video.")
 
+    raw_player_rows_by_track = player_rows_by_track
     raw_unique_player_track_ids = len(raw_player_track_ids_seen)
-    raw_longest_track_length, raw_average_track_length = compute_track_length_stats(player_rows_by_track)
+    raw_longest_track_length, raw_average_track_length = compute_track_length_stats(raw_player_rows_by_track)
     stitched_track_map: dict[int, int] = {}
     stitch_stats = {
         "merge_count": 0,
@@ -1713,25 +1730,25 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "stitched_track_count": raw_unique_player_track_ids,
         "max_gap_frames": 0,
     }
-    if player_tracker is not None:
-        stitched_track_map, stitch_stats = build_stitched_track_map(player_tracker.export_tracklets(), fps=fps)
+    if appearance_embedder is not None:
+        stitched_track_map, stitch_stats = build_stitched_track_map(export_player_tracklets_from_rows(raw_player_rows_by_track), fps=fps)
         if stitch_stats["merge_count"] > 0:
-            apply_player_track_id_map(frame_records, jersey_sample_track_ids, stitched_track_map)
             job_manager.log(
                 job_id,
                 f"Stitched {stitch_stats['merge_count']} fragmented player tracklets into {stitch_stats['stitched_track_count']} canonical IDs",
             )
         else:
             job_manager.log(job_id, "No player tracklet merges passed the stitcher gates")
-        tracker_backend = player_tracker.describe_backend()
-    player_rows_by_track, player_track_ids_seen = rebuild_player_rows_by_track(frame_records)
-    longest_track_length, average_track_length = compute_track_length_stats(player_rows_by_track)
+        tracker_backend = appearance_embedder.describe()
+    canonical_player_rows_by_track = group_rows_by_canonical_track(raw_player_rows_by_track, stitched_track_map)
+    player_track_ids_seen = set(canonical_player_rows_by_track.keys())
+    longest_track_length, average_track_length = compute_track_length_stats(canonical_player_rows_by_track)
 
     track_team_info, team_cluster_distance = _compute_online_track_team_info(jersey_samples, jersey_sample_track_ids)
     if track_team_info:
         job_manager.log(job_id, f"Built two team color clusters from {len(jersey_samples)} jersey crops")
     else:
-        for track_id in player_rows_by_track:
+        for track_id in raw_player_rows_by_track:
             track_team_info[track_id] = default_team_info()
         job_manager.log(job_id, "Not enough jersey crops for reliable team clustering; leaving tracks unassigned")
 
@@ -2036,7 +2053,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             ]
         )
 
-        for track_id, rows in sorted(player_rows_by_track.items(), key=lambda item: len(item[1]), reverse=True):
+        for track_id, rows in sorted(raw_player_rows_by_track.items(), key=lambda item: len(item[1]), reverse=True):
             track_length = len(rows)
             track_lengths.append(track_length)
             longest_track_length = max(longest_track_length, track_length)
@@ -2154,7 +2171,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
         cv2.putText(
             annotated,
-            f"tracks {len(player_track_ids_seen)}  raw {raw_unique_player_track_ids}  home {home_tracks}  away {away_tracks}",
+            f"tracks raw {raw_unique_player_track_ids}  stitched {len(player_track_ids_seen)}  home {home_tracks}  away {away_tracks}",
             (text_x, first_line_y + style["line_gap"]),
             cv2.FONT_HERSHEY_SIMPLEX,
             style["small_status_scale"],
@@ -2187,7 +2204,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             style["text_thickness"],
             cv2.LINE_AA,
         )
-        if player_tracker is not None:
+        if appearance_embedder is not None:
             cv2.putText(
                 annotated,
                 f"id source {tracker_backend.get('embedding_source', 'hsv_hist_only')} · merges {stitch_stats['merge_count']}",
@@ -2246,7 +2263,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     ]
     average_team_vote_ratio = float(np.mean(assigned_vote_ratios)) if assigned_vote_ratios else 0.0
 
-    if player_tracker is not None:
+    if appearance_embedder is not None:
         diagnostics.append(
             {
                 "level": "good" if stitch_stats["merge_count"] > 0 else "warn",

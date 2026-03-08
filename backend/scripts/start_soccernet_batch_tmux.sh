@@ -23,6 +23,7 @@ SPLIT="${1:-train}"
 LIMIT="${2:-20}"
 OFFSET="${3:-0}"
 FILES="${4:-1_224p.mkv 2_224p.mkv Labels-v2.json}"
+TRACKER_MODES="${5:-hybrid_reid}"
 
 STAMP="$(date +%Y%m%d_%H%M%S)"
 SESSION_NAME="sn_${SPLIT}_${LIMIT}_${STAMP}"
@@ -34,8 +35,9 @@ echo "[batch] root: $ROOT_DIR"
 echo "[batch] session: $SESSION_NAME"
 echo "[batch] batch: $BATCH_NAME"
 echo "[batch] log dir: $LOG_DIR"
+echo "[batch] tracker modes: $TRACKER_MODES"
 
 tmux new-session -d -s "$SESSION_NAME" \
-  "cd \"$BACKEND_DIR\" && source .venv/bin/activate && SOCCERNET_PASSWORD=\"$SOCCERNET_PASSWORD\" python scripts/soccernet_batch_experiment.py --split \"$SPLIT\" --offset \"$OFFSET\" --limit \"$LIMIT\" --batch-name \"$BATCH_NAME\" --files $FILES 2>&1 | tee \"$LOG_DIR/tmux_stdout.log\""
+  "cd \"$BACKEND_DIR\" && source .venv/bin/activate && SOCCERNET_PASSWORD=\"$SOCCERNET_PASSWORD\" python scripts/soccernet_batch_experiment.py --split \"$SPLIT\" --offset \"$OFFSET\" --limit \"$LIMIT\" --batch-name \"$BATCH_NAME\" --files $FILES --tracker-modes $TRACKER_MODES 2>&1 | tee \"$LOG_DIR/tmux_stdout.log\""
 
 echo "[batch] started tmux session $SESSION_NAME"

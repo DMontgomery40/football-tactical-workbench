@@ -139,9 +139,9 @@ To stop a backend started through `run_all.sh`:
 - `backend/app/ai_diagnostics.py`
   Provider selection, prompt construction, OpenAI-compatible/Anthropic calls, and diagnostics artifact writing.
 - `backend/scripts/soccernet_batch_experiment.py`
-  Batch SoccerNet downloader plus repeated analysis runner.
+  Batch SoccerNet downloader plus repeated analysis runner, with optional tracker-mode A/B comparison output.
 - `backend/scripts/start_soccernet_batch_tmux.sh`
-  Convenience launcher for long SoccerNet batch experiments in `tmux`.
+  Convenience launcher for long SoccerNet batch experiments in `tmux`, including optional tracker-mode selection.
 - `frontend/src/App.jsx`
   Single-page application for clip loading, live preview, active jobs, run review, folder scan, and SoccerNet browsing.
 - `frontend/src/styles.css`

@@ -119,6 +119,7 @@ When changing the pipeline:
 
 - Run at least one real clip through `/api/live-preview`
 - Run at least one real clip through `/api/analyze`
+- If the change affects player identity, run at least one tracker A/B comparison between `hybrid_reid` and `bytetrack`
 - Prefer clips in `backend/datasets/bundesliga_sample/` for quick validation
 
 ## Performance expectations
