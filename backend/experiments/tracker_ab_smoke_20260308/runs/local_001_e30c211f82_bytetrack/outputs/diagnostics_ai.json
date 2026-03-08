@@ -1,0 +1,77 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T17:52:45.219072Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player tracking and team assignment are mostly stable, but ball coverage is sparse and field calibration drops before the clip ends.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player tracking and team assignment are mostly stable, but ball coverage is sparse and field calibration drops before the clip ends.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Player tracks hold up\",\"message\":\"2551 player rows over 300 frames gives 8.50 player detections per frame. Tracking churn is 0.08 with 24 unique player track IDs, and the average track length is 106.21 frames with a longest track of 200 frames.\",\"next_step\":\"Use player trajectories as the primary output for this clip and review any downstream logic that expects closer to full 22-player visibility.\",\"evidence_keys\":[\"player_rows\",\"average_player_detections_per_frame\",\"player_track_churn_ratio\",\"unique_player_track_ids\",\"average_track_length\",\"longest_track_length\"]},{\"level\":\"warn\",\"title\":\"Ball tracking is thin\",\"message\":\"Ball coverage is 211 rows across 300 frames, or 0.70 detections per frame. There are 12 unique ball track IDs and only 165 projected ball points, which indicates fragmented ball continuity compared with player tracking.\",\"next_step\":\"Inspect ball-miss segments in the source clip and rerun with ball-focused QA before using this run for possession, pass, or shot sequence analysis.\",\"evidence_keys\":[\"ball_rows\",\"average_ball_detections_per_frame\",\"unique_ball_track_ids\",\"projected_ball_points\"]},{\"level\":\"good\",\"title\":\"Team labels are assigned\",\"message\":\"All 24 player tracks were assigned to a team with 13 home, 11 away, and 0 unassigned tracks. Team clustering used 2488 jersey crops, and top tracks show vote ratios from 0.8063 up to 1.0, so labels are present across the main long tracks.\",\"next_step\":\"Spot-check the lower-consensus tracks, especially those near 0.81 to 0.85 vote ratio, before using team-split aggregates.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"jersey_crops_used\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Calibration ends early\",\"message\":\"Field registration ratio is 0.8761, with 2235 projected player points and 165 projected ball points. Refresh success rate is 26/30 = 0.8667, but the last good calibration frame is 250 in a 300-frame clip, so the final 50 frames likely have weaker or missing pitch mapping.\",\"next_step\":\"Trim or separately review frames 251-300 before relying on end-of-clip field positions.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"projected_ball_points\",\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"last_good_calibration_frame\",\"frames_processed\"]},{\"level\":\"warn\",\"title\":\"Experiment is not goal-aligned\",\"message\":\"The only experiment is geometric volatility, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal metrics are all 0.0, so this run does not test whether the signal separates goal buildup from baseline in this clip.\",\"next_step\":\"Do not use the volatility experiment for goal-related decisions on this run; evaluate it on clips with annotated goals.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\",\"has_experiments\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Player tracks hold up",
+      "message": "2551 player rows over 300 frames gives 8.50 player detections per frame. Tracking churn is 0.08 with 24 unique player track IDs, and the average track length is 106.21 frames with a longest track of 200 frames.",
+      "next_step": "Use player trajectories as the primary output for this clip and review any downstream logic that expects closer to full 22-player visibility.",
+      "evidence_keys": [
+        "player_rows",
+        "average_player_detections_per_frame",
+        "player_track_churn_ratio",
+        "unique_player_track_ids",
+        "average_track_length",
+        "longest_track_length"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball tracking is thin",
+      "message": "Ball coverage is 211 rows across 300 frames, or 0.70 detections per frame. There are 12 unique ball track IDs and only 165 projected ball points, which indicates fragmented ball continuity compared with player tracking.",
+      "next_step": "Inspect ball-miss segments in the source clip and rerun with ball-focused QA before using this run for possession, pass, or shot sequence analysis.",
+      "evidence_keys": [
+        "ball_rows",
+        "average_ball_detections_per_frame",
+        "unique_ball_track_ids",
+        "projected_ball_points"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Team labels are assigned",
+      "message": "All 24 player tracks were assigned to a team with 13 home, 11 away, and 0 unassigned tracks. Team clustering used 2488 jersey crops, and top tracks show vote ratios from 0.8063 up to 1.0, so labels are present across the main long tracks.",
+      "next_step": "Spot-check the lower-consensus tracks, especially those near 0.81 to 0.85 vote ratio, before using team-split aggregates.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "jersey_crops_used",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration ends early",
+      "message": "Field registration ratio is 0.8761, with 2235 projected player points and 165 projected ball points. Refresh success rate is 26/30 = 0.8667, but the last good calibration frame is 250 in a 300-frame clip, so the final 50 frames likely have weaker or missing pitch mapping.",
+      "next_step": "Trim or separately review frames 251-300 before relying on end-of-clip field positions.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "projected_ball_points",
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "last_good_calibration_frame",
+        "frames_processed"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment is not goal-aligned",
+      "message": "The only experiment is geometric volatility, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal metrics are all 0.0, so this run does not test whether the signal separates goal buildup from baseline in this clip.",
+      "next_step": "Do not use the volatility experiment for goal-related decisions on this run; evaluate it on clips with annotated goals.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count",
+        "has_experiments"
+      ]
+    }
+  ]
+}

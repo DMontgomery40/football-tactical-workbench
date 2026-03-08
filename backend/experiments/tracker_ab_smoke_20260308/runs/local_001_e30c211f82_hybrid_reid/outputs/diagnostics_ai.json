@@ -1,0 +1,75 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T17:53:17.433419Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Tracking and field registration are partial: 63 player IDs over 300 frames with 0.8769 field registration ratio, but player count per frame is low and track churn remains elevated.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Tracking and field registration are partial: 63 player IDs over 300 frames with 0.8769 field registration ratio, but player count per frame is low and track churn remains elevated.\",\"diagnostics\":[{\"level\":\"warn\",\"title\":\"Player coverage low\",\"message\":\"Average player detections are 8.77 per frame across 300 frames, which is below a full on-pitch set. The run produced 2,631 player rows and 63 unique player track IDs, indicating many short or intermittent tracks rather than stable full-scene coverage.\",\"next_step\":\"Review camera crop and detector thresholds on this clip; rerun with a wider field of view or lower player detection threshold if available.\",\"evidence_keys\":[\"average_player_detections_per_frame\",\"player_rows\",\"unique_player_track_ids\"]},{\"level\":\"warn\",\"title\":\"Track fragmentation persists\",\"message\":\"Player track churn ratio is 0.21 with 63 final player IDs and 66 raw IDs. Only 3 merges were applied, reducing IDs by 4.5455%, and average track length is 41.7619 frames while the longest track is 130 frames in a 300-frame clip.\",\"next_step\":\"Inspect ID switches around occlusions and camera motion, then rerun with tracker settings tuned for longer association windows or stronger re-id matching.\",\"evidence_keys\":[\"player_track_churn_ratio\",\"unique_player_track_ids\",\"raw_unique_player_track_ids\",\"tracklet_merges_applied\",\"stitched_track_id_reduction\",\"average_track_length\",\"longest_track_length\"]},{\"level\":\"good\",\"title\":\"Field registration mostly available\",\"message\":\"Field registration succeeded on 2,307 projected player points with a field_registered_ratio of 0.8769. Calibration refresh succeeded 26 times out of 30 attempts (0.866667), with 6.5333 visible pitch keypoints on average.\",\"next_step\":\"Use projected coordinates for phases up to frame 250, but spot-check the final segment where calibration no longer reports a later good frame.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\",\"last_good_calibration_frame\"]},{\"level\":\"warn\",\"title\":\"Ball continuity is sparse\",\"message\":\"Ball detections average 0.7033 per frame, yielding 211 ball rows and only 165 projected ball points. The run created 12 unique ball track IDs over 300 frames, which points to interrupted ball tracking.\",\"next_step\":\"Check frames with fast ball motion or motion blur and rerun with ball-specific threshold or interpolation settings if available.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"projected_ball_points\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Experiment not goal-aligned\",\"message\":\"The only experiment is marked experimental and goal_aligned_experiment is false. This clip has 0 goal events, so the reported 30s pre-goal index, baseline index, and uplift are all 0.0. Average volatility is also 0.0, leaving little signal for event-linked interpretation.\",\"next_step\":\"Do not use this experiment for goal-related review on this clip; run it on footage with annotated goals or inspect the raw per-second series before drawing conclusions.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "Player coverage low",
+      "message": "Average player detections are 8.77 per frame across 300 frames, which is below a full on-pitch set. The run produced 2,631 player rows and 63 unique player track IDs, indicating many short or intermittent tracks rather than stable full-scene coverage.",
+      "next_step": "Review camera crop and detector thresholds on this clip; rerun with a wider field of view or lower player detection threshold if available.",
+      "evidence_keys": [
+        "average_player_detections_per_frame",
+        "player_rows",
+        "unique_player_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Track fragmentation persists",
+      "message": "Player track churn ratio is 0.21 with 63 final player IDs and 66 raw IDs. Only 3 merges were applied, reducing IDs by 4.5455%, and average track length is 41.7619 frames while the longest track is 130 frames in a 300-frame clip.",
+      "next_step": "Inspect ID switches around occlusions and camera motion, then rerun with tracker settings tuned for longer association windows or stronger re-id matching.",
+      "evidence_keys": [
+        "player_track_churn_ratio",
+        "unique_player_track_ids",
+        "raw_unique_player_track_ids",
+        "tracklet_merges_applied",
+        "stitched_track_id_reduction",
+        "average_track_length",
+        "longest_track_length"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Field registration mostly available",
+      "message": "Field registration succeeded on 2,307 projected player points with a field_registered_ratio of 0.8769. Calibration refresh succeeded 26 times out of 30 attempts (0.866667), with 6.5333 visible pitch keypoints on average.",
+      "next_step": "Use projected coordinates for phases up to frame 250, but spot-check the final segment where calibration no longer reports a later good frame.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints",
+        "last_good_calibration_frame"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball continuity is sparse",
+      "message": "Ball detections average 0.7033 per frame, yielding 211 ball rows and only 165 projected ball points. The run created 12 unique ball track IDs over 300 frames, which points to interrupted ball tracking.",
+      "next_step": "Check frames with fast ball motion or motion blur and rerun with ball-specific threshold or interpolation settings if available.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "projected_ball_points",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment not goal-aligned",
+      "message": "The only experiment is marked experimental and goal_aligned_experiment is false. This clip has 0 goal events, so the reported 30s pre-goal index, baseline index, and uplift are all 0.0. Average volatility is also 0.0, leaving little signal for event-linked interpretation.",
+      "next_step": "Do not use this experiment for goal-related review on this clip; run it on footage with annotated goals or inspect the raw per-second series before drawing conclusions.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count"
+      ]
+    }
+  ]
+}

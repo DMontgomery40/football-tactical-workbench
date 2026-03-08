@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import TrainingStudio from './TrainingStudio';
+
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
 function isLoopbackHost(hostname) {
@@ -49,6 +51,7 @@ const defaultForm = {
 const DEFAULT_SOCCERNET_FILES = ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
 
 const STORAGE_KEYS = {
+  appSpace: 'fpw.appSpace',
   themeMode: 'fpw.themeMode',
   form: 'fpw.form',
   soccerNetSplit: 'fpw.soccerNetSplit',
@@ -240,6 +243,10 @@ function FileLinks({ summary }) {
 }
 
 export default function App() {
+  const [appSpace, setAppSpace] = useState(() => {
+    const stored = readStoredString(STORAGE_KEYS.appSpace, 'analysis');
+    return stored === 'training' ? 'training' : 'analysis';
+  });
   const [themeMode, setThemeMode] = useState(() => readStoredString(STORAGE_KEYS.themeMode, 'light'));
   const [config, setConfig] = useState({ player_models: [], ball_models: [], learn_cards: [] });
   const [soccerNetConfig, setSoccerNetConfig] = useState({ dataset_dir: '', splits: [], split_counts: {}, video_files: [], label_files: [], notes: [] });
@@ -374,6 +381,12 @@ export default function App() {
 
   useEffect(() => {
     try {
+      window.localStorage.setItem(STORAGE_KEYS.appSpace, appSpace);
+    } catch {}
+  }, [appSpace]);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(STORAGE_KEYS.form, JSON.stringify(form));
       window.localStorage.setItem(STORAGE_KEYS.localVideoPath, form.localVideoPath || '');
       window.localStorage.setItem(STORAGE_KEYS.folderPath, form.folderPath || '');
@@ -476,6 +489,8 @@ export default function App() {
   );
   const detectorModelOptions = config.detector_models?.length ? config.detector_models : config.player_models || [];
   const playerTrackerModes = config.player_tracker_modes?.length ? config.player_tracker_modes : ['hybrid_reid', 'bytetrack'];
+  const activeDetectorLabel = config.active_detector_label || config.active_detector || 'soccana';
+  const activeDetectorIsCustom = Boolean(config.active_detector_is_custom && config.active_detector !== 'soccana');
   const visibleSoccerNetGames = useMemo(
     () => soccerNetGames.slice(0, soccerNetResultLimit),
     [soccerNetGames, soccerNetResultLimit],
@@ -514,6 +529,21 @@ export default function App() {
 
   function updateForm(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleTrainingActiveDetectorChange(nextActiveDetector) {
+    const nextId = typeof nextActiveDetector === 'string'
+      ? nextActiveDetector
+      : nextActiveDetector?.id || nextActiveDetector?.active_detector || 'soccana';
+    const nextLabel = typeof nextActiveDetector === 'object'
+      ? nextActiveDetector?.label || nextActiveDetector?.active_detector_label || nextId
+      : nextId;
+    setConfig((current) => ({
+      ...current,
+      active_detector: nextId,
+      active_detector_label: nextLabel,
+      active_detector_is_custom: nextId !== 'soccana',
+    }));
   }
 
   async function scanFolderPath(folderPath) {
@@ -1001,6 +1031,31 @@ export default function App() {
         </div>
       </header>
 
+      <section className="card app-switcher" aria-label="App workspace switcher">
+        <button
+          type="button"
+          className={`switcher-tab ${appSpace === 'analysis' ? 'active-switcher-tab' : ''}`}
+          onClick={() => setAppSpace('analysis')}
+        >
+          Analysis Workspace
+        </button>
+        <button
+          type="button"
+          className={`switcher-tab ${appSpace === 'training' ? 'active-switcher-tab' : ''}`}
+          onClick={() => setAppSpace('training')}
+        >
+          Training Studio
+          {activeDetectorIsCustom ? <span className="switcher-status-badge">custom detector active</span> : null}
+        </button>
+      </section>
+
+      {appSpace === 'training' ? (
+        <TrainingStudio
+          apiBase={API_BASE}
+          activeDetector={config.active_detector || 'soccana'}
+          onActiveDetectorChange={handleTrainingActiveDetectorChange}
+        />
+      ) : (
       <main className={`layout-grid${workspaceMode === 'review' ? ' sidebar-hidden' : ''}`}>
         <aside className="left-sidebar">
           <section className="left-column">
@@ -1055,6 +1110,15 @@ export default function App() {
             <div className="field-note">
               `soccana` is the default detector for players, ball, and referees.
             </div>
+            {activeDetectorIsCustom ? (
+              <div className="active-detector-banner">
+                <div className="micro-label">Active detector override</div>
+                <div className="active-detector-name">{activeDetectorLabel}</div>
+                <div className="field-note">
+                  Live preview and analysis runs will use this activated checkpoint while the selector remains on `soccana`.
+                </div>
+              </div>
+            ) : null}
 
             <label>
               <span>Player tracker</span>
@@ -1655,6 +1719,7 @@ export default function App() {
           ) : null}
         </section>
       </main>
+      )}
     </div>
   );
 }

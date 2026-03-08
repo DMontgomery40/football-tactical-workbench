@@ -1,0 +1,71 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:31:45.850339Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player and field outputs are mostly populated, but tracking fragmentation, low ball continuity, and uneven team assignment limit event-level trust.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player and field outputs are mostly populated, but tracking fragmentation, low ball continuity, and uneven team assignment limit event-level trust.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field registration mostly present\",\"message\":\"Field registration covered 64,077 of 73,425 frames (0.9085 ratio), and the last good calibration reached frame 73,420, so pitch projection stayed available through the end of the clip. Calibration refresh succeeded 4,102 times out of 7,343 attempts (0.5586), which is only moderate and matches the low average of 3.9992 visible pitch keypoints.\",\"next_step\":\"Review calibration failures around refresh attempts and raise visible pitch line coverage or camera-specific keypoint tuning before relying on fine spatial measurements.\",\"evidence_keys\":[\"field_registered_ratio\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\",\"last_good_calibration_frame\"]},{\"level\":\"warn\",\"title\":\"Player tracks are fragmented\",\"message\":\"The run produced 6,591 unique player track IDs from 705,315 player rows, with an average track length of 106.714 frames at 25 fps, about 4.3 seconds. Longest track length reached 1,308 frames, but the churn ratio is 0.089765, indicating many short-lived IDs relative to total detections.\",\"next_step\":\"Inspect tracker settings on identity persistence and re-identification, then rerun a short segment to reduce ID resets before using player-level longitudinal stats.\",\"evidence_keys\":[\"unique_player_track_ids\",\"player_rows\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\"]},{\"level\":\"warn\",\"title\":\"Ball continuity is sparse\",\"message\":\"Ball detections averaged 0.488 per frame, with 35,829 ball rows across 73,425 frames and 1,340 unique ball track IDs. That combination points to intermittent ball visibility and frequent ball track turnover, which weakens possession or pass-sequence analysis.\",\"next_step\":\"Spot-check ball detection on fast-play and occlusion segments, then adjust ball detector thresholds or interpolation policy before using ball-driven event metrics.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"unique_ball_track_ids\",\"frames_processed\"]},{\"level\":\"warn\",\"title\":\"Team split is lopsided\",\"message\":\"Home tracks count is 4,614 versus 1,884 away tracks, a 2.45x difference, despite 0 unassigned tracks. Team cluster distance is 0.3781, which is not high enough to explain that imbalance by itself. Top-track votes are also mixed, with some long tracks only at 0.6653 and 0.6891 team vote ratio.\",\"next_step\":\"Audit jersey clustering on a few representative frames and retune team-color separation before using team-level counts or shape comparisons.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Goal experiment has thin evidence\",\"message\":\"The goal-aligned experiment is present, but it is based on only 1 goal event. Geometric volatility shows 30s pre-goal index 0.5791 versus baseline -0.0537, yet the reported 30s uplift is 0.0, so the signal is internally mixed and not stable enough for decision use from this run alone.\",\"next_step\":\"Do not operationalize the volatility-goal link from this clip; aggregate more goal events across runs and verify the uplift calculation before surfacing it in dashboards.\",\"evidence_keys\":[\"goal_events_count\",\"goal_aligned_experiment\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field registration mostly present",
+      "message": "Field registration covered 64,077 of 73,425 frames (0.9085 ratio), and the last good calibration reached frame 73,420, so pitch projection stayed available through the end of the clip. Calibration refresh succeeded 4,102 times out of 7,343 attempts (0.5586), which is only moderate and matches the low average of 3.9992 ",
+      "next_step": "Review calibration failures around refresh attempts and raise visible pitch line coverage or camera-specific keypoint tuning before relying on fine spatial measurements.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints",
+        "last_good_calibration_frame"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player tracks are fragmented",
+      "message": "The run produced 6,591 unique player track IDs from 705,315 player rows, with an average track length of 106.714 frames at 25 fps, about 4.3 seconds. Longest track length reached 1,308 frames, but the churn ratio is 0.089765, indicating many short-lived IDs relative to total detections.",
+      "next_step": "Inspect tracker settings on identity persistence and re-identification, then rerun a short segment to reduce ID resets before using player-level longitudinal stats.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "player_rows",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball continuity is sparse",
+      "message": "Ball detections averaged 0.488 per frame, with 35,829 ball rows across 73,425 frames and 1,340 unique ball track IDs. That combination points to intermittent ball visibility and frequent ball track turnover, which weakens possession or pass-sequence analysis.",
+      "next_step": "Spot-check ball detection on fast-play and occlusion segments, then adjust ball detector thresholds or interpolation policy before using ball-driven event metrics.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "unique_ball_track_ids",
+        "frames_processed"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Team split is lopsided",
+      "message": "Home tracks count is 4,614 versus 1,884 away tracks, a 2.45x difference, despite 0 unassigned tracks. Team cluster distance is 0.3781, which is not high enough to explain that imbalance by itself. Top-track votes are also mixed, with some long tracks only at 0.6653 and 0.6891 team vote ratio.",
+      "next_step": "Audit jersey clustering on a few representative frames and retune team-color separation before using team-level counts or shape comparisons.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment has thin evidence",
+      "message": "The goal-aligned experiment is present, but it is based on only 1 goal event. Geometric volatility shows 30s pre-goal index 0.5791 versus baseline -0.0537, yet the reported 30s uplift is 0.0, so the signal is internally mixed and not stable enough for decision use from this run alone.",
+      "next_step": "Do not operationalize the volatility-goal link from this clip; aggregate more goal events across runs and verify the uplift calculation before surfacing it in dashboards.",
+      "evidence_keys": [
+        "goal_events_count",
+        "goal_aligned_experiment"
+      ]
+    }
+  ]
+}

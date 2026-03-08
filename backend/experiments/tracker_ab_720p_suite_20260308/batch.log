@@ -1,0 +1,242 @@
+[2026-03-08 18:10:18] [batch] starting batch tracker_ab_720p_suite_20260308
+[2026-03-08 18:10:18] [batch] tracker_modes=['bytetrack', 'hybrid_reid']
+[2026-03-08 18:10:18] [batch] local_videos=6
+[2026-03-08 18:10:18] [batch] dataset_dir=/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet
+[2026-03-08 18:10:18] [batch] runs_root=/Users/davidmontgomery/football_pose_workbench/backend/experiments/tracker_ab_720p_suite_20260308/runs
+[2026-03-08 18:10:18] [local-001] running chelsea_burnley_h1_10m.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h1_10m.mp4
+[2026-03-08 18:10:18] [local-001] tracker_mode=bytetrack
+[2026-03-08 18:10:18] [local-001-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h1_10m.mp4
+[2026-03-08 18:10:18] [local-001-bytetrack] Detector device chosen: mps
+[2026-03-08 18:10:18] [local-001-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:10:18] [local-001-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:10:18] [local-001-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:10:18] [local-001-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:10:18] [local-001-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:10:20] [local-001-bytetrack] progress=1.00
+[2026-03-08 18:10:21] [local-001-bytetrack] progress=5.17
+[2026-03-08 18:10:22] [local-001-bytetrack] Tracked 25 frames at 6.73 fps
+[2026-03-08 18:10:22] [local-001-bytetrack] progress=10.06
+[2026-03-08 18:10:23] [local-001-bytetrack] Tracked 50 frames at 9.43 fps
+[2026-03-08 18:10:24] [local-001-bytetrack] progress=15.23
+[2026-03-08 18:10:25] [local-001-bytetrack] progress=20.13
+[2026-03-08 18:10:25] [local-001-bytetrack] Tracked 75 frames at 10.65 fps
+[2026-03-08 18:10:26] [local-001-bytetrack] progress=25.02
+[2026-03-08 18:10:27] [local-001-bytetrack] Tracked 100 frames at 11.26 fps
+[2026-03-08 18:10:28] [local-001-bytetrack] progress=30.19
+[2026-03-08 18:10:28] [local-001-bytetrack] Tracked 125 frames at 11.74 fps
+[2026-03-08 18:10:29] [local-001-bytetrack] progress=35.09
+[2026-03-08 18:10:30] [local-001-bytetrack] progress=40.26
+[2026-03-08 18:10:30] [local-001-bytetrack] Tracked 150 frames at 12.06 fps
+[2026-03-08 18:10:31] [local-001-bytetrack] progress=45.15
+[2026-03-08 18:10:32] [local-001-bytetrack] Tracked 175 frames at 12.25 fps
+[2026-03-08 18:10:33] [local-001-bytetrack] progress=50.05
+[2026-03-08 18:10:34] [local-001-bytetrack] Tracked 200 frames at 12.59 fps
+[2026-03-08 18:10:34] [local-001-bytetrack] progress=55.22
+[2026-03-08 18:10:35] [local-001-bytetrack] progress=60.11
+[2026-03-08 18:10:35] [local-001-bytetrack] Tracked 225 frames at 12.93 fps
+[2026-03-08 18:10:36] [local-001-bytetrack] progress=65.01
+[2026-03-08 18:10:37] [local-001-bytetrack] Tracked 250 frames at 13.33 fps
+[2026-03-08 18:10:37] [local-001-bytetrack] Built two team color clusters from 2716 jersey crops
+[2026-03-08 18:10:37] [local-001-bytetrack] Rendering tactical overlay
+[2026-03-08 18:10:37] [local-001-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:10:37] [local-001-bytetrack] progress=70.02
+[2026-03-08 18:10:37] [local-001-bytetrack] progress=75.04
+[2026-03-08 18:10:38] [local-001-bytetrack] progress=80.06
+[2026-03-08 18:10:38] [local-001-bytetrack] progress=85.07
+[2026-03-08 18:10:38] [local-001-bytetrack] progress=90.00
+[2026-03-08 18:10:38] [local-001-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:10:39] [local-001-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:10:39] [local-001-bytetrack] progress=95.00
+[2026-03-08 18:10:39] [local-001-bytetrack] Summary written to summary.json
+[2026-03-08 18:10:39] [local-001] tracker_mode=hybrid_reid
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h1_10m.mp4
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Detector device chosen: mps
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Field calibration device chosen: cpu
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Loading detector weights: soccana
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Player tracker mode: hybrid_reid
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Identity embedding source: torchvision_resnet18_imagenet@mps
+[2026-03-08 18:10:39] [local-001-hybrid_reid] Ball tracking enabled through the shared football detector
+[2026-03-08 18:10:40] [local-001-hybrid_reid] progress=1.00
+[2026-03-08 18:10:41] [local-001-hybrid_reid] progress=5.17
+[2026-03-08 18:10:41] [local-001-hybrid_reid] Tracked 25 frames at 12.54 fps
+[2026-03-08 18:10:42] [local-001-hybrid_reid] progress=10.06
+[2026-03-08 18:10:43] [local-001-hybrid_reid] Tracked 50 frames at 14.30 fps
+[2026-03-08 18:10:43] [local-001-hybrid_reid] progress=15.23
+[2026-03-08 18:10:44] [local-001-hybrid_reid] progress=20.13
+[2026-03-08 18:10:44] [local-001-hybrid_reid] Tracked 75 frames at 14.96 fps
+[2026-03-08 18:10:45] [local-001-hybrid_reid] progress=25.02
+[2026-03-08 18:10:46] [local-001-hybrid_reid] Tracked 100 frames at 15.11 fps
+[2026-03-08 18:10:47] [local-001-hybrid_reid] progress=30.19
+[2026-03-08 18:10:47] [local-001-hybrid_reid] Tracked 125 frames at 15.30 fps
+[2026-03-08 18:10:47] [local-001-hybrid_reid] progress=35.09
+[2026-03-08 18:10:49] [local-001-hybrid_reid] progress=40.26
+[2026-03-08 18:10:49] [local-001-hybrid_reid] Tracked 150 frames at 15.47 fps
+[2026-03-08 18:10:50] [local-001-hybrid_reid] progress=45.15
+[2026-03-08 18:10:50] [local-001-hybrid_reid] Tracked 175 frames at 15.55 fps
+[2026-03-08 18:10:51] [local-001-hybrid_reid] progress=50.05
+[2026-03-08 18:10:52] [local-001-hybrid_reid] Tracked 200 frames at 15.51 fps
+[2026-03-08 18:10:52] [local-001-hybrid_reid] progress=55.22
+[2026-03-08 18:10:53] [local-001-hybrid_reid] progress=60.11
+[2026-03-08 18:10:54] [local-001-hybrid_reid] Tracked 225 frames at 15.65 fps
+[2026-03-08 18:10:54] [local-001-hybrid_reid] progress=65.01
+[2026-03-08 18:10:55] [local-001-hybrid_reid] Tracked 250 frames at 15.83 fps
+[2026-03-08 18:10:55] [local-001-hybrid_reid] Stitched 11 fragmented player tracklets into 23 canonical IDs
+[2026-03-08 18:10:55] [local-001-hybrid_reid] Built two team color clusters from 2716 jersey crops
+[2026-03-08 18:10:55] [local-001-hybrid_reid] Rendering tactical overlay
+[2026-03-08 18:10:55] [local-001-hybrid_reid] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:10:55] [local-001-hybrid_reid] progress=70.02
+[2026-03-08 18:10:56] [local-001-hybrid_reid] progress=75.04
+[2026-03-08 18:10:56] [local-001-hybrid_reid] progress=80.06
+[2026-03-08 18:10:56] [local-001-hybrid_reid] progress=85.07
+[2026-03-08 18:10:57] [local-001-hybrid_reid] progress=90.00
+[2026-03-08 18:10:57] [local-001-hybrid_reid] Finalizing browser-ready overlay video
+[2026-03-08 18:10:57] [local-001-hybrid_reid] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:10:57] [local-001-hybrid_reid] progress=95.00
+[2026-03-08 18:10:57] [local-001-hybrid_reid] Summary written to summary.json
+[2026-03-08 18:10:57] [local-002] running chelsea_burnley_h2_20m.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h2_20m.mp4
+[2026-03-08 18:10:57] [local-002] tracker_mode=bytetrack
+[2026-03-08 18:10:57] [local-002-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h2_20m.mp4
+[2026-03-08 18:10:57] [local-002-bytetrack] Detector device chosen: mps
+[2026-03-08 18:10:57] [local-002-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:10:57] [local-002-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:10:57] [local-002-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:10:58] [local-002-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:10:58] [local-002-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:10:58] [local-002-bytetrack] progress=1.00
+[2026-03-08 18:10:59] [local-002-bytetrack] progress=5.17
+[2026-03-08 18:11:00] [local-002-bytetrack] Tracked 25 frames at 10.20 fps
+[2026-03-08 18:11:01] [local-002-bytetrack] progress=10.06
+[2026-03-08 18:11:02] [local-002-bytetrack] Tracked 50 frames at 11.97 fps
+[2026-03-08 18:11:02] [local-002-bytetrack] progress=15.23
+[2026-03-08 18:11:04] [local-002-bytetrack] progress=20.13
+[2026-03-08 18:11:04] [local-002-bytetrack] Tracked 75 frames at 12.47 fps
+[2026-03-08 18:11:05] [local-002-bytetrack] progress=25.02
+[2026-03-08 18:11:05] [local-002-bytetrack] Tracked 100 frames at 13.38 fps
+[2026-03-08 18:11:06] [local-002-bytetrack] progress=30.19
+[2026-03-08 18:11:07] [local-002-bytetrack] Tracked 125 frames at 13.77 fps
+[2026-03-08 18:11:07] [local-002-bytetrack] progress=35.09
+[2026-03-08 18:11:08] [local-002-bytetrack] progress=40.26
+[2026-03-08 18:11:08] [local-002-bytetrack] Tracked 150 frames at 14.31 fps
+[2026-03-08 18:11:09] [local-002-bytetrack] progress=45.15
+[2026-03-08 18:11:10] [local-002-bytetrack] Tracked 175 frames at 14.30 fps
+[2026-03-08 18:11:10] [local-002-bytetrack] progress=50.05
+[2026-03-08 18:11:12] [local-002-bytetrack] Tracked 200 frames at 14.21 fps
+[2026-03-08 18:11:12] [local-002-bytetrack] progress=55.22
+[2026-03-08 18:11:13] [local-002-bytetrack] progress=60.11
+[2026-03-08 18:11:13] [local-002-bytetrack] Tracked 225 frames at 14.20 fps
+[2026-03-08 18:11:14] [local-002-bytetrack] progress=65.01
+[2026-03-08 18:11:15] [local-002-bytetrack] Tracked 250 frames at 14.47 fps
+[2026-03-08 18:11:15] [local-002-bytetrack] Built two team color clusters from 3790 jersey crops
+[2026-03-08 18:11:15] [local-002-bytetrack] Rendering tactical overlay
+[2026-03-08 18:11:15] [local-002-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:11:15] [local-002-bytetrack] progress=70.02
+[2026-03-08 18:11:16] [local-002-bytetrack] progress=75.04
+[2026-03-08 18:11:16] [local-002-bytetrack] progress=80.06
+[2026-03-08 18:11:16] [local-002-bytetrack] progress=85.07
+[2026-03-08 18:11:17] [local-002-bytetrack] progress=90.00
+[2026-03-08 18:11:17] [local-002-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:11:17] [local-002-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:11:17] [local-002-bytetrack] progress=95.00
+[2026-03-08 18:11:17] [local-002-bytetrack] Summary written to summary.json
+[2026-03-08 18:11:17] [local-002] tracker_mode=hybrid_reid
+[2026-03-08 18:11:17] [local-002-hybrid_reid] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h2_20m.mp4
+[2026-03-08 18:11:17] [local-002-hybrid_reid] Detector device chosen: mps
+[2026-03-08 18:11:17] [local-002-hybrid_reid] Field calibration device chosen: cpu
+[2026-03-08 18:11:17] [local-002-hybrid_reid] Loading detector weights: soccana
+[2026-03-08 18:11:17] [local-002-hybrid_reid] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:11:18] [local-002-hybrid_reid] Player tracker mode: hybrid_reid
+[2026-03-08 18:11:18] [local-002-hybrid_reid] Identity embedding source: torchvision_resnet18_imagenet@mps
+[2026-03-08 18:11:18] [local-002-hybrid_reid] Ball tracking enabled through the shared football detector
+[2026-03-08 18:11:18] [local-002-hybrid_reid] progress=1.00
+[2026-03-08 18:11:20] [local-002-hybrid_reid] progress=5.17
+[2026-03-08 18:11:20] [local-002-hybrid_reid] Tracked 25 frames at 11.19 fps
+[2026-03-08 18:11:21] [local-002-hybrid_reid] progress=10.06
+[2026-03-08 18:11:22] [local-002-hybrid_reid] Tracked 50 frames at 13.24 fps
+[2026-03-08 18:11:22] [local-002-hybrid_reid] progress=15.23
+[2026-03-08 18:11:23] [local-002-hybrid_reid] progress=20.13
+[2026-03-08 18:11:23] [local-002-hybrid_reid] Tracked 75 frames at 13.98 fps
+[2026-03-08 18:11:24] [local-002-hybrid_reid] progress=25.02
+[2026-03-08 18:11:25] [local-002-hybrid_reid] Tracked 100 frames at 14.40 fps
+[2026-03-08 18:11:26] [local-002-hybrid_reid] progress=30.19
+[2026-03-08 18:11:26] [local-002-hybrid_reid] Tracked 125 frames at 14.48 fps
+[2026-03-08 18:11:27] [local-002-hybrid_reid] progress=35.09
+[2026-03-08 18:11:28] [local-002-hybrid_reid] progress=40.26
+[2026-03-08 18:11:28] [local-002-hybrid_reid] Tracked 150 frames at 14.71 fps
+[2026-03-08 18:11:29] [local-002-hybrid_reid] progress=45.15
+[2026-03-08 18:11:30] [local-002-hybrid_reid] Tracked 175 frames at 14.74 fps
+[2026-03-08 18:11:30] [local-002-hybrid_reid] progress=50.05
+[2026-03-08 18:11:31] [local-002-hybrid_reid] Tracked 200 frames at 14.89 fps
+[2026-03-08 18:11:32] [local-002-hybrid_reid] progress=55.22
+[2026-03-08 18:11:33] [local-002-hybrid_reid] progress=60.11
+[2026-03-08 18:11:33] [local-002-hybrid_reid] Tracked 225 frames at 14.77 fps
+[2026-03-08 18:11:34] [local-002-hybrid_reid] progress=65.01
+[2026-03-08 18:11:35] [local-002-hybrid_reid] Tracked 250 frames at 14.93 fps
+[2026-03-08 18:11:35] [local-002-hybrid_reid] Stitched 9 fragmented player tracklets into 26 canonical IDs
+[2026-03-08 18:11:35] [local-002-hybrid_reid] Built two team color clusters from 3790 jersey crops
+[2026-03-08 18:11:35] [local-002-hybrid_reid] Rendering tactical overlay
+[2026-03-08 18:11:35] [local-002-hybrid_reid] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:11:35] [local-002-hybrid_reid] progress=70.02
+[2026-03-08 18:11:35] [local-002-hybrid_reid] progress=75.04
+[2026-03-08 18:11:36] [local-002-hybrid_reid] progress=80.06
+[2026-03-08 18:11:36] [local-002-hybrid_reid] progress=85.07
+[2026-03-08 18:11:37] [local-002-hybrid_reid] progress=90.00
+[2026-03-08 18:11:37] [local-002-hybrid_reid] Finalizing browser-ready overlay video
+[2026-03-08 18:11:37] [local-002-hybrid_reid] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:11:37] [local-002-hybrid_reid] progress=95.00
+[2026-03-08 18:11:37] [local-002-hybrid_reid] Summary written to summary.json
+[2026-03-08 18:11:37] [local-003] running palace_arsenal_h1_12m.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/palace_arsenal_h1_12m.mp4
+[2026-03-08 18:11:37] [local-003] tracker_mode=bytetrack
+[2026-03-08 18:11:37] [local-003-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/palace_arsenal_h1_12m.mp4
+[2026-03-08 18:11:37] [local-003-bytetrack] Detector device chosen: mps
+[2026-03-08 18:11:37] [local-003-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:11:37] [local-003-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:11:37] [local-003-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:11:37] [local-003-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:11:37] [local-003-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:11:38] [local-003-bytetrack] progress=1.00
+[2026-03-08 18:11:41] [local-003-bytetrack] progress=5.17
+[2026-03-08 18:11:42] [local-003-bytetrack] Tracked 25 frames at 5.22 fps
+[2026-03-08 18:11:44] [local-003-bytetrack] progress=10.06
+[2026-03-08 18:11:46] [local-003-bytetrack] Tracked 50 frames at 5.63 fps
+[2026-03-08 18:11:47] [local-003-bytetrack] progress=15.23
+[2026-03-08 18:11:48] [local-003-bytetrack] progress=20.13
+[2026-03-08 18:11:48] [local-003-bytetrack] Tracked 75 frames at 6.82 fps
+[2026-03-08 18:11:49] [local-003-bytetrack] progress=25.02
+[2026-03-08 18:11:50] [local-003-bytetrack] Tracked 100 frames at 8.06 fps
+[2026-03-08 18:11:50] [local-003-bytetrack] progress=30.19
+[2026-03-08 18:11:51] [local-003-bytetrack] Tracked 125 frames at 9.05 fps
+[2026-03-08 18:11:51] [local-003-bytetrack] progress=35.09
+[2026-03-08 18:11:53] [local-003-bytetrack] progress=40.26
+[2026-03-08 18:11:53] [local-003-bytetrack] Tracked 150 frames at 9.61 fps
+[2026-03-08 18:11:54] [local-003-bytetrack] progress=45.15
+[2026-03-08 18:11:55] [local-003-bytetrack] Tracked 175 frames at 10.19 fps
+[2026-03-08 18:11:55] [local-003-bytetrack] progress=50.05
+[2026-03-08 18:11:56] [local-003-bytetrack] Tracked 200 frames at 10.74 fps
+[2026-03-08 18:11:56] [local-003-bytetrack] progress=55.22
+[2026-03-08 18:11:57] [local-003-bytetrack] progress=60.11
+[2026-03-08 18:11:58] [local-003-bytetrack] Tracked 225 frames at 11.14 fps
+[2026-03-08 18:11:58] [local-003-bytetrack] progress=65.01
+[2026-03-08 18:11:59] [local-003-bytetrack] Tracked 250 frames at 11.61 fps
+[2026-03-08 18:11:59] [local-003-bytetrack] Built two team color clusters from 1555 jersey crops
+[2026-03-08 18:11:59] [local-003-bytetrack] Rendering tactical overlay
+[2026-03-08 18:11:59] [local-003-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:11:59] [local-003-bytetrack] progress=70.02
+[2026-03-08 18:11:59] [local-003-bytetrack] progress=75.04
+[2026-03-08 18:12:00] [local-003-bytetrack] progress=80.06
+[2026-03-08 18:12:00] [local-003-bytetrack] progress=85.07
+[2026-03-08 18:12:00] [local-003-bytetrack] progress=90.00
+[2026-03-08 18:12:00] [local-003-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:12:01] [local-003-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:12:01] [local-003-bytetrack] progress=95.00
+[2026-03-08 18:12:01] [local-003-bytetrack] Summary written to summary.json
+[2026-03-08 18:12:01] [local-003] tracker_mode=hybrid_reid
+[2026-03-08 18:12:01] [local-003-hybrid_reid] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/palace_arsenal_h1_12m.mp4
+[2026-03-08 18:12:01] [local-003-hybrid_reid] Detector device chosen: mps
+[2026-03-08 18:12:01] [local-003-hybrid_reid] Field calibration device chosen: cpu
+[2026-03-08 18:12:01] [local-003-hybrid_reid] Loading detector weights: soccana
+[2026-03-08 18:12:01] [local-003-hybrid_reid] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:12:02] [local-003-hybrid_reid] Player tracker mode: hybrid_reid
+[2026-03-08 18:12:02] [local-003-hybrid_reid] Identity embedding source: torchvision_resnet18_imagenet@mps
+[2026-03-08 18:12:02] [local-003-hybrid_reid] Ball tracking enabled through the shared football detector
+[2026-03-08 18:12:03] [local-003-hybrid_reid] progress=1.00

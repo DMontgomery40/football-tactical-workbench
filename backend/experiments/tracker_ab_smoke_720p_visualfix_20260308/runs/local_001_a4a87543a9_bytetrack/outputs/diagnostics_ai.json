@@ -1,0 +1,72 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:06:31.406332Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player and field outputs are mostly continuous across 250 frames, but ball coverage is very sparse and the only experiment is not goal-aligned in this clip.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player and field outputs are mostly continuous across 250 frames, but ball coverage is very sparse and the only experiment is not goal-aligned in this clip.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field map stayed available\",\"message\":\"Field registration covered 2708 projected player points with a 0.9952 registered ratio. Calibration refresh succeeded 19 times out of 25 attempts (0.76), average visible pitch keypoints were 4.88, and the last good calibration was at frame 240 of 250.\",\"next_step\":\"Use the projected player coordinates for team-shape review, but inspect frames 241-249 for any late calibration drift before exporting tactical views.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"average_visible_pitch_keypoints\",\"last_good_calibration_frame\"]},{\"level\":\"warn\",\"title\":\"Ball tracking is mostly missing\",\"message\":\"Only 19 ball rows were produced across 250 frames, which is 0.076 detections per frame. There is just 1 unique ball track ID, so continuity exists only for a very small fraction of the clip.\",\"next_step\":\"Re-run this clip with ball detection as the priority check and manually review the 19 detected ball frames to confirm whether the ball is visible enough for analysis.\",\"evidence_keys\":[\"ball_rows\",\"frames_processed\",\"average_ball_detections_per_frame\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Player count is below full on-pitch coverage\",\"message\":\"Average player detections were 10.884 per frame, well below the 22 players expected in a full broadcast view. The run created 34 unique player track IDs over 250 frames, with average track length 80.0294 frames and churn ratio 0.136, which points to partial visibility and some track turnover rather than full-scene persistence.\",\"next_step\":\"Check whether the camera framing excludes large parts of the pitch; if not, review detector thresholds and tracker settings on this clip before using player counts operationally.\",\"evidence_keys\":[\"average_player_detections_per_frame\",\"unique_player_track_ids\",\"average_track_length\",\"player_track_churn_ratio\"]},{\"level\":\"warn\",\"title\":\"Team split is uneven\",\"message\":\"Tracks were assigned 23 home and 11 away, with 0 unassigned. That 2.09:1 split is far from an even team presence and may reflect camera bias, missed detections, or team clustering ambiguity. Team cluster distance is 0.1889, which does not by itself resolve whether the imbalance is visual or classification-driven.\",\"next_step\":\"Spot-check away-team visibility and jersey assignments on several frames, especially around tracks with lower vote certainty such as track 9 at 0.8356 and track 4 at 0.9379.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Experiment output is not goal-linked\",\"message\":\"The only experiment is Geometric Volatility Index, but goal_aligned_experiment is false and the clip has 0 goal events. Its pre-goal and baseline values are all 0.0, so this run does not test whether volatility changes before goals. The average volatility is also reported as 0.0 while peak is 1.386 and latest is 0.6492, which is a mixed signal for interpretation.\",\"next_step\":\"Do not use this experiment for goal-related conclusions on this clip; run it on footage with annotated goals or switch to a non-goal evaluation target.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field map stayed available",
+      "message": "Field registration covered 2708 projected player points with a 0.9952 registered ratio. Calibration refresh succeeded 19 times out of 25 attempts (0.76), average visible pitch keypoints were 4.88, and the last good calibration was at frame 240 of 250.",
+      "next_step": "Use the projected player coordinates for team-shape review, but inspect frames 241-249 for any late calibration drift before exporting tactical views.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "average_visible_pitch_keypoints",
+        "last_good_calibration_frame"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball tracking is mostly missing",
+      "message": "Only 19 ball rows were produced across 250 frames, which is 0.076 detections per frame. There is just 1 unique ball track ID, so continuity exists only for a very small fraction of the clip.",
+      "next_step": "Re-run this clip with ball detection as the priority check and manually review the 19 detected ball frames to confirm whether the ball is visible enough for analysis.",
+      "evidence_keys": [
+        "ball_rows",
+        "frames_processed",
+        "average_ball_detections_per_frame",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player count is below full on-pitch coverage",
+      "message": "Average player detections were 10.884 per frame, well below the 22 players expected in a full broadcast view. The run created 34 unique player track IDs over 250 frames, with average track length 80.0294 frames and churn ratio 0.136, which points to partial visibility and some track turnover rather than full-scene pers",
+      "next_step": "Check whether the camera framing excludes large parts of the pitch; if not, review detector thresholds and tracker settings on this clip before using player counts operationally.",
+      "evidence_keys": [
+        "average_player_detections_per_frame",
+        "unique_player_track_ids",
+        "average_track_length",
+        "player_track_churn_ratio"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Team split is uneven",
+      "message": "Tracks were assigned 23 home and 11 away, with 0 unassigned. That 2.09:1 split is far from an even team presence and may reflect camera bias, missed detections, or team clustering ambiguity. Team cluster distance is 0.1889, which does not by itself resolve whether the imbalance is visual or classification-driven.",
+      "next_step": "Spot-check away-team visibility and jersey assignments on several frames, especially around tracks with lower vote certainty such as track 9 at 0.8356 and track 4 at 0.9379.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment output is not goal-linked",
+      "message": "The only experiment is Geometric Volatility Index, but goal_aligned_experiment is false and the clip has 0 goal events. Its pre-goal and baseline values are all 0.0, so this run does not test whether volatility changes before goals. The average volatility is also reported as 0.0 while peak is 1.386 and latest is 0.6492",
+      "next_step": "Do not use this experiment for goal-related conclusions on this clip; run it on footage with annotated goals or switch to a non-goal evaluation target.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count"
+      ]
+    }
+  ]
+}

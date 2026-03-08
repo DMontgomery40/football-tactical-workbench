@@ -1,0 +1,24 @@
+{
+  "batch_name": "tracker_ab_reid_windows_20260308",
+  "created_at": "2026-03-08T18:13:36.063569Z",
+  "tracker_modes": [
+    "bytetrack",
+    "hybrid_reid"
+  ],
+  "input_mode": "local",
+  "split": "local",
+  "offset": 0,
+  "limit": 50,
+  "files": [
+    "1_224p.mkv",
+    "2_224p.mkv",
+    "Labels-v2.json"
+  ],
+  "games": [],
+  "local_videos": [
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/chelsea_burnley_goal_h1_45s.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/palace_arsenal_goal_h1_45s.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/swansea_united_goal1_h1_45s.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/swansea_united_goal2_h1_45s.mp4"
+  ]
+}

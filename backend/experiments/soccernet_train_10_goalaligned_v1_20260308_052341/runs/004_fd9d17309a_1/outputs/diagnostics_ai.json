@@ -1,0 +1,75 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T19:34:48.294246Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Tracking ran across 67,500 frames, but player identity continuity and ball continuity are weak relative to clip length; field registration is present on 89.55% of frames with only 58.09% calibration refresh success, and the goal-aligned exp",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Tracking ran across 67,500 frames, but player identity continuity and ball continuity are weak relative to clip length; field registration is present on 89.55% of frames with only 58.09% calibration refresh success, and the goal-aligned experiment did not separate the pre-goal window from baseline.\",\"diagnostics\":[{\"level\":\"warn\",\"title\":\"High track churn\",\"message\":\"5913 unique player track IDs were created from 634,970 player rows across 67,500 frames. Average track length was 107.09 frames (~4.3s at 25 fps) and the derived player_track_churn_ratio is 0.0876. The longest player track reached 1,486 frames, so some identities persist, but most do not.\",\"next_step\":\"Review tracker association settings on this clip and inspect identity breaks around occlusions and camera motion before using player-level longitudinal stats.\",\"evidence_keys\":[\"unique_player_track_ids\",\"player_rows\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\",\"frames_processed\",\"fps\"]},{\"level\":\"warn\",\"title\":\"Ball continuity is sparse\",\"message\":\"Average ball detections were 0.6189 per frame, with 41,776 ball rows but 1,585 unique ball track IDs. Projected ball points were 36,568, below the raw ball rows, which indicates additional loss after projection.\",\"next_step\":\"Spot-check ball tracking during fast passes and aerial phases, then retune ball detection/tracking thresholds or exclude ball-derived sequence metrics for this run.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"unique_ball_track_ids\",\"projected_ball_points\"]},{\"level\":\"warn\",\"title\":\"Calibration misses remain\",\"message\":\"Field registration covered 56,8643?\",\"next_step\":\"Increase calibration robustness checks on low-keypoint frames and inspect refresh failures near the 10-frame refresh cadence.\",\"evidence_keys\":[\"field_registered_ratio\",\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\",\"field_calibration_refresh_frames\"]},{\"level\":\"good\",\"title\":\"Team labels fully assigned\",\"message\":\"Home and away assignment covered all tracked players: 2,710 home tracks, 3,110 away tracks, and 0 unassigned tracks. Jersey clustering used 630,728 crops, and team_cluster_distance was 0.3013, so separation exists, though the distance is not large.\",\"next_step\":\"Use team-level aggregates, but manually verify a few borderline tracks with lower team vote ratios before exporting player-by-player team labels.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"jersey_crops_used\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Goal experiment did not lift\",\"message\":\"The only goal-aligned experiment had 1 goal in the clip. In the 30 seconds before goal, the volatility index averaged 0.1259 versus a baseline of -0.0115, but the reported 30s uplift is 0.0. With a single goal and zero reported uplift, this signal is not separating the goal window from baseline in a way that is ready to act on.\",\"next_step\":\"Do not use the volatility experiment for alerting on this run; accumulate more goal examples or inspect the experiment calculation around the annotated goal window.\",\"evidence_keys\":[\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "High track churn",
+      "message": "5913 unique player track IDs were created from 634,970 player rows across 67,500 frames. Average track length was 107.09 frames (~4.3s at 25 fps) and the derived player_track_churn_ratio is 0.0876. The longest player track reached 1,486 frames, so some identities persist, but most do not.",
+      "next_step": "Review tracker association settings on this clip and inspect identity breaks around occlusions and camera motion before using player-level longitudinal stats.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "player_rows",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio",
+        "frames_processed",
+        "fps"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball continuity is sparse",
+      "message": "Average ball detections were 0.6189 per frame, with 41,776 ball rows but 1,585 unique ball track IDs. Projected ball points were 36,568, below the raw ball rows, which indicates additional loss after projection.",
+      "next_step": "Spot-check ball tracking during fast passes and aerial phases, then retune ball detection/tracking thresholds or exclude ball-derived sequence metrics for this run.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "unique_ball_track_ids",
+        "projected_ball_points"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration misses remain",
+      "message": "Field registration covered 56,8643?",
+      "next_step": "Increase calibration robustness checks on low-keypoint frames and inspect refresh failures near the 10-frame refresh cadence.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints",
+        "field_calibration_refresh_frames"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Team labels fully assigned",
+      "message": "Home and away assignment covered all tracked players: 2,710 home tracks, 3,110 away tracks, and 0 unassigned tracks. Jersey clustering used 630,728 crops, and team_cluster_distance was 0.3013, so separation exists, though the distance is not large.",
+      "next_step": "Use team-level aggregates, but manually verify a few borderline tracks with lower team vote ratios before exporting player-by-player team labels.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "jersey_crops_used",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment did not lift",
+      "message": "The only goal-aligned experiment had 1 goal in the clip. In the 30 seconds before goal, the volatility index averaged 0.1259 versus a baseline of -0.0115, but the reported 30s uplift is 0.0. With a single goal and zero reported uplift, this signal is not separating the goal window from baseline in a way that is ready t",
+      "next_step": "Do not use the volatility experiment for alerting on this run; accumulate more goal examples or inspect the experiment calculation around the annotated goal window.",
+      "evidence_keys": [
+        "goal_events_count"
+      ]
+    }
+  ]
+}

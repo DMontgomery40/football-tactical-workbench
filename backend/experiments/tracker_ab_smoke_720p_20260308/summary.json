@@ -1,0 +1,43 @@
+{
+  "batch_name": "tracker_ab_smoke_720p_20260308",
+  "created_at": "2026-03-08T17:53:56.554430Z",
+  "input_mode": "local",
+  "tracker_modes": [
+    "bytetrack",
+    "hybrid_reid"
+  ],
+  "baseline_tracker_mode": "bytetrack",
+  "sources_requested": 1,
+  "runs_completed": 2,
+  "positive_window_count": 0,
+  "baseline_window_count": 18,
+  "mean_pre_goal_30s_vol_index": 0.0,
+  "mean_baseline_vol_index": 0.0,
+  "pre_goal_uplift_30s": -1.0,
+  "by_tracker_mode": {
+    "bytetrack": {
+      "runs": 1,
+      "mean_unique_player_track_ids": 34.0,
+      "mean_raw_unique_player_track_ids": 34.0,
+      "mean_average_track_length": 80.0294,
+      "mean_tracklet_merges_applied": 0.0,
+      "mean_stitched_track_id_reduction": 0.0
+    },
+    "hybrid_reid": {
+      "runs": 1,
+      "mean_unique_player_track_ids": 48.0,
+      "mean_raw_unique_player_track_ids": 56.0,
+      "mean_average_track_length": 60.4167,
+      "mean_tracklet_merges_applied": 8.0,
+      "mean_stitched_track_id_reduction": 0.142857
+    }
+  },
+  "tracker_comparison_summary": {
+    "comparisons": 1,
+    "candidate_wins_fewer_ids": 0,
+    "candidate_wins_longer_tracks": 0,
+    "mean_unique_player_track_ids_delta": 14.0,
+    "mean_average_track_length_delta": -19.6127,
+    "mean_stitched_track_id_reduction_delta": 0.142857
+  }
+}

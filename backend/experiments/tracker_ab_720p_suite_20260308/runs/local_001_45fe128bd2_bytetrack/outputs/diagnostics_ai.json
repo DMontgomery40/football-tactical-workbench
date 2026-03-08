@@ -1,0 +1,75 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:11:47.412625Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player tracking and field projection ran on nearly all frames, but ball coverage is very sparse and team counts are imbalanced for a 10s clip.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player tracking and field projection ran on nearly all frames, but ball coverage is very sparse and team counts are imbalanced for a 10s clip.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field projection stayed up\",\"message\":\"Field registration covered 2708 of 2721 player rows (0.9952 ratio). Calibration refresh succeeded 19 times out of 25 attempts (0.76), with the last good calibration at frame 240 of 250.\",\"next_step\":\"Use projected player coordinates for this clip, but inspect frames 241-249 to confirm calibration did not drift after the last confirmed good frame.\",\"evidence_keys\":[\"projected_player_points\",\"player_rows\",\"field_registered_ratio\",\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"field_calibration_success_rate\",\"last_good_calibration_frame\",\"frames_processed\"]},{\"level\":\"warn\",\"title\":\"Ball tracking is mostly missing\",\"message\":\"Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. There is just 1 ball track ID, but coverage is too low to trust ball-driven events or possession sequences in this run.\",\"next_step\":\"Review the 231 frames without ball detections and rerun with ball detection settings or a clip segment where the ball is larger and less occluded.\",\"evidence_keys\":[\"ball_rows\",\"frames_processed\",\"average_ball_detections_per_frame\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Player count is low and skewed\",\"message\":\"Average player detections are 10.884 per frame, well below full on-pitch coverage. Team assignment is also uneven at 23 home tracks vs 11 away tracks across 34 unique player track IDs, which points to missed players or fragmented identity coverage.\",\"next_step\":\"Spot-check several wide-view frames for missing away players and rerun with detector/tracker settings tuned for small or partially occluded players.\",\"evidence_keys\":[\"average_player_detections_per_frame\",\"home_tracks\",\"away_tracks\",\"unique_player_track_ids\"]},{\"level\":\"warn\",\"title\":\"Track fragmentation remains\",\"message\":\"There are 34 unique player track IDs over 250 frames, with average track length 80.0294 frames and player track churn ratio 0.136. No tracklet merges were applied, so fragmented IDs were not reduced in post-processing.\",\"next_step\":\"Enable or tune track stitching, then compare unique_player_track_ids and average_track_length on a rerun.\",\"evidence_keys\":[\"unique_player_track_ids\",\"average_track_length\",\"player_track_churn_ratio\",\"tracklet_merges_applied\",\"stitched_track_id_reduction\"]},{\"level\":\"warn\",\"title\":\"Experiment output is not goal-aligned\",\"message\":\"The only experiment is marked not goal-aligned, and the clip has 0 goals. Its pre-goal metrics are all 0.0, while average volatility is also 0.0 despite a peak of 1.386 and latest value of 0.6492, so this readout is mixed and not useful for goal-related validation on this run.\",\"next_step\":\"Do not use the volatility experiment for goal inference on this clip; validate it on clips with annotated goals or disable it for non-goal review.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field projection stayed up",
+      "message": "Field registration covered 2708 of 2721 player rows (0.9952 ratio). Calibration refresh succeeded 19 times out of 25 attempts (0.76), with the last good calibration at frame 240 of 250.",
+      "next_step": "Use projected player coordinates for this clip, but inspect frames 241-249 to confirm calibration did not drift after the last confirmed good frame.",
+      "evidence_keys": [
+        "projected_player_points",
+        "player_rows",
+        "field_registered_ratio",
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "field_calibration_success_rate",
+        "last_good_calibration_frame",
+        "frames_processed"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball tracking is mostly missing",
+      "message": "Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. There is just 1 ball track ID, but coverage is too low to trust ball-driven events or possession sequences in this run.",
+      "next_step": "Review the 231 frames without ball detections and rerun with ball detection settings or a clip segment where the ball is larger and less occluded.",
+      "evidence_keys": [
+        "ball_rows",
+        "frames_processed",
+        "average_ball_detections_per_frame",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player count is low and skewed",
+      "message": "Average player detections are 10.884 per frame, well below full on-pitch coverage. Team assignment is also uneven at 23 home tracks vs 11 away tracks across 34 unique player track IDs, which points to missed players or fragmented identity coverage.",
+      "next_step": "Spot-check several wide-view frames for missing away players and rerun with detector/tracker settings tuned for small or partially occluded players.",
+      "evidence_keys": [
+        "average_player_detections_per_frame",
+        "home_tracks",
+        "away_tracks",
+        "unique_player_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Track fragmentation remains",
+      "message": "There are 34 unique player track IDs over 250 frames, with average track length 80.0294 frames and player track churn ratio 0.136. No tracklet merges were applied, so fragmented IDs were not reduced in post-processing.",
+      "next_step": "Enable or tune track stitching, then compare unique_player_track_ids and average_track_length on a rerun.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "average_track_length",
+        "player_track_churn_ratio",
+        "tracklet_merges_applied",
+        "stitched_track_id_reduction"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment output is not goal-aligned",
+      "message": "The only experiment is marked not goal-aligned, and the clip has 0 goals. Its pre-goal metrics are all 0.0, while average volatility is also 0.0 despite a peak of 1.386 and latest value of 0.6492, so this readout is mixed and not useful for goal-related validation on this run.",
+      "next_step": "Do not use the volatility experiment for goal inference on this clip; validate it on clips with annotated goals or disable it for non-goal review.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count"
+      ]
+    }
+  ]
+}

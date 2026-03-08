@@ -1,0 +1,443 @@
+{
+  "job_id": "local-001-bytetrack",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/experiments/tracker_ab_reid_windows_20260308/runs/local_001_b5af707d28_bytetrack",
+  "input_video": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/chelsea_burnley_goal_h1_45s.mp4",
+  "overlay_video": "/runs/local_001_b5af707d28_bytetrack/outputs/overlay.mp4",
+  "detections_csv": "/runs/local_001_b5af707d28_bytetrack/outputs/detections.csv",
+  "track_summary_csv": "/runs/local_001_b5af707d28_bytetrack/outputs/track_summary.csv",
+  "projection_csv": "/runs/local_001_b5af707d28_bytetrack/outputs/projections.csv",
+  "entropy_timeseries_csv": "/runs/local_001_b5af707d28_bytetrack/outputs/entropy_timeseries.csv",
+  "goal_events_csv": null,
+  "summary_json": "/runs/local_001_b5af707d28_bytetrack/outputs/summary.json",
+  "all_outputs_zip": "/runs/local_001_b5af707d28_bytetrack/outputs/all_outputs.zip",
+  "device": "mps",
+  "field_calibration_device": "cpu",
+  "player_model": "soccana",
+  "player_tracker_mode": "bytetrack",
+  "player_tracker_backend": "none",
+  "player_tracker_embedding_error": null,
+  "ball_model": "soccana",
+  "ball_tracker_mode": "bytetrack.yaml",
+  "field_calibration_model": "soccana_keypoint",
+  "include_ball": true,
+  "player_conf": 0.25,
+  "ball_conf": 0.2,
+  "iou": 0.5,
+  "frames_processed": 1125,
+  "fps": 25.0,
+  "player_rows": 14666,
+  "ball_rows": 542,
+  "unique_player_track_ids": 89,
+  "raw_unique_player_track_ids": 89,
+  "unique_ball_track_ids": 28,
+  "home_tracks": 48,
+  "away_tracks": 40,
+  "unassigned_tracks": 0,
+  "average_player_detections_per_frame": 13.0364,
+  "average_ball_detections_per_frame": 0.4818,
+  "longest_track_length": 903,
+  "average_track_length": 164.7753,
+  "raw_longest_track_length": 903,
+  "raw_average_track_length": 164.7753,
+  "player_track_churn_ratio": 0.079111,
+  "raw_player_track_churn_ratio": 0.079111,
+  "tracklet_merges_applied": 0,
+  "stitched_track_id_reduction": 0.0,
+  "identity_embedding_updates": 0,
+  "identity_embedding_interval_frames": 0,
+  "projected_player_points": 14131,
+  "projected_ball_points": 493,
+  "field_registered_frames": 14131,
+  "field_registered_ratio": 0.9635,
+  "homography_enabled": true,
+  "field_calibration_refresh_frames": 10,
+  "field_calibration_refresh_attempts": 113,
+  "field_calibration_refresh_successes": 94,
+  "average_visible_pitch_keypoints": 6.0973,
+  "last_good_calibration_frame": 1070,
+  "goal_events_count": 0,
+  "goal_label_source": null,
+  "team_cluster_distance": 0.1957,
+  "jersey_crops_used": 14612,
+  "experiments": [
+    {
+      "id": "geometric_volatility_index",
+      "status": "experimental",
+      "title": "Geometric Volatility Index",
+      "summary": "1 Hz team-shape volatility built from spread, team length, inter-team centroid distance, and spatial entropy.",
+      "interpretation": "Higher values indicate rapid spatial reorganization and a more unstable game state.",
+      "metrics": [
+        {
+          "label": "Peak vol index",
+          "value": 1.3744,
+          "hint": "Highest normalized combined volatility over the half."
+        },
+        {
+          "label": "Average vol index",
+          "value": 0.0,
+          "hint": "Baseline volatility across the half."
+        },
+        {
+          "label": "Latest vol index",
+          "value": -0.8053,
+          "hint": "Most recent combined volatility reading."
+        },
+        {
+          "label": "Sampling",
+          "value": "1 Hz / 10s",
+          "hint": "Per-second series with 10-second rolling mean absolute deltas."
+        },
+        {
+          "label": "Goals in clip",
+          "value": 0,
+          "hint": "Count of SoccerNet goal annotations aligned to this half."
+        },
+        {
+          "label": "30s pre-goal index",
+          "value": 0.0,
+          "hint": "Average combined volatility index in rows that precede a goal within 30 seconds."
+        },
+        {
+          "label": "30s baseline index",
+          "value": 0.0,
+          "hint": "Average combined volatility index outside those 30-second pre-goal windows."
+        },
+        {
+          "label": "30s uplift",
+          "value": 0.0,
+          "hint": "Relative lift of the volatility index in pre-goal windows versus baseline."
+        }
+      ]
+    }
+  ],
+  "top_tracks": [
+    {
+      "track_id": 69,
+      "team_label": "away",
+      "team_vote_ratio": 0.6353,
+      "frames": 903,
+      "first_frame": 160,
+      "last_frame": 1071,
+      "average_confidence": 0.7963,
+      "average_bbox_area": 2120.0487,
+      "projected_points": 873
+    },
+    {
+      "track_id": 107,
+      "team_label": "away",
+      "team_vote_ratio": 0.9978,
+      "frames": 891,
+      "first_frame": 181,
+      "last_frame": 1071,
+      "average_confidence": 0.8257,
+      "average_bbox_area": 3680.6891,
+      "projected_points": 851
+    },
+    {
+      "track_id": 5,
+      "team_label": "away",
+      "team_vote_ratio": 0.9707,
+      "frames": 751,
+      "first_frame": 0,
+      "last_frame": 752,
+      "average_confidence": 0.8024,
+      "average_bbox_area": 2869.8802,
+      "projected_points": 721
+    },
+    {
+      "track_id": 192,
+      "team_label": "away",
+      "team_vote_ratio": 0.9986,
+      "frames": 714,
+      "first_frame": 357,
+      "last_frame": 1071,
+      "average_confidence": 0.8127,
+      "average_bbox_area": 2812.1821,
+      "projected_points": 699
+    },
+    {
+      "track_id": 197,
+      "team_label": "away",
+      "team_vote_ratio": 0.9596,
+      "frames": 696,
+      "first_frame": 362,
+      "last_frame": 1071,
+      "average_confidence": 0.7735,
+      "average_bbox_area": 1961.9986,
+      "projected_points": 696
+    },
+    {
+      "track_id": 219,
+      "team_label": "home",
+      "team_vote_ratio": 0.9509,
+      "frames": 693,
+      "first_frame": 379,
+      "last_frame": 1071,
+      "average_confidence": 0.7527,
+      "average_bbox_area": 2366.8167,
+      "projected_points": 693
+    },
+    {
+      "track_id": 206,
+      "team_label": "away",
+      "team_vote_ratio": 0.9826,
+      "frames": 691,
+      "first_frame": 370,
+      "last_frame": 1071,
+      "average_confidence": 0.8018,
+      "average_bbox_area": 2670.7221,
+      "projected_points": 691
+    },
+    {
+      "track_id": 183,
+      "team_label": "home",
+      "team_vote_ratio": 0.5611,
+      "frames": 647,
+      "first_frame": 332,
+      "last_frame": 984,
+      "average_confidence": 0.779,
+      "average_bbox_area": 2145.4992,
+      "projected_points": 628
+    },
+    {
+      "track_id": 228,
+      "team_label": "home",
+      "team_vote_ratio": 0.9843,
+      "frames": 572,
+      "first_frame": 393,
+      "last_frame": 973,
+      "average_confidence": 0.7602,
+      "average_bbox_area": 2029.1469,
+      "projected_points": 548
+    },
+    {
+      "track_id": 2,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 474,
+      "first_frame": 0,
+      "last_frame": 474,
+      "average_confidence": 0.8209,
+      "average_bbox_area": 3534.8333,
+      "projected_points": 444
+    },
+    {
+      "track_id": 208,
+      "team_label": "away",
+      "team_vote_ratio": 0.9367,
+      "frames": 474,
+      "first_frame": 371,
+      "last_frame": 854,
+      "average_confidence": 0.8002,
+      "average_bbox_area": 3033.3122,
+      "projected_points": 474
+    },
+    {
+      "track_id": 321,
+      "team_label": "home",
+      "team_vote_ratio": 0.9239,
+      "frames": 473,
+      "first_frame": 555,
+      "last_frame": 1071,
+      "average_confidence": 0.7631,
+      "average_bbox_area": 2296.7907,
+      "projected_points": 473
+    },
+    {
+      "track_id": 29,
+      "team_label": "home",
+      "team_vote_ratio": 0.9978,
+      "frames": 451,
+      "first_frame": 90,
+      "last_frame": 540,
+      "average_confidence": 0.7758,
+      "average_bbox_area": 2107.1596,
+      "projected_points": 421
+    },
+    {
+      "track_id": 357,
+      "team_label": "home",
+      "team_vote_ratio": 0.9977,
+      "frames": 445,
+      "first_frame": 627,
+      "last_frame": 1071,
+      "average_confidence": 0.8382,
+      "average_bbox_area": 4280.5618,
+      "projected_points": 445
+    },
+    {
+      "track_id": 179,
+      "team_label": "away",
+      "team_vote_ratio": 0.6208,
+      "frames": 443,
+      "first_frame": 319,
+      "last_frame": 778,
+      "average_confidence": 0.7672,
+      "average_bbox_area": 1951.3318,
+      "projected_points": 413
+    },
+    {
+      "track_id": 365,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 414,
+      "first_frame": 658,
+      "last_frame": 1071,
+      "average_confidence": 0.8332,
+      "average_bbox_area": 3424.1063,
+      "projected_points": 414
+    },
+    {
+      "track_id": 412,
+      "team_label": "away",
+      "team_vote_ratio": 0.9729,
+      "frames": 332,
+      "first_frame": 740,
+      "last_frame": 1071,
+      "average_confidence": 0.8086,
+      "average_bbox_area": 2754.0392,
+      "projected_points": 332
+    },
+    {
+      "track_id": 73,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 320,
+      "first_frame": 162,
+      "last_frame": 483,
+      "average_confidence": 0.7973,
+      "average_bbox_area": 2777.2156,
+      "projected_points": 290
+    },
+    {
+      "track_id": 1,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 298,
+      "first_frame": 0,
+      "last_frame": 297,
+      "average_confidence": 0.8388,
+      "average_bbox_area": 5803.5604,
+      "projected_points": 287
+    },
+    {
+      "track_id": 7,
+      "team_label": "home",
+      "team_vote_ratio": 0.6632,
+      "frames": 289,
+      "first_frame": 0,
+      "last_frame": 288,
+      "average_confidence": 0.7813,
+      "average_bbox_area": 2027.6228,
+      "projected_points": 288
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Tracking stability: acceptable",
+      "message": "89 stitched player track IDs across 1125 frames (raw 89, longest 903, mean 164.8).",
+      "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "48 home tracks and 40 away tracks from 14612 jersey crops (cluster distance 0.196, mean vote ratio 0.93).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.48; projected ball anchors 493.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "94/113 refreshes succeeded; mean visible pitch keypoints 6.1; 96.4% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "warn",
+      "title": "Goal labels: missing",
+      "message": "No aligned SoccerNet goal events were found for this clip.",
+      "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals."
+    }
+  ],
+  "learn_cards": [
+    {
+      "title": "1. Player detection + hybrid ReID tracker",
+      "what_it_does": "Uses football-specific detection, sparse appearance embeddings, field-aware association, and a stitch pass so player IDs can survive short occlusions and re-entries.",
+      "what_breaks": "Crowded same-kit players, close-up broadcast cuts, and tiny distant crops can still create duplicate IDs.",
+      "what_to_try_next": "Inspect raw-vs-stitched ID counts and longest tracks before trusting any per-player sequence."
+    },
+    {
+      "title": "2. Team ID from jersey colors",
+      "what_it_does": "Samples upper-body jersey colors, clusters them into two groups, and tags tracks as home or away.",
+      "what_breaks": "Goalkeepers, referees, shadows, and tiny crops can poison the color signal.",
+      "what_to_try_next": "Use clips with clear kit contrast first and treat the labels as approximate, not gospel."
+    },
+    {
+      "title": "3. Ball tracking",
+      "what_it_does": "Runs a second detector for the ball so the demo is about play context, not just player boxes.",
+      "what_breaks": "The ball is small, fast, and happy to hide behind players or advertising boards.",
+      "what_to_try_next": "Keep the detector lightweight for now and judge it by overlay sanity, not by perfection."
+    },
+    {
+      "title": "4. Automatic field registration",
+      "what_it_does": "Refreshes pitch calibration from field keypoints every 10 frames so the minimap can follow a moving broadcast camera.",
+      "what_breaks": "If the keypoint model loses field structure during a fast cut or tight zoom, the projection has to coast on the last good calibration.",
+      "what_to_try_next": "Watch the live preview for calibration dropouts instead of trusting the minimap blindly."
+    },
+    {
+      "title": "5. Demo first, fancy later",
+      "what_it_does": "Packages detection, appearance-aware tracking, team ID, and rough spatial context into one football-first pipeline.",
+      "what_breaks": "Long match-wide identity is still harder than short tactical windows, especially across cutaways and resets.",
+      "what_to_try_next": "Treat stitched IDs as tactical tracklets first, then add jersey numbers or shot segmentation if match-long identity still matters."
+    }
+  ],
+  "created_at": "2026-03-08T18:14:46.919781Z",
+  "heuristic_diagnostics": [
+    {
+      "level": "good",
+      "title": "Tracking stability: acceptable",
+      "message": "89 stitched player track IDs across 1125 frames (raw 89, longest 903, mean 164.8).",
+      "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "48 home tracks and 40 away tracks from 14612 jersey crops (cluster distance 0.196, mean vote ratio 0.93).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.48; projected ball anchors 493.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "94/113 refreshes succeeded; mean visible pitch keypoints 6.1; 96.4% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "warn",
+      "title": "Goal labels: missing",
+      "message": "No aligned SoccerNet goal events were found for this clip.",
+      "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals."
+    }
+  ],
+  "diagnostics_source": "heuristic",
+  "diagnostics_provider": null,
+  "diagnostics_model": null,
+  "diagnostics_status": "disabled",
+  "diagnostics_summary_line": "1125-frame run, 89 player IDs, 96.4% field registration, 0.48 ball detections/frame, 1 experiment card.",
+  "diagnostics_error": "",
+  "diagnostics_json": "/runs/local_001_b5af707d28_bytetrack/outputs/diagnostics_ai.json",
+  "split": "local",
+  "game": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows",
+  "half_file": "chelsea_burnley_goal_h1_45s.mp4",
+  "tracker_mode": "bytetrack"
+}

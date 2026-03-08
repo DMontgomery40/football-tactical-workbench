@@ -1,0 +1,26 @@
+{
+  "batch_name": "tracker_ab_720p_suite_20260308",
+  "created_at": "2026-03-08T18:10:18.164989Z",
+  "tracker_modes": [
+    "bytetrack",
+    "hybrid_reid"
+  ],
+  "input_mode": "local",
+  "split": "local",
+  "offset": 0,
+  "limit": 50,
+  "files": [
+    "1_224p.mkv",
+    "2_224p.mkv",
+    "Labels-v2.json"
+  ],
+  "games": [],
+  "local_videos": [
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h1_10m.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/chelsea_burnley_h2_20m.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/palace_arsenal_h1_12m.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/palace_arsenal_h2_18m.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/swansea_united_h1_14m.mp4",
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_720p/swansea_united_h2_22m.mp4"
+  ]
+}

@@ -12,6 +12,7 @@ import time
 import uuid
 import zipfile
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +27,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from ultralytics import YOLO
 
 from app.ai_diagnostics import generate_run_diagnostics, resolve_provider_config
 from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
@@ -40,17 +40,39 @@ from app.wide_angle import (
     prewarm_default_models,
 )
 
+try:
+    import yaml  # type: ignore
+except Exception:
+    yaml = None
+
+TRAINING_IMPORT_ERROR: str | None = None
+try:
+    from app.training_manager import TrainingManager
+    from app.training_registry import TrainingRegistry
+except Exception as exc:
+    TrainingManager = None  # type: ignore[assignment]
+    TrainingRegistry = None  # type: ignore[assignment]
+    TRAINING_IMPORT_ERROR = str(exc)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 RUNS_DIR = BASE_DIR / "runs"
+TRAINING_RUNS_DIR = BASE_DIR / "training_runs"
 UPLOADS_DIR = BASE_DIR / "uploads"
 SOCCERNET_DIR = BASE_DIR / "datasets" / "soccernet"
 EXPERIMENTS_DIR = BASE_DIR / "experiments"
 SOURCE_REGISTRY_PATH = UPLOADS_DIR / "sources.json"
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
+TRAINING_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 SOCCERNET_DIR.mkdir(parents=True, exist_ok=True)
 EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
 ACTIVE_EXPERIMENT_FRESHNESS_SECONDS = 300
+
+TRAINING_BASE_WEIGHT_OPTIONS = [
+    {"id": "soccana", "label": "soccana (football-pretrained)"},
+]
+TRAINING_EXPECTED_CLASSES = {"player", "goalkeeper", "referee", "ball"}
+TRAINING_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 PERSON_CLASS_ID = 0
 BALL_CLASS_ID = 32
@@ -84,6 +106,24 @@ class SoccerNetDownloadRequest(BaseModel):
     game: str
     password: str
     files: list[str]
+
+
+class TrainDatasetScanRequest(BaseModel):
+    path: str
+
+
+class TrainingDetectJobRequest(BaseModel):
+    base_weights: str = "soccana"
+    dataset_path: str
+    run_name: str = ""
+    epochs: int = 50
+    imgsz: int = 640
+    batch: int = 16
+    device: str = "auto"
+    workers: int = 4
+    patience: int = 20
+    freeze: int | None = None
+    cache: bool = False
 
 
 @dataclass
@@ -375,6 +415,18 @@ class SourceManager:
 source_manager = SourceManager(SOURCE_REGISTRY_PATH)
 
 
+training_manager = None
+training_registry = None
+if TrainingManager and TrainingRegistry:
+    try:
+        training_manager = TrainingManager(TRAINING_RUNS_DIR)
+        training_registry = TrainingRegistry(BASE_DIR / "models" / "registry.json")
+    except Exception as exc:
+        TRAINING_IMPORT_ERROR = TRAINING_IMPORT_ERROR or str(exc)
+        training_manager = None
+        training_registry = None
+
+
 @dataclass
 class DownloadJobState:
     job_id: str
@@ -444,7 +496,49 @@ class DownloadJobManager:
 download_job_manager = DownloadJobManager()
 
 
-app = FastAPI(title="Football Tactical Workbench API")
+def training_available() -> bool:
+    return training_manager is not None and training_registry is not None and TRAINING_IMPORT_ERROR is None
+
+
+def require_training_available() -> tuple[Any, Any]:
+    if not training_available():
+        detail = TRAINING_IMPORT_ERROR or "Training support is unavailable in this backend build."
+        raise HTTPException(status_code=503, detail=detail)
+    return training_manager, training_registry
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if training_available():
+        try:
+            training_registry.init_if_absent()
+        except Exception as exc:
+            print(f"[startup] training registry init skipped: {exc}")
+
+    try:
+        prewarm_default_models()
+    except Exception as exc:
+        print(f"[startup] model prewarm skipped: {exc}")
+
+    for job_id, run_dir, config_payload in job_manager.consume_restartable_jobs():
+        job_control_manager.create(job_id)
+        job_manager.update(job_id, status="running", progress=0.0, error=None)
+        job_manager.log(job_id, "Restarting analysis after backend restart")
+        thread = threading.Thread(
+            target=_run_analysis_job,
+            args=(job_id, run_dir, config_payload),
+            daemon=True,
+        )
+        thread.start()
+
+    if training_available():
+        for job_id, run_dir, config_payload in training_manager.consume_restartable_jobs():
+            training_manager.launch(job_id, run_dir, config_payload)
+
+    yield
+
+
+app = FastAPI(title="Football Tactical Workbench API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -453,14 +547,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/runs", StaticFiles(directory=RUNS_DIR), name="runs")
-
-
-@app.on_event("startup")
-def prewarm_models_on_startup() -> None:
-    try:
-        prewarm_default_models()
-    except Exception as exc:
-        print(f"[startup] model prewarm skipped: {exc}")
 
 
 LEARN_CARDS = [
@@ -504,12 +590,14 @@ def health() -> dict[str, Any]:
         "backend_port": 8431,
         "frontend_port": 4317,
         "runs_dir": str(RUNS_DIR),
+        "training_available": training_available(),
     }
 
 
 @app.get("/api/config")
 def config() -> dict[str, Any]:
     diagnostics_config = resolve_provider_config()
+    active_detector_entry = training_registry.get_active_entry() if training_available() else {"id": "soccana", "label": "soccana (football-pretrained)"}
     return {
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
@@ -524,7 +612,141 @@ def config() -> dict[str, Any]:
         "soccernet_label_files": ["Labels-v2.json", "Labels.json"],
         "diagnostics_provider": diagnostics_config.provider if diagnostics_config else None,
         "diagnostics_model": diagnostics_config.model if diagnostics_config else None,
+        "training_available": training_available(),
+        "training_error": TRAINING_IMPORT_ERROR,
+        "active_detector": active_detector_entry.get("id", "soccana"),
+        "active_detector_label": active_detector_entry.get("label", "soccana (football-pretrained)"),
+        "active_detector_is_custom": str(active_detector_entry.get("id", "soccana")) != "soccana",
     }
+
+
+@app.get("/api/train/config")
+def training_config() -> dict[str, Any]:
+    _training_manager, registry = require_training_available()
+    return {
+        "training_families": ["detector"],
+        "enabled_families": ["detector"],
+        "default_base_weights": "soccana",
+        "available_base_weights": TRAINING_BASE_WEIGHT_OPTIONS,
+        "active_detector": registry.get_active_detector_id(),
+    }
+
+
+@app.post("/api/train/datasets/scan")
+def scan_training_dataset(request: TrainDatasetScanRequest) -> dict[str, Any]:
+    require_training_available()
+    return scan_training_dataset_path(Path(request.path))
+
+
+@app.post("/api/train/jobs/detect")
+def start_training_job(request: TrainingDetectJobRequest) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    dataset_path = Path(request.dataset_path).expanduser().resolve()
+    scan = scan_training_dataset_path(dataset_path)
+    if scan["tier"] == "invalid":
+        raise HTTPException(status_code=400, detail="Dataset is invalid for YOLO training")
+    base_weights = request.base_weights.strip() or "soccana"
+    if base_weights != "soccana":
+        raise HTTPException(status_code=400, detail="Only soccana is currently available as a training base weight")
+
+    run_name = request.run_name.strip()
+    config_payload = {
+        "base_weights": base_weights,
+        "dataset_path": str(dataset_path),
+        "run_name": run_name or "",
+        "epochs": max(int(request.epochs), 1),
+        "imgsz": max(int(request.imgsz), 32),
+        "batch": max(int(request.batch), 1),
+        "device": request.device.strip() or "auto",
+        "workers": max(int(request.workers), 0),
+        "patience": max(int(request.patience), 0),
+        "freeze": request.freeze,
+        "cache": bool(request.cache),
+    }
+
+    job = manager.create(config_payload)
+    run_dir = Path(job.run_dir)
+    config_payload["run_name"] = str(job.config.get("run_name") or job.run_id)
+
+    manager.append_log(job.job_id, f"Dataset scan tier: {scan['tier']}.")
+    for warning in scan["warnings"]:
+        manager.append_log(job.job_id, warning)
+
+    threading.Thread(
+        target=_launch_training_job_async,
+        args=(job.job_id, run_dir, config_payload),
+        daemon=True,
+    ).start()
+    return {"job_id": job.job_id, "run_id": job.run_id, "status": "queued"}
+
+
+@app.get("/api/train/jobs")
+def list_training_jobs() -> list[dict[str, Any]]:
+    manager, _registry = require_training_available()
+    return manager.list()
+
+
+@app.get("/api/train/jobs/{job_id}")
+def get_training_job(job_id: str) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    job = manager.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return job.as_dict()
+
+
+@app.post("/api/train/jobs/{job_id}/stop")
+def stop_training_job(job_id: str) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    job = manager.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    manager.request_stop(job_id)
+    return {"ok": True}
+
+
+@app.get("/api/train/runs/recent")
+def recent_training_runs(limit: int = 20) -> list[dict[str, Any]]:
+    manager, _registry = require_training_available()
+    bounded_limit = min(max(int(limit), 1), 200)
+    return manager.list_recent_runs(limit=bounded_limit)
+
+
+@app.get("/api/train/runs/{run_id}")
+def get_training_run(run_id: str) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    job = manager.get_by_run_id(run_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training run not found")
+    return job.as_dict()
+
+
+@app.post("/api/train/runs/{run_id}/activate")
+def activate_training_run(run_id: str) -> dict[str, Any]:
+    manager, registry = require_training_available()
+    job = manager.get_by_run_id(run_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training run not found")
+    if job.status != "completed":
+        raise HTTPException(status_code=409, detail="Only completed training runs can be activated")
+    if not job.best_checkpoint:
+        raise HTTPException(status_code=409, detail="Completed training run has no best checkpoint")
+
+    entry = registry.activate_detector(
+        run_id=run_id,
+        checkpoint_path=job.best_checkpoint,
+        run_name=str(job.config.get("run_name") or run_id),
+        base_weights=str(job.config.get("base_weights") or "soccana"),
+        metrics=job.metrics,
+        created_at=job.created_at,
+    )
+    manager.append_log(job.job_id, f"Activated detector {entry['id']}.")
+    return {"success": True, "active_detector": entry["id"]}
+
+
+@app.get("/api/train/registry")
+def get_training_registry() -> dict[str, Any]:
+    return build_training_registry_snapshot()
 
 
 @app.get("/api/jobs")
@@ -1059,6 +1281,172 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
     }
 
 
+def _normalize_yaml_class_names(raw_names: Any) -> list[str]:
+    if isinstance(raw_names, list):
+        return [str(item).strip() for item in raw_names if str(item).strip()]
+    if isinstance(raw_names, dict):
+        normalized: list[tuple[int, str]] = []
+        for key, value in raw_names.items():
+            try:
+                sort_key = int(key)
+            except Exception:
+                sort_key = len(normalized)
+            label = str(value).strip()
+            if label:
+                normalized.append((sort_key, label))
+        return [label for _index, label in sorted(normalized, key=lambda item: item[0])]
+    return []
+
+
+def _find_dataset_yaml_candidate(dataset_path: Path) -> Path | None:
+    candidates: list[Path] = [
+        dataset_path / "dataset.yaml",
+        dataset_path / "data.yaml",
+    ]
+    candidates.extend(sorted(dataset_path.glob("*.yaml")))
+    candidates.extend(sorted(dataset_path.glob("*.yml")))
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.expanduser().resolve()
+        if resolved in seen or not resolved.exists() or not resolved.is_file():
+            continue
+        seen.add(resolved)
+        try:
+            text = resolved.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        lowered = text.lower()
+        if any(token in lowered for token in ("train:", "val:", "names:")):
+            return resolved
+    return None
+
+
+def _parse_dataset_yaml(dataset_path: Path) -> tuple[bool, str | None, list[str]]:
+    yaml_path = _find_dataset_yaml_candidate(dataset_path)
+    if yaml_path is None:
+        return False, None, []
+    if yaml is None:
+        return True, str(yaml_path), []
+
+    try:
+        payload = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return True, str(yaml_path), []
+    return True, str(yaml_path), _normalize_yaml_class_names(payload.get("names"))
+
+
+def _count_split_files(path: Path, suffixes: set[str]) -> int:
+    if not path.exists() or not path.is_dir():
+        return 0
+    return sum(1 for item in path.rglob("*") if item.is_file() and item.suffix.lower() in suffixes)
+
+
+def scan_training_dataset_path(dataset_path: Path) -> dict[str, Any]:
+    folder = dataset_path.expanduser().resolve()
+    if not folder.exists() or not folder.is_dir():
+        raise HTTPException(status_code=400, detail="Dataset folder does not exist")
+
+    warnings: list[str] = []
+    errors: list[str] = []
+    has_yaml, yaml_path, classes = _parse_dataset_yaml(folder)
+    if not has_yaml:
+        warnings.append("No dataset YAML was found; training will rely on the folder structure directly.")
+    elif yaml is None:
+        warnings.append("A dataset YAML was found but PyYAML is unavailable, so class names could not be parsed at scan time.")
+    elif not classes:
+        warnings.append("A dataset YAML was found but class names could not be parsed.")
+
+    splits: dict[str, dict[str, int]] = {}
+    images_root = folder / "images"
+    labels_root = folder / "labels"
+    for split_name in ("train", "val", "test"):
+        image_count = _count_split_files(images_root / split_name, TRAINING_IMAGE_SUFFIXES)
+        label_count = _count_split_files(labels_root / split_name, {".txt"})
+        splits[split_name] = {"images": image_count, "labels": label_count}
+
+    if not any(item["images"] for item in splits.values()):
+        fallback_images_path = images_root if images_root.exists() else folder
+        fallback_labels_path = labels_root if labels_root.exists() else folder
+        splits["train"] = {
+            "images": _count_split_files(fallback_images_path, TRAINING_IMAGE_SUFFIXES),
+            "labels": _count_split_files(fallback_labels_path, {".txt"}),
+        }
+
+    train_images = splits["train"]["images"]
+    val_images = splits["val"]["images"]
+    all_images = sum(item["images"] for item in splits.values())
+    if all_images == 0:
+        errors.append("No images found in a recognizable YOLO dataset structure.")
+    if train_images == 0:
+        errors.append("No training images found.")
+
+    if train_images > 0 and val_images == 0:
+        warnings.append("Validation split missing; the training worker will generate a 20% validation split from train images.")
+
+    for split_name, counts in splits.items():
+        images_count = counts["images"]
+        labels_count = counts["labels"]
+        if images_count > 0 and labels_count != images_count:
+            diff = abs(images_count - labels_count)
+            if labels_count < images_count:
+                warnings.append(
+                    f"{split_name} label count {labels_count} vs image count {images_count} - {diff} images have no labels."
+                )
+            else:
+                warnings.append(
+                    f"{split_name} label count {labels_count} vs image count {images_count} - {diff} extra label files were found."
+                )
+
+    unknown_classes = sorted({label for label in classes if label.lower() not in TRAINING_EXPECTED_CLASSES})
+    if unknown_classes:
+        warnings.append(f"Unknown classes in dataset.yaml: {', '.join(unknown_classes)}.")
+
+    tier = "invalid" if errors else ("valid" if not warnings else "usable_with_warnings")
+    return {
+        "path": str(folder),
+        "tier": tier,
+        "has_yaml": has_yaml,
+        "yaml_path": yaml_path,
+        "classes": classes,
+        "splits": splits,
+        "warnings": warnings,
+        "errors": errors,
+    }
+
+
+def resolve_analysis_detector_model(detector_model: str, player_model: str = "") -> str:
+    requested = detector_model.strip() or player_model.strip()
+    if requested and requested != "soccana":
+        return requested
+    if training_available():
+        try:
+            return training_registry.get_active_path()
+        except Exception:
+            pass
+    return requested or "soccana"
+
+
+def build_training_registry_snapshot() -> dict[str, Any]:
+    manager, registry = require_training_available()
+    for job in manager.list_states():
+        if job.status != "completed" or not job.best_checkpoint:
+            continue
+        checkpoint_path = Path(job.best_checkpoint).expanduser()
+        if not checkpoint_path.exists():
+            continue
+        registry.register_detector(
+            run_id=job.run_id,
+            checkpoint_path=str(checkpoint_path),
+            run_name=str(job.config.get("run_name") or job.run_id),
+            base_weights=str(job.config.get("base_weights") or "soccana"),
+            metrics=job.metrics,
+            created_at=job.created_at,
+            activate=registry.get_active_detector_id() == f"custom_{job.run_id}",
+        )
+    return registry.snapshot()
+
+
 @app.get("/api/runs/recent")
 def recent_runs(limit: int = 8) -> list[dict[str, Any]]:
     bounded_limit = min(max(limit, 1), 1000)
@@ -1166,12 +1554,13 @@ def live_preview(
     iou: float = Query(default=0.50),
 ) -> StreamingResponse:
     source_video_path = resolve_source_path(source_id=source_id, local_video_path=local_video_path)
+    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
 
     stream = generate_live_preview_stream(
         source_video_path=source_video_path,
         config_payload={
-            "player_model": detector_model.strip() or player_model.strip() or "soccana",
-            "ball_model": detector_model.strip() or player_model.strip() or "soccana",
+            "player_model": resolved_detector_model,
+            "ball_model": resolved_detector_model,
             "tracker_mode": tracker_mode,
             "include_ball": include_ball,
             "player_conf": float(player_conf),
@@ -1247,11 +1636,13 @@ async def analyze(
     else:
         source_video_path = resolve_source_path(local_video_path=local_video_path)
 
+    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
+
     config_payload = {
         "source_video_path": str(source_video_path),
         "label_path": label_path.strip(),
-        "player_model": detector_model.strip() or player_model.strip() or "soccana",
-        "ball_model": detector_model.strip() or player_model.strip() or "soccana",
+        "player_model": resolved_detector_model,
+        "ball_model": resolved_detector_model,
         "tracker_mode": tracker_mode,
         "include_ball": include_ball,
         "player_conf": float(player_conf),
@@ -1296,19 +1687,14 @@ def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]
         job_control_manager.clear(job_id)
 
 
-@app.on_event("startup")
-def resume_analysis_jobs_on_startup() -> None:
-    for job_id, run_dir, config_payload in job_manager.consume_restartable_jobs():
-        job_control_manager.create(job_id)
-        job_manager.update(job_id, status="running", progress=0.0, error=None)
-        job_manager.log(job_id, "Restarting analysis after backend restart")
-        thread = threading.Thread(
-            target=_run_analysis_job,
-            args=(job_id, run_dir, config_payload),
-            daemon=True,
-        )
-        thread.start()
-
+def _launch_training_job_async(job_id: str, run_dir: Path, config_payload: dict[str, Any]) -> None:
+    if training_manager is None:
+        return
+    try:
+        training_manager.launch(job_id, run_dir, config_payload)
+    except Exception as exc:
+        training_manager.update(job_id, status="failed", error=str(exc))
+        training_manager.append_log(job_id, f"Training failed to launch: {exc}")
 
 def choose_device() -> str:
     try:

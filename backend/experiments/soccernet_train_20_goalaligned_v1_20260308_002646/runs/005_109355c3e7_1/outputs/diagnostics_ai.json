@@ -1,0 +1,72 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T16:13:59.926063Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Tracking coverage is broad, but identity churn is high, field calibration succeeds only 50.7% of refresh attempts, and the goal-aligned volatility experiment shows no pre-goal uplift despite 3 goals in the clip.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Tracking coverage is broad, but identity churn is high, field calibration succeeds only 50.7% of refresh attempts, and the goal-aligned volatility experiment shows no pre-goal uplift despite 3 goals in the clip.\",\"diagnostics\":[{\"level\":\"warn\",\"title\":\"High track churn\",\"message\":\"571,832 player rows produced 6,971 unique player track IDs, with average track length 81.77 frames and longest track 940 frames. The derived player_track_churn_ratio is 0.0980, which indicates frequent ID turnover relative to total detections.\",\"next_step\":\"Review tracker association settings on this clip and inspect several dense sequences around mid-play to reduce ID fragmentation before using player-level longitudinal metrics.\",\"evidence_keys\":[\"player_rows\",\"unique_player_track_ids\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\"]},{\"level\":\"warn\",\"title\":\"Calibration refresh misses\",\"message\":\"Field registration covered 87.2% of frames, but refresh success was only 3,608 of 7,113 attempts (50.7%). Average visible pitch keypoints was 3.6738, which is sparse for stable recalibration and likely explains the gap between registered coverage and refresh reliability.\",\"next_step\":\"Inspect frames where calibration refresh failed and increase visible line/keypoint coverage or adjust refresh cadence before relying on continuous projected coordinates.\",\"evidence_keys\":[\"field_registered_ratio\",\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\"]},{\"level\":\"warn\",\"title\":\"Ball tracking is sparse\",\"message\":\"Ball detections averaged 0.3973 per frame across 71,125 frames, yielding 28,257 ball rows but 1,546 unique ball track IDs. That combination points to intermittent ball visibility and fragmented ball identity over the run.\",\"next_step\":\"Sample ball-heavy moments such as transitions and shots, then tune ball detector thresholds or post-processing to reduce short ball track fragments.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"unique_ball_track_ids\",\"frames_processed\"]},{\"level\":\"good\",\"title\":\"Team assignment mostly complete\",\"message\":\"Team labeling covered all tracks at the run level with 2,584 home tracks, 2,718 away tracks, and 0 unassigned tracks. Team separation is present but not wide, with team_cluster_distance at 0.2998, so assignments may still be sensitive in visually similar kits.\",\"next_step\":\"Spot-check team labels in sequences with overlapping players or similar jersey colors before using team-split aggregates.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Goal experiment not aligned\",\"message\":\"The only goal-aligned experiment has 3 goals to compare against, but the geometric volatility signal does not rise before goals: 30s pre-goal index was -0.2025 versus -0.0112 baseline, and reported 30s uplift was 0.0. This is not goal-separating on this run.\",\"next_step\":\"Do not use the volatility experiment as a goal precursor on this clip; inspect the per-goal windows and test alternative windows or features before surfacing it in goal workflows.\",\"evidence_keys\":[\"goal_events_count\",\"goal_aligned_experiment\"]}]}",
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "High track churn",
+      "message": "571,832 player rows produced 6,971 unique player track IDs, with average track length 81.77 frames and longest track 940 frames. The derived player_track_churn_ratio is 0.0980, which indicates frequent ID turnover relative to total detections.",
+      "next_step": "Review tracker association settings on this clip and inspect several dense sequences around mid-play to reduce ID fragmentation before using player-level longitudinal metrics.",
+      "evidence_keys": [
+        "player_rows",
+        "unique_player_track_ids",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration refresh misses",
+      "message": "Field registration covered 87.2% of frames, but refresh success was only 3,608 of 7,113 attempts (50.7%). Average visible pitch keypoints was 3.6738, which is sparse for stable recalibration and likely explains the gap between registered coverage and refresh reliability.",
+      "next_step": "Inspect frames where calibration refresh failed and increase visible line/keypoint coverage or adjust refresh cadence before relying on continuous projected coordinates.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball tracking is sparse",
+      "message": "Ball detections averaged 0.3973 per frame across 71,125 frames, yielding 28,257 ball rows but 1,546 unique ball track IDs. That combination points to intermittent ball visibility and fragmented ball identity over the run.",
+      "next_step": "Sample ball-heavy moments such as transitions and shots, then tune ball detector thresholds or post-processing to reduce short ball track fragments.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "unique_ball_track_ids",
+        "frames_processed"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Team assignment mostly complete",
+      "message": "Team labeling covered all tracks at the run level with 2,584 home tracks, 2,718 away tracks, and 0 unassigned tracks. Team separation is present but not wide, with team_cluster_distance at 0.2998, so assignments may still be sensitive in visually similar kits.",
+      "next_step": "Spot-check team labels in sequences with overlapping players or similar jersey colors before using team-split aggregates.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment not aligned",
+      "message": "The only goal-aligned experiment has 3 goals to compare against, but the geometric volatility signal does not rise before goals: 30s pre-goal index was -0.2025 versus -0.0112 baseline, and reported 30s uplift was 0.0. This is not goal-separating on this run.",
+      "next_step": "Do not use the volatility experiment as a goal precursor on this clip; inspect the per-goal windows and test alternative windows or features before surfacing it in goal workflows.",
+      "evidence_keys": [
+        "goal_events_count",
+        "goal_aligned_experiment"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T17:57:52.499610Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player tracking and field projection held through most of the 250-frame clip, but ball coverage was very low and team balance is skewed toward home tracks.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player tracking and field projection held through most of the 250-frame clip, but ball coverage was very low and team balance is skewed toward home tracks.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field map stayed online\",\"message\":\"Field registration covered 2708 player points with a 0.9952 registered ratio. Calibration refresh succeeded 19 times out of 25 attempts (0.76), and the last good calibration was at frame 240 of 250.\",\"next_step\":\"Use projected player coordinates for this clip, but inspect frames 241-249 for any late calibration drift before exporting.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"last_good_calibration_frame\"]},{\"level\":\"good\",\"title\":\"Track stitching reduced ID churn\",\"message\":\"Post-merge player IDs dropped to 23 from 34 raw IDs, with 11 merges applied and a stitched ID reduction of 0.323529. Average track length increased to 118.3043 frames from a raw 80.0294, while the longest track held the full 250 frames.\",\"next_step\":\"Keep hybrid ReID stitching enabled for similar clips and review the 11 merge decisions if identity precision matters more than continuity.\",\"evidence_keys\":[\"unique_player_track_ids\",\"raw_unique_player_track_ids\",\"tracklet_merges_applied\",\"stitched_track_id_reduction\",\"average_track_length\",\"raw_average_track_length\",\"longest_track_length\"]},{\"level\":\"warn\",\"title\":\"Ball tracking is sparse\",\"message\":\"Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. There is just 1 ball track ID, but coverage is too thin to trust ball-driven events or possession sequences in this run.\",\"next_step\":\"Re-run with a clip where the ball is larger or less occluded, and verify ball detector settings before using any ball-derived outputs.\",\"evidence_keys\":[\"ball_rows\",\"average_ball_detections_per_frame\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Team counts are imbalanced\",\"message\":\"Assigned player tracks split 17 home to 6 away, with 0 unassigned. Average player detections were 10.884 per frame, so the clip likely does not contain full 22-player visibility, and the team split is too uneven for lineup-level interpretation.\",\"next_step\":\"Check camera framing and occlusion in this segment, and avoid using this run for team-count or formation conclusions without manual review.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"average_player_detections_per_frame\",\"unique_player_track_ids\"]},{\"level\":\"warn\",\"title\":\"Experiment is not goal-aligned\",\"message\":\"The only experiment is geometric volatility, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal and baseline values are all 0.0, so this run does not test whether the signal separates goal phases.\",\"next_step\":\"Do not use the volatility output for goal-related decisions on this clip; run it on footage with aligned goal annotations or switch to non-goal evaluation criteria.\",\"evidence_keys\":[\"goal_events_count\",\"goal_aligned_experiment\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field map stayed online",
+      "message": "Field registration covered 2708 player points with a 0.9952 registered ratio. Calibration refresh succeeded 19 times out of 25 attempts (0.76), and the last good calibration was at frame 240 of 250.",
+      "next_step": "Use projected player coordinates for this clip, but inspect frames 241-249 for any late calibration drift before exporting.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "last_good_calibration_frame"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Track stitching reduced ID churn",
+      "message": "Post-merge player IDs dropped to 23 from 34 raw IDs, with 11 merges applied and a stitched ID reduction of 0.323529. Average track length increased to 118.3043 frames from a raw 80.0294, while the longest track held the full 250 frames.",
+      "next_step": "Keep hybrid ReID stitching enabled for similar clips and review the 11 merge decisions if identity precision matters more than continuity.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "raw_unique_player_track_ids",
+        "tracklet_merges_applied",
+        "stitched_track_id_reduction",
+        "average_track_length",
+        "raw_average_track_length",
+        "longest_track_length"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball tracking is sparse",
+      "message": "Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. There is just 1 ball track ID, but coverage is too thin to trust ball-driven events or possession sequences in this run.",
+      "next_step": "Re-run with a clip where the ball is larger or less occluded, and verify ball detector settings before using any ball-derived outputs.",
+      "evidence_keys": [
+        "ball_rows",
+        "average_ball_detections_per_frame",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Team counts are imbalanced",
+      "message": "Assigned player tracks split 17 home to 6 away, with 0 unassigned. Average player detections were 10.884 per frame, so the clip likely does not contain full 22-player visibility, and the team split is too uneven for lineup-level interpretation.",
+      "next_step": "Check camera framing and occlusion in this segment, and avoid using this run for team-count or formation conclusions without manual review.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "average_player_detections_per_frame",
+        "unique_player_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment is not goal-aligned",
+      "message": "The only experiment is geometric volatility, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal and baseline values are all 0.0, so this run does not test whether the signal separates goal phases.",
+      "next_step": "Do not use the volatility output for goal-related decisions on this clip; run it on footage with aligned goal annotations or switch to non-goal evaluation criteria.",
+      "evidence_keys": [
+        "goal_events_count",
+        "goal_aligned_experiment"
+      ]
+    }
+  ]
+}

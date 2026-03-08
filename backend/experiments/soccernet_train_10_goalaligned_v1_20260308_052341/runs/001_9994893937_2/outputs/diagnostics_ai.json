@@ -1,0 +1,68 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T13:43:39.548585Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player projection coverage is high at 91.63%, but tracking fragmentation is high and ball coverage is sparse at 0.44 detections/frame.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player projection coverage is high at 91.63%, but tracking fragmentation is high and ball coverage is sparse at 0.44 detections/frame.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field mapping mostly present\",\"message\":\"Field registration covered 619348 of 67500 frames worth of player points, for a 0.9163 registered ratio. Calibration also stayed valid until frame 67240, near the end of the run.\",\"next_step\":\"Use projected player coordinates for team-shape review, but spot-check the final 260 frames after the last good calibration frame.\",\"evidence_keys\":[\"field_registered_ratio\",\"last_good_calibration_frame\",\"projected_player_points\"]},{\"level\":\"warn\",\"title\":\"Tracking is fragmented\",\"message\":\"There are 5211 unique player track IDs across 675895 player rows, with an average track length of 129.3775 frames and churn ratio 0.0772. The longest track is 2096 frames, so only a small share of tracks persist for long stretches.\",\"next_step\":\"Review tracker association settings on this clip and inspect ID switches around camera changes and dense play sequences.\",\"evidence_keys\":[\"unique_player_track_ids\",\"player_rows\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\"]},{\"level\":\"warn\",\"title\":\"Ball signal is sparse\",\"message\":\"Ball detections average 0.4414 per frame, with 29796 ball rows over 67500 frames and 1157 unique ball track IDs. That combination points to intermittent ball visibility and frequent ball track resets.\",\"next_step\":\"Do not rely on this run for possession or pass-chain analysis; inspect ball detections around key sequences and rerun with ball-specific tuning if needed.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Calibration refresh misses often\",\"message\":\"Field calibration refresh succeeded 4200 times out of 6757 attempts, a 0.621578 success rate. Average visible pitch keypoints were 4.4045, which is limited for stable refreshes.\",\"next_step\":\"Check frames with failed refreshes for broadcast zoom, occlusion, or cropped touchlines, and consider reducing refresh frequency or improving keypoint visibility on this source.\",\"evidence_keys\":[\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\"]},{\"level\":\"warn\",\"title\":\"Goal experiment did not separate\",\"message\":\"The only goal-aligned experiment has 1 goal in the clip, and its 30s pre-goal volatility index was -0.2586 versus a -0.0084 baseline, with reported 30s uplift of 0.0. With one goal and no uplift, this signal does not distinguish the goal window in this run.\",\"next_step\":\"Treat the volatility experiment as inconclusive here and validate it on clips with more goal events before using it for alerting.\",\"evidence_keys\":[\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field mapping mostly present",
+      "message": "Field registration covered 619348 of 67500 frames worth of player points, for a 0.9163 registered ratio. Calibration also stayed valid until frame 67240, near the end of the run.",
+      "next_step": "Use projected player coordinates for team-shape review, but spot-check the final 260 frames after the last good calibration frame.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "last_good_calibration_frame",
+        "projected_player_points"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Tracking is fragmented",
+      "message": "There are 5211 unique player track IDs across 675895 player rows, with an average track length of 129.3775 frames and churn ratio 0.0772. The longest track is 2096 frames, so only a small share of tracks persist for long stretches.",
+      "next_step": "Review tracker association settings on this clip and inspect ID switches around camera changes and dense play sequences.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "player_rows",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball signal is sparse",
+      "message": "Ball detections average 0.4414 per frame, with 29796 ball rows over 67500 frames and 1157 unique ball track IDs. That combination points to intermittent ball visibility and frequent ball track resets.",
+      "next_step": "Do not rely on this run for possession or pass-chain analysis; inspect ball detections around key sequences and rerun with ball-specific tuning if needed.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration refresh misses often",
+      "message": "Field calibration refresh succeeded 4200 times out of 6757 attempts, a 0.621578 success rate. Average visible pitch keypoints were 4.4045, which is limited for stable refreshes.",
+      "next_step": "Check frames with failed refreshes for broadcast zoom, occlusion, or cropped touchlines, and consider reducing refresh frequency or improving keypoint visibility on this source.",
+      "evidence_keys": [
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment did not separate",
+      "message": "The only goal-aligned experiment has 1 goal in the clip, and its 30s pre-goal volatility index was -0.2586 versus a -0.0084 baseline, with reported 30s uplift of 0.0. With one goal and no uplift, this signal does not distinguish the goal window in this run.",
+      "next_step": "Treat the volatility experiment as inconclusive here and validate it on clips with more goal events before using it for alerting.",
+      "evidence_keys": [
+        "goal_events_count"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "batch_name": "soccernet_train20_goalaligned_v1_20260308_002229",
+  "created_at": "2026-03-08T07:22:30.864175Z",
+  "split": "train",
+  "offset": 0,
+  "limit": 20,
+  "files": [
+    "1_224p.mkv",
+    "2_224p.mkv",
+    "Labels-v2.json"
+  ],
+  "games": [
+    "england_epl/2014-2015/2015-02-21 - 18-00 Chelsea 1 - 1 Burnley",
+    "england_epl/2014-2015/2015-02-21 - 18-00 Crystal Palace 1 - 2 Arsenal",
+    "england_epl/2014-2015/2015-02-21 - 18-00 Swansea 2 - 1 Manchester United",
+    "england_epl/2014-2015/2015-02-22 - 19-15 Southampton 0 - 2 Liverpool",
+    "england_epl/2015-2016/2015-08-08 - 19-30 Chelsea 2 - 2 Swansea",
+    "england_epl/2015-2016/2015-08-29 - 17-00 Chelsea 1 - 2 Crystal Palace",
+    "england_epl/2015-2016/2015-08-29 - 17-00 Manchester City 2 - 0 Watford",
+    "england_epl/2015-2016/2015-09-12 - 14-45 Everton 3 - 1 Chelsea",
+    "england_epl/2015-2016/2015-09-12 - 17-00 Crystal Palace 0 - 1 Manchester City",
+    "england_epl/2015-2016/2015-09-19 - 19-30 Manchester City 1 - 2 West Ham",
+    "england_epl/2015-2016/2015-09-26 - 17-00 Liverpool 3 - 2 Aston Villa",
+    "england_epl/2015-2016/2015-10-17 - 17-00 Chelsea 2 - 0 Aston Villa",
+    "england_epl/2015-2016/2015-10-31 - 15-45 Chelsea 1 - 3 Liverpool",
+    "england_epl/2015-2016/2015-11-07 - 18-00 Manchester United 2 - 0 West Brom",
+    "england_epl/2015-2016/2015-11-21 - 20-30 Manchester City 1 - 4 Liverpool",
+    "england_epl/2015-2016/2015-11-29 - 15-00 Tottenham 0 - 0 Chelsea",
+    "england_epl/2015-2016/2015-12-05 - 20-30 Chelsea 0 - 1 Bournemouth",
+    "england_epl/2015-2016/2015-12-19 - 18-00 Chelsea 3 - 1 Sunderland",
+    "england_epl/2015-2016/2015-12-26 - 18-00 Manchester City 4 - 1 Sunderland",
+    "england_epl/2015-2016/2016-01-03 - 16-30 Crystal Palace 0 - 3 Chelsea"
+  ]
+}

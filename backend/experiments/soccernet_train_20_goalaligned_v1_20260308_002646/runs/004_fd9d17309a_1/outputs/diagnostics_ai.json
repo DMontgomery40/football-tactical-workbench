@@ -1,0 +1,71 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T16:18:49.276988Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player and field outputs are mostly present, but tracking fragmentation, low ball continuity, and mixed calibration quality limit event-level trust.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player and field outputs are mostly present, but tracking fragmentation, low ball continuity, and mixed calibration quality limit event-level trust.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field mapping mostly present\",\"message\":\"Field registration covered 54,381 of 60,650 player detections-equivalent points, with a field_registered_ratio of 0.8966. The last good calibration reached frame 67,430 out of 67,500, so mapping stayed available through the end of the clip.\",\"next_step\":\"Use projected player positions for broad team-shape review, but inspect the ~10.3% of frames without registration before exporting any full-clip spatial aggregates.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"last_good_calibration_frame\",\"frames_processed\"]},{\"level\":\"warn\",\"title\":\"Calibration refresh is inconsistent\",\"message\":\"Only 3,906 of 6,750 calibration refresh attempts succeeded, a 0.5787 success rate. Average visible pitch keypoints were 4.0021, which is near the minimum needed for stable homography and leaves limited margin when lines are partially occluded.\",\"next_step\":\"Review failed refresh segments and rerun with a wider refresh interval or a clip with clearer pitch markings if you need tighter frame-to-frame field geometry.\",\"evidence_keys\":[\"field_calibration_refresh_successes\",\"field_calibration_refresh_attempts\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\"]},{\"level\":\"warn\",\"title\":\"Player tracks are heavily fragmented\",\"message\":\"The run produced 5,366 unique player track IDs from 606,502 player rows, while average player detections per frame were 8.9852. Average track length was 112.7082 frames, about 4.5 seconds at 25 fps, and player_track_churn_ratio was 0.0795. That is short for possession or matchup analysis across long sequences.\",\"next_step\":\"Limit downstream analysis to shorter windows or longest tracks only, and inspect ID switches around camera motion and crowding before using per-player summaries.\",\"evidence_keys\":[\"unique_player_track_ids\",\"player_rows\",\"average_player_detections_per_frame\",\"average_track_length\",\"player_track_churn_ratio\",\"fps\"]},{\"level\":\"warn\",\"title\":\"Ball continuity is low\",\"message\":\"Average ball detections per frame were 0.5061, with 34,162 ball rows across 67,500 frames and 1,237 unique ball track IDs. That means the ball is missing in roughly half the frames and the detected ball tracks are split often, which weakens pass chains and pre-shot sequences.\",\"next_step\":\"Do not rely on this run for ball-led event reconstruction; manually inspect the goal window and rerun with a higher-resolution source if available.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"frames_processed\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Goal experiment is not discriminative\",\"message\":\"The only goal-aligned experiment has 1 goal in clip, so the sample is sparse. Its 30s pre-goal index was 0.0256 versus a 30s baseline of -0.017, but reported 30s uplift is 0.0, so this run does not show a usable separation between pre-goal and non-goal periods.\",\"next_step\":\"Treat the volatility series as exploratory only and compare it across more goal clips before using it as an alert or ranking signal.\",\"evidence_keys\":[\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field mapping mostly present",
+      "message": "Field registration covered 54,381 of 60,650 player detections-equivalent points, with a field_registered_ratio of 0.8966. The last good calibration reached frame 67,430 out of 67,500, so mapping stayed available through the end of the clip.",
+      "next_step": "Use projected player positions for broad team-shape review, but inspect the ~10.3% of frames without registration before exporting any full-clip spatial aggregates.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "last_good_calibration_frame",
+        "frames_processed"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration refresh is inconsistent",
+      "message": "Only 3,906 of 6,750 calibration refresh attempts succeeded, a 0.5787 success rate. Average visible pitch keypoints were 4.0021, which is near the minimum needed for stable homography and leaves limited margin when lines are partially occluded.",
+      "next_step": "Review failed refresh segments and rerun with a wider refresh interval or a clip with clearer pitch markings if you need tighter frame-to-frame field geometry.",
+      "evidence_keys": [
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player tracks are heavily fragmented",
+      "message": "The run produced 5,366 unique player track IDs from 606,502 player rows, while average player detections per frame were 8.9852. Average track length was 112.7082 frames, about 4.5 seconds at 25 fps, and player_track_churn_ratio was 0.0795. That is short for possession or matchup analysis across long sequences.",
+      "next_step": "Limit downstream analysis to shorter windows or longest tracks only, and inspect ID switches around camera motion and crowding before using per-player summaries.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "player_rows",
+        "average_player_detections_per_frame",
+        "average_track_length",
+        "player_track_churn_ratio",
+        "fps"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball continuity is low",
+      "message": "Average ball detections per frame were 0.5061, with 34,162 ball rows across 67,500 frames and 1,237 unique ball track IDs. That means the ball is missing in roughly half the frames and the detected ball tracks are split often, which weakens pass chains and pre-shot sequences.",
+      "next_step": "Do not rely on this run for ball-led event reconstruction; manually inspect the goal window and rerun with a higher-resolution source if available.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "frames_processed",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment is not discriminative",
+      "message": "The only goal-aligned experiment has 1 goal in clip, so the sample is sparse. Its 30s pre-goal index was 0.0256 versus a 30s baseline of -0.017, but reported 30s uplift is 0.0, so this run does not show a usable separation between pre-goal and non-goal periods.",
+      "next_step": "Treat the volatility series as exploratory only and compare it across more goal clips before using it as an alert or ranking signal.",
+      "evidence_keys": [
+        "goal_events_count"
+      ]
+    }
+  ]
+}

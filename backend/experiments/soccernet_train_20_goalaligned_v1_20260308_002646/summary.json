@@ -1,0 +1,11 @@
+{
+  "batch_name": "soccernet_train_20_goalaligned_v1_20260308_002646",
+  "created_at": "2026-03-08T07:26:47.533969Z",
+  "games_requested": 20,
+  "halves_processed": 10,
+  "positive_window_count": 420,
+  "baseline_window_count": 27361,
+  "mean_pre_goal_30s_vol_index": -0.145858,
+  "mean_baseline_vol_index": -0.021795,
+  "pre_goal_uplift_30s": 0.0
+}

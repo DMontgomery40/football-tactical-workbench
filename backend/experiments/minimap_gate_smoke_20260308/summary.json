@@ -1,0 +1,27 @@
+{
+  "batch_name": "minimap_gate_smoke_20260308",
+  "created_at": "2026-03-08T18:30:27.900839Z",
+  "input_mode": "local",
+  "tracker_modes": [
+    "bytetrack"
+  ],
+  "baseline_tracker_mode": "bytetrack",
+  "sources_requested": 1,
+  "runs_completed": 1,
+  "positive_window_count": 0,
+  "baseline_window_count": 9,
+  "mean_pre_goal_30s_vol_index": 0.0,
+  "mean_baseline_vol_index": 0.0,
+  "pre_goal_uplift_30s": -1.0,
+  "by_tracker_mode": {
+    "bytetrack": {
+      "runs": 1,
+      "mean_unique_player_track_ids": 34.0,
+      "mean_raw_unique_player_track_ids": 34.0,
+      "mean_average_track_length": 80.0294,
+      "mean_tracklet_merges_applied": 0.0,
+      "mean_stitched_track_id_reduction": 0.0
+    }
+  },
+  "tracker_comparison_summary": {}
+}

@@ -9,6 +9,8 @@ venv/
 .env.local
 UI_AGENT_HANDOFF_PROMPT.md
 CLAUDE.md
+.playwright/
+
 
 backend_server.log
 backend_server.pid
@@ -16,6 +18,16 @@ backend_server.pid
 frontend/node_modules/
 frontend/dist/
 
+backend/experiments/*.log
+backend/experiments/*.json
+backend/experiments/*.csv
+backend/experiments/*.zip
+backend/experiments/*.mp4
+backend/experiments/*.mov
+backend/experiments/*.mkv
+backend/experiments/*.avi
+backend/experiments/*.zip
+backend/experiments/*.mp4
 backend/datasets/
 backend/runs/
 backend/models/soccana_keypoint/.cache
@@ -28,4 +40,3 @@ WORKFLOWS.md
 *.mkv
 *.avi
 *.zip
-*

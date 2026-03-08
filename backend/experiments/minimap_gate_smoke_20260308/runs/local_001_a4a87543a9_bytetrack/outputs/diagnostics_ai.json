@@ -1,0 +1,71 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:31:01.190917Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Field projection covered all 250 frames, but ball coverage was very low and player tracking is fragmented with 34 IDs over a 10-second clip.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Field projection covered all 250 frames, but ball coverage was very low and player tracking is fragmented with 34 IDs over a 10-second clip.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Full field registration\",\"message\":\"Field registration hit 2721 projected player points out of 2721 player rows, with field_registered_ratio at 1.0. Calibration stayed valid through frame 240 of 250.\",\"next_step\":\"Use this run for spatial review before judging event or ball outputs.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"player_rows\",\"last_good_calibration_frame\"]},{\"level\":\"warn\",\"title\":\"Ball mostly missing\",\"message\":\"Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. That is roughly 7.6% frame coverage, so ball-driven analysis is sparse.\",\"next_step\":\"Re-run with a clip where the ball is larger or less occluded, and verify ball detector settings before using possession or event logic.\",\"evidence_keys\":[\"ball_rows\",\"frames_processed\",\"average_ball_detections_per_frame\"]},{\"level\":\"warn\",\"title\":\"Player IDs over-split\",\"message\":\"The run created 34 unique player track IDs from a clip averaging 10.884 player detections per frame. Average track length was 80.0294 frames while the longest track reached 250, and no merges were applied, which points to fragmented identity continuity.\",\"next_step\":\"Enable or tune track stitching/merge settings and review tracker thresholds on this clip.\",\"evidence_keys\":[\"unique_player_track_ids\",\"average_player_detections_per_frame\",\"average_track_length\",\"longest_track_length\",\"tracklet_merges_applied\"]},{\"level\":\"warn\",\"title\":\"Team counts are imbalanced\",\"message\":\"Team assignment ended at 23 home tracks and 11 away tracks, with team cluster distance 0.1889. With 34 total IDs, this split may reflect tracking churn or jersey clustering bias rather than actual on-pitch counts.\",\"next_step\":\"Inspect jersey crops and team clustering on several frames, then re-run with adjusted team-cluster parameters if this clip is meant for team-level analysis.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"team_cluster_distance\",\"unique_player_track_ids\",\"jersey_crops_used\"]},{\"level\":\"warn\",\"title\":\"Experiment not goal-aligned\",\"message\":\"The only experiment is geometric_volatility_index, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal metrics are all 0.0, so this run does not test whether volatility changes before goals.\",\"next_step\":\"Do not use the volatility experiment for goal-related conclusions on this clip; run it on footage with aligned goal events.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Full field registration",
+      "message": "Field registration hit 2721 projected player points out of 2721 player rows, with field_registered_ratio at 1.0. Calibration stayed valid through frame 240 of 250.",
+      "next_step": "Use this run for spatial review before judging event or ball outputs.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "player_rows",
+        "last_good_calibration_frame"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball mostly missing",
+      "message": "Only 19 ball rows were produced across 250 frames, or 0.076 detections per frame. That is roughly 7.6% frame coverage, so ball-driven analysis is sparse.",
+      "next_step": "Re-run with a clip where the ball is larger or less occluded, and verify ball detector settings before using possession or event logic.",
+      "evidence_keys": [
+        "ball_rows",
+        "frames_processed",
+        "average_ball_detections_per_frame"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player IDs over-split",
+      "message": "The run created 34 unique player track IDs from a clip averaging 10.884 player detections per frame. Average track length was 80.0294 frames while the longest track reached 250, and no merges were applied, which points to fragmented identity continuity.",
+      "next_step": "Enable or tune track stitching/merge settings and review tracker thresholds on this clip.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "average_player_detections_per_frame",
+        "average_track_length",
+        "longest_track_length",
+        "tracklet_merges_applied"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Team counts are imbalanced",
+      "message": "Team assignment ended at 23 home tracks and 11 away tracks, with team cluster distance 0.1889. With 34 total IDs, this split may reflect tracking churn or jersey clustering bias rather than actual on-pitch counts.",
+      "next_step": "Inspect jersey crops and team clustering on several frames, then re-run with adjusted team-cluster parameters if this clip is meant for team-level analysis.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "team_cluster_distance",
+        "unique_player_track_ids",
+        "jersey_crops_used"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment not goal-aligned",
+      "message": "The only experiment is geometric_volatility_index, but goal_aligned_experiment is false and goal_events_count is 0. Its pre-goal metrics are all 0.0, so this run does not test whether volatility changes before goals.",
+      "next_step": "Do not use the volatility experiment for goal-related conclusions on this clip; run it on footage with aligned goal events.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count"
+      ]
+    }
+  ]
+}

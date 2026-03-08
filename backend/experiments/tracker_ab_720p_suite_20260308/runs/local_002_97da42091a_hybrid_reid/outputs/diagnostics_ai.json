@@ -1,0 +1,48 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:11:37.645344Z",
+  "status": "disabled",
+  "provider": null,
+  "model": null,
+  "summary_line": "250-frame run, 26 player IDs, 35->26 raw-to-stitched IDs, 88.6% field registration, 0.76 ball detections/frame, 1 experiment card.",
+  "error": "",
+  "raw_text": "",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Identity stitching",
+      "message": "Player tracker ran in hybrid_reid mode with torchvision_resnet18_imagenet@mps. Raw track IDs dropped from 35 to 26 after 9 accepted merges.",
+      "next_step": "Inspect long same-kit occlusions and restart phases to verify the stitched IDs stay on the same players."
+    },
+    {
+      "level": "warn",
+      "title": "Tracking stability: fragmented",
+      "message": "26 stitched player track IDs across 250 frames (raw 35, longest 250, mean 108.3).",
+      "next_step": "Use a steadier wide-angle phase or inspect cutaways before trusting downstream team or pitch metrics."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "17 home tracks and 18 away tracks from 3790 jersey crops (cluster distance 0.183, mean vote ratio 0.92).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.76; projected ball anchors 159.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "25/25 refreshes succeeded; mean visible pitch keypoints 7.9; 88.6% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "warn",
+      "title": "Goal labels: missing",
+      "message": "No aligned SoccerNet goal events were found for this clip.",
+      "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals."
+    }
+  ]
+}

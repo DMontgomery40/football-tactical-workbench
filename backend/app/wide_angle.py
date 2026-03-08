@@ -257,8 +257,8 @@ def resolve_detector_spec(model_name: str) -> dict[str, Any]:
         "name": model_key,
         "weights_path": candidate,
         "player_class_id": 0,
-        "ball_class_id": 32,
-        "referee_class_id": -1,
+        "ball_class_id": 1,
+        "referee_class_id": 2,
     }
 
 

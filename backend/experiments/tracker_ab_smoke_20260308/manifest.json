@@ -1,0 +1,21 @@
+{
+  "batch_name": "tracker_ab_smoke_20260308",
+  "created_at": "2026-03-08T17:52:10.226657Z",
+  "tracker_modes": [
+    "bytetrack",
+    "hybrid_reid"
+  ],
+  "input_mode": "local",
+  "split": "local",
+  "offset": 0,
+  "limit": 50,
+  "files": [
+    "1_224p.mkv",
+    "2_224p.mkv",
+    "Labels-v2.json"
+  ],
+  "games": [],
+  "local_videos": [
+    "/Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/reid_smoke_clip.mp4"
+  ]
+}

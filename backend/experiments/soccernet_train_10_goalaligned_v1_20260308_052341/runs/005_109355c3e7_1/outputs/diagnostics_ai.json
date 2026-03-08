@@ -1,0 +1,75 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T21:37:54.714386Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player projection coverage is high at 88.87% of frames, but tracking is fragmented and ball coverage is sparse, so possession- or sequence-level outputs will be unstable.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player projection coverage is high at 88.87% of frames, but tracking is fragmented and ball coverage is sparse, so possession- or sequence-level outputs will be unstable.\",\"diagnostics\":[{\"level\":\"good\",\"title\":\"Field registration mostly present\",\"message\":\"Field registration succeeded on 51,9649 projected player points with a field_registered_ratio of 0.8887, and the last good calibration reached frame 70,980 out of 71,125. Coverage is high enough for broad spatial analysis, but calibration refresh only succeeded 3,523 times out of 7,113 attempts (49.53%), so recovery is inconsistent when calibration drops.\",\"next_step\":\"Review calibration failures around the 3,590 unsuccessful refresh attempts and inspect low-keypoint segments before rerunning field projection-dependent analyses.\",\"evidence_keys\":[\"field_registered_ratio\",\"projected_player_points\",\"field_registered_frames\",\"last_good_calibration_frame\",\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\",\"field_calibration_success_rate\"]},{\"level\":\"warn\",\"title\":\"Player tracks are highly fragmented\",\"message\":\"The run produced 7,381 unique player track IDs across 71,125 frames, with only 8.2214 player detections per frame on average. Average track length is 79.0179 frames (~3.2s at 25 fps), while the longest track is 944 frames. This gap points to frequent ID resets rather than sustained player identity over time.\",\"next_step\":\"Tighten player tracking settings or inspect occlusion/camera-cut segments, then rerun before using player-level longitudinal metrics.\",\"evidence_keys\":[\"unique_player_track_ids\",\"average_player_detections_per_frame\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\",\"fps\"]},{\"level\":\"warn\",\"title\":\"Ball coverage is sparse\",\"message\":\"Ball detections average 0.4867 per frame, with 34,615 ball rows over 71,125 frames and 1,894 unique ball track IDs. That is less than one ball detection every two frames on average, with many separate ball identities, which limits pass chains and event buildup analysis.\",\"next_step\":\"Inspect ball detection quality on fast-motion and aerial sequences, then rerun with ball-tracking tuning before relying on ball-led sequence outputs.\",\"evidence_keys\":[\"average_ball_detections_per_frame\",\"ball_rows\",\"frames_processed\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Calibration signal is thin\",\"message\":\"Average visible pitch keypoints is 3.6426, while calibration refresh success rate is 0.49529. With fewer than 4 visible keypoints on average and only about half of refresh attempts succeeding, projected positions may drift or drop during camera motion or partial-pitch views.\",\"next_step\":\"Sample frames from failed refresh windows and verify whether pitch markings are visible enough; if not, exclude those segments or use a clip with wider field visibility.\",\"evidence_keys\":[\"average_visible_pitch_keypoints\",\"field_calibration_success_rate\",\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\"]},{\"level\":\"warn\",\"title\":\"Goal experiment did not separate pre-goal windows\",\"message\":\"The goal-aligned experiment is present and there are 3 goals in the clip, but the geometric volatility signal did not rise before goals. The 30s pre-goal index is -0.309 versus a baseline of -0.006, and reported 30s uplift is 0.0. This run does not show a pre-goal volatility increase from that experimental metric.\",\"next_step\":\"Do not use this volatility signal for goal-proximity decisions on this clip; compare against more clips or switch to a different goal-aligned feature set.\",\"evidence_keys\":[\"goal_events_count\",\"goal_aligned_experiment\"]}]}",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Field registration mostly present",
+      "message": "Field registration succeeded on 51,9649 projected player points with a field_registered_ratio of 0.8887, and the last good calibration reached frame 70,980 out of 71,125. Coverage is high enough for broad spatial analysis, but calibration refresh only succeeded 3,523 times out of 7,113 attempts (49.53%), so recovery is",
+      "next_step": "Review calibration failures around the 3,590 unsuccessful refresh attempts and inspect low-keypoint segments before rerunning field projection-dependent analyses.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "projected_player_points",
+        "field_registered_frames",
+        "last_good_calibration_frame",
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes",
+        "field_calibration_success_rate"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Player tracks are highly fragmented",
+      "message": "The run produced 7,381 unique player track IDs across 71,125 frames, with only 8.2214 player detections per frame on average. Average track length is 79.0179 frames (~3.2s at 25 fps), while the longest track is 944 frames. This gap points to frequent ID resets rather than sustained player identity over time.",
+      "next_step": "Tighten player tracking settings or inspect occlusion/camera-cut segments, then rerun before using player-level longitudinal metrics.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "average_player_detections_per_frame",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio",
+        "fps"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Ball coverage is sparse",
+      "message": "Ball detections average 0.4867 per frame, with 34,615 ball rows over 71,125 frames and 1,894 unique ball track IDs. That is less than one ball detection every two frames on average, with many separate ball identities, which limits pass chains and event buildup analysis.",
+      "next_step": "Inspect ball detection quality on fast-motion and aerial sequences, then rerun with ball-tracking tuning before relying on ball-led sequence outputs.",
+      "evidence_keys": [
+        "average_ball_detections_per_frame",
+        "ball_rows",
+        "frames_processed",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration signal is thin",
+      "message": "Average visible pitch keypoints is 3.6426, while calibration refresh success rate is 0.49529. With fewer than 4 visible keypoints on average and only about half of refresh attempts succeeding, projected positions may drift or drop during camera motion or partial-pitch views.",
+      "next_step": "Sample frames from failed refresh windows and verify whether pitch markings are visible enough; if not, exclude those segments or use a clip with wider field visibility.",
+      "evidence_keys": [
+        "average_visible_pitch_keypoints",
+        "field_calibration_success_rate",
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Goal experiment did not separate pre-goal windows",
+      "message": "The goal-aligned experiment is present and there are 3 goals in the clip, but the geometric volatility signal did not rise before goals. The 30s pre-goal index is -0.309 versus a baseline of -0.006, and reported 30s uplift is 0.0. This run does not show a pre-goal volatility increase from that experimental metric.",
+      "next_step": "Do not use this volatility signal for goal-proximity decisions on this clip; compare against more clips or switch to a different goal-aligned feature set.",
+      "evidence_keys": [
+        "goal_events_count",
+        "goal_aligned_experiment"
+      ]
+    }
+  ]
+}

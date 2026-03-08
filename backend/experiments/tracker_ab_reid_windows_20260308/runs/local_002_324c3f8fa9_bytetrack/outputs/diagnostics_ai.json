@@ -1,0 +1,42 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-08T18:17:33.362236Z",
+  "status": "disabled",
+  "provider": null,
+  "model": null,
+  "summary_line": "1125-frame run, 102 player IDs, 91.2% field registration, 0.44 ball detections/frame, 1 experiment card.",
+  "error": "",
+  "raw_text": "",
+  "diagnostics": [
+    {
+      "level": "good",
+      "title": "Tracking stability: acceptable",
+      "message": "102 stitched player track IDs across 1125 frames (raw 102, longest 184, mean 66.7).",
+      "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "64 home tracks and 38 away tracks from 6797 jersey crops (cluster distance 0.447, mean vote ratio 0.93).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.44; projected ball anchors 461.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "35/187 refreshes succeeded; mean visible pitch keypoints 1.4; 91.2% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "warn",
+      "title": "Goal labels: missing",
+      "message": "No aligned SoccerNet goal events were found for this clip.",
+      "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals."
+    }
+  ]
+}

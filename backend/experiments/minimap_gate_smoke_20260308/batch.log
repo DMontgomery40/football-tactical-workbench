@@ -1,0 +1,56 @@
+[2026-03-08 18:30:27] [batch] starting batch minimap_gate_smoke_20260308
+[2026-03-08 18:30:27] [batch] tracker_modes=['bytetrack']
+[2026-03-08 18:30:27] [batch] local_videos=1
+[2026-03-08 18:30:27] [batch] dataset_dir=/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet
+[2026-03-08 18:30:27] [batch] runs_root=/Users/davidmontgomery/football_pose_workbench/backend/experiments/minimap_gate_smoke_20260308/runs
+[2026-03-08 18:30:27] [local-001] running reid_smoke_clip_720p.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/reid_smoke_clip_720p.mp4
+[2026-03-08 18:30:27] [local-001] tracker_mode=bytetrack
+[2026-03-08 18:30:27] [local-001-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/reid_smoke_clip_720p.mp4
+[2026-03-08 18:30:27] [local-001-bytetrack] Detector device chosen: mps
+[2026-03-08 18:30:27] [local-001-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:30:27] [local-001-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:30:27] [local-001-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:30:28] [local-001-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:30:28] [local-001-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:30:30] [local-001-bytetrack] progress=1.00
+[2026-03-08 18:30:31] [local-001-bytetrack] progress=5.17
+[2026-03-08 18:30:32] [local-001-bytetrack] Tracked 25 frames at 5.92 fps · calib reproj 148cm
+[2026-03-08 18:30:33] [local-001-bytetrack] progress=10.06
+[2026-03-08 18:30:33] [local-001-bytetrack] Tracked 50 frames at 8.63 fps · calib reproj 210cm
+[2026-03-08 18:30:34] [local-001-bytetrack] progress=15.23
+[2026-03-08 18:30:35] [local-001-bytetrack] progress=20.13
+[2026-03-08 18:30:35] [local-001-bytetrack] Tracked 75 frames at 9.68 fps · calib reproj 210cm
+[2026-03-08 18:30:37] [local-001-bytetrack] progress=25.02
+[2026-03-08 18:30:37] [local-001-bytetrack] Tracked 100 frames at 10.26 fps · calib reproj 210cm
+[2026-03-08 18:30:38] [local-001-bytetrack] progress=30.19
+[2026-03-08 18:30:39] [local-001-bytetrack] Tracked 125 frames at 10.83 fps · calib reproj 210cm
+[2026-03-08 18:30:39] [local-001-bytetrack] progress=35.09
+[2026-03-08 18:30:41] [local-001-bytetrack] progress=40.26
+[2026-03-08 18:30:41] [local-001-bytetrack] Tracked 150 frames at 11.16 fps · calib reproj 210cm
+[2026-03-08 18:30:42] [local-001-bytetrack] progress=45.15
+[2026-03-08 18:30:43] [local-001-bytetrack] Tracked 175 frames at 11.34 fps · calib reproj 193cm
+[2026-03-08 18:30:44] [local-001-bytetrack] progress=50.05
+[2026-03-08 18:30:45] [local-001-bytetrack] Tracked 200 frames at 11.63 fps · calib reproj 76cm
+[2026-03-08 18:30:45] [local-001-bytetrack] progress=55.22
+[2026-03-08 18:30:46] [local-001-bytetrack] progress=60.11
+[2026-03-08 18:30:47] [local-001-bytetrack] Tracked 225 frames at 11.88 fps · calib reproj 164cm
+[2026-03-08 18:30:47] [local-001-bytetrack] progress=65.01
+[2026-03-08 18:30:48] [local-001-bytetrack] Tracked 250 frames at 12.21 fps · calib reproj 167cm
+[2026-03-08 18:30:48] [local-001-bytetrack] Built two team color clusters from 2716 jersey crops
+[2026-03-08 18:30:48] [local-001-bytetrack] Rendering tactical overlay
+[2026-03-08 18:30:48] [local-001-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:30:48] [local-001-bytetrack] progress=70.02
+[2026-03-08 18:30:49] [local-001-bytetrack] progress=75.04
+[2026-03-08 18:30:49] [local-001-bytetrack] progress=80.06
+[2026-03-08 18:30:50] [local-001-bytetrack] progress=85.07
+[2026-03-08 18:30:50] [local-001-bytetrack] progress=90.00
+[2026-03-08 18:30:50] [local-001-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:30:51] [local-001-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:30:51] [local-001-bytetrack] progress=95.00
+[2026-03-08 18:30:51] [local-001-bytetrack] Generating AI diagnostics via openai:gpt-5.4
+[2026-03-08 18:31:01] [local-001-bytetrack] Summary written to summary.json
+[2026-03-08 18:31:01] [batch] completed batch minimap_gate_smoke_20260308
+[2026-03-08 18:31:01] [batch] runs_csv=/Users/davidmontgomery/football_pose_workbench/backend/experiments/minimap_gate_smoke_20260308/runs.csv
+[2026-03-08 18:31:01] [batch] windows_csv=/Users/davidmontgomery/football_pose_workbench/backend/experiments/minimap_gate_smoke_20260308/entropy_windows_1hz.csv
+[2026-03-08 18:31:01] [batch] comparison_csv=/Users/davidmontgomery/football_pose_workbench/backend/experiments/minimap_gate_smoke_20260308/tracker_comparison.csv
+[2026-03-08 18:31:01] [batch] summary_json=/Users/davidmontgomery/football_pose_workbench/backend/experiments/minimap_gate_smoke_20260308/summary.json

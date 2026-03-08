@@ -1,0 +1,355 @@
+[2026-03-08 18:13:36] [batch] starting batch tracker_ab_reid_windows_20260308
+[2026-03-08 18:13:36] [batch] tracker_modes=['bytetrack', 'hybrid_reid']
+[2026-03-08 18:13:36] [batch] local_videos=4
+[2026-03-08 18:13:36] [batch] dataset_dir=/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet
+[2026-03-08 18:13:36] [batch] runs_root=/Users/davidmontgomery/football_pose_workbench/backend/experiments/tracker_ab_reid_windows_20260308/runs
+[2026-03-08 18:13:36] [local-001] running chelsea_burnley_goal_h1_45s.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/chelsea_burnley_goal_h1_45s.mp4
+[2026-03-08 18:13:36] [local-001] tracker_mode=bytetrack
+[2026-03-08 18:13:36] [local-001-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/chelsea_burnley_goal_h1_45s.mp4
+[2026-03-08 18:13:36] [local-001-bytetrack] Detector device chosen: mps
+[2026-03-08 18:13:36] [local-001-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:13:36] [local-001-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:13:36] [local-001-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:13:36] [local-001-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:13:36] [local-001-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:13:38] [local-001-bytetrack] progress=1.00
+[2026-03-08 18:13:39] [local-001-bytetrack] Tracked 25 frames at 7.62 fps
+[2026-03-08 18:13:40] [local-001-bytetrack] Tracked 50 frames at 10.89 fps
+[2026-03-08 18:13:42] [local-001-bytetrack] Tracked 75 frames at 12.27 fps
+[2026-03-08 18:13:42] [local-001-bytetrack] progress=5.02
+[2026-03-08 18:13:43] [local-001-bytetrack] Tracked 100 frames at 13.24 fps
+[2026-03-08 18:13:45] [local-001-bytetrack] Tracked 125 frames at 13.88 fps
+[2026-03-08 18:13:46] [local-001-bytetrack] Tracked 150 frames at 14.65 fps
+[2026-03-08 18:13:47] [local-001-bytetrack] progress=10.03
+[2026-03-08 18:13:48] [local-001-bytetrack] Tracked 175 frames at 14.70 fps
+[2026-03-08 18:13:49] [local-001-bytetrack] Tracked 200 frames at 14.91 fps
+[2026-03-08 18:13:51] [local-001-bytetrack] Tracked 225 frames at 15.06 fps
+[2026-03-08 18:13:52] [local-001-bytetrack] progress=15.05
+[2026-03-08 18:13:52] [local-001-bytetrack] Tracked 250 frames at 15.42 fps
+[2026-03-08 18:13:53] [local-001-bytetrack] Tracked 275 frames at 15.62 fps
+[2026-03-08 18:13:55] [local-001-bytetrack] Tracked 300 frames at 15.84 fps
+[2026-03-08 18:13:56] [local-001-bytetrack] Tracked 325 frames at 16.01 fps
+[2026-03-08 18:13:56] [local-001-bytetrack] progress=20.01
+[2026-03-08 18:13:57] [local-001-bytetrack] Tracked 350 frames at 16.26 fps
+[2026-03-08 18:13:59] [local-001-bytetrack] Tracked 375 frames at 16.29 fps
+[2026-03-08 18:14:00] [local-001-bytetrack] Tracked 400 frames at 16.37 fps
+[2026-03-08 18:14:01] [local-001-bytetrack] progress=25.02
+[2026-03-08 18:14:02] [local-001-bytetrack] Tracked 425 frames at 16.47 fps
+[2026-03-08 18:14:03] [local-001-bytetrack] Tracked 450 frames at 16.61 fps
+[2026-03-08 18:14:04] [local-001-bytetrack] Tracked 475 frames at 16.68 fps
+[2026-03-08 18:14:05] [local-001-bytetrack] progress=30.04
+[2026-03-08 18:14:05] [local-001-bytetrack] Tracked 500 frames at 16.83 fps
+[2026-03-08 18:14:07] [local-001-bytetrack] Tracked 525 frames at 16.91 fps
+[2026-03-08 18:14:08] [local-001-bytetrack] Tracked 550 frames at 17.05 fps
+[2026-03-08 18:14:09] [local-001-bytetrack] Tracked 575 frames at 17.14 fps
+[2026-03-08 18:14:09] [local-001-bytetrack] progress=35.06
+[2026-03-08 18:14:11] [local-001-bytetrack] Tracked 600 frames at 17.23 fps
+[2026-03-08 18:14:12] [local-001-bytetrack] Tracked 625 frames at 17.27 fps
+[2026-03-08 18:14:13] [local-001-bytetrack] Tracked 650 frames at 17.37 fps
+[2026-03-08 18:14:14] [local-001-bytetrack] progress=40.01
+[2026-03-08 18:14:14] [local-001-bytetrack] Tracked 675 frames at 17.40 fps
+[2026-03-08 18:14:16] [local-001-bytetrack] Tracked 700 frames at 17.47 fps
+[2026-03-08 18:14:17] [local-001-bytetrack] Tracked 725 frames at 17.51 fps
+[2026-03-08 18:14:18] [local-001-bytetrack] progress=45.03
+[2026-03-08 18:14:18] [local-001-bytetrack] Tracked 750 frames at 17.56 fps
+[2026-03-08 18:14:20] [local-001-bytetrack] Tracked 775 frames at 17.63 fps
+[2026-03-08 18:14:21] [local-001-bytetrack] Tracked 800 frames at 17.73 fps
+[2026-03-08 18:14:22] [local-001-bytetrack] Tracked 825 frames at 17.80 fps
+[2026-03-08 18:14:22] [local-001-bytetrack] progress=50.05
+[2026-03-08 18:14:23] [local-001-bytetrack] Tracked 850 frames at 17.85 fps
+[2026-03-08 18:14:25] [local-001-bytetrack] Tracked 875 frames at 17.88 fps
+[2026-03-08 18:14:26] [local-001-bytetrack] Tracked 900 frames at 17.97 fps
+[2026-03-08 18:14:26] [local-001-bytetrack] progress=55.00
+[2026-03-08 18:14:27] [local-001-bytetrack] Tracked 925 frames at 17.99 fps
+[2026-03-08 18:14:28] [local-001-bytetrack] Tracked 950 frames at 18.07 fps
+[2026-03-08 18:14:30] [local-001-bytetrack] Tracked 975 frames at 18.06 fps
+[2026-03-08 18:14:31] [local-001-bytetrack] progress=60.02
+[2026-03-08 18:14:31] [local-001-bytetrack] Tracked 1000 frames at 18.13 fps
+[2026-03-08 18:14:32] [local-001-bytetrack] Tracked 1025 frames at 18.15 fps
+[2026-03-08 18:14:33] [local-001-bytetrack] Tracked 1050 frames at 18.21 fps
+[2026-03-08 18:14:35] [local-001-bytetrack] Tracked 1075 frames at 18.23 fps
+[2026-03-08 18:14:35] [local-001-bytetrack] progress=65.04
+[2026-03-08 18:14:36] [local-001-bytetrack] Tracked 1100 frames at 18.21 fps
+[2026-03-08 18:14:37] [local-001-bytetrack] Tracked 1125 frames at 18.22 fps
+[2026-03-08 18:14:37] [local-001-bytetrack] Built two team color clusters from 14612 jersey crops
+[2026-03-08 18:14:38] [local-001-bytetrack] Rendering tactical overlay
+[2026-03-08 18:14:38] [local-001-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:14:38] [local-001-bytetrack] progress=70.01
+[2026-03-08 18:14:40] [local-001-bytetrack] progress=75.00
+[2026-03-08 18:14:41] [local-001-bytetrack] progress=80.01
+[2026-03-08 18:14:43] [local-001-bytetrack] progress=85.01
+[2026-03-08 18:14:45] [local-001-bytetrack] progress=90.00
+[2026-03-08 18:14:45] [local-001-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:14:46] [local-001-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:14:46] [local-001-bytetrack] progress=95.00
+[2026-03-08 18:14:47] [local-001-bytetrack] Summary written to summary.json
+[2026-03-08 18:14:47] [local-001] tracker_mode=hybrid_reid
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/chelsea_burnley_goal_h1_45s.mp4
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Detector device chosen: mps
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Field calibration device chosen: cpu
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Loading detector weights: soccana
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Player tracker mode: hybrid_reid
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Identity embedding source: torchvision_resnet18_imagenet@mps
+[2026-03-08 18:14:47] [local-001-hybrid_reid] Ball tracking enabled through the shared football detector
+[2026-03-08 18:14:48] [local-001-hybrid_reid] progress=1.00
+[2026-03-08 18:14:49] [local-001-hybrid_reid] Tracked 25 frames at 11.90 fps
+[2026-03-08 18:14:50] [local-001-hybrid_reid] Tracked 50 frames at 15.36 fps
+[2026-03-08 18:14:52] [local-001-hybrid_reid] Tracked 75 frames at 16.25 fps
+[2026-03-08 18:14:52] [local-001-hybrid_reid] progress=5.02
+[2026-03-08 18:14:53] [local-001-hybrid_reid] Tracked 100 frames at 16.77 fps
+[2026-03-08 18:14:54] [local-001-hybrid_reid] Tracked 125 frames at 16.86 fps
+[2026-03-08 18:14:56] [local-001-hybrid_reid] Tracked 150 frames at 17.32 fps
+[2026-03-08 18:14:57] [local-001-hybrid_reid] progress=10.03
+[2026-03-08 18:14:57] [local-001-hybrid_reid] Tracked 175 frames at 17.28 fps
+[2026-03-08 18:14:58] [local-001-hybrid_reid] Tracked 200 frames at 17.58 fps
+[2026-03-08 18:15:00] [local-001-hybrid_reid] Tracked 225 frames at 17.48 fps
+[2026-03-08 18:15:01] [local-001-hybrid_reid] progress=15.05
+[2026-03-08 18:15:01] [local-001-hybrid_reid] Tracked 250 frames at 17.72 fps
+[2026-03-08 18:15:02] [local-001-hybrid_reid] Tracked 275 frames at 17.77 fps
+[2026-03-08 18:15:04] [local-001-hybrid_reid] Tracked 300 frames at 17.96 fps
+[2026-03-08 18:15:05] [local-001-hybrid_reid] Tracked 325 frames at 18.00 fps
+[2026-03-08 18:15:05] [local-001-hybrid_reid] progress=20.01
+[2026-03-08 18:15:06] [local-001-hybrid_reid] Tracked 350 frames at 18.17 fps
+[2026-03-08 18:15:08] [local-001-hybrid_reid] Tracked 375 frames at 18.14 fps
+[2026-03-08 18:15:09] [local-001-hybrid_reid] Tracked 400 frames at 18.22 fps
+[2026-03-08 18:15:10] [local-001-hybrid_reid] progress=25.02
+[2026-03-08 18:15:10] [local-001-hybrid_reid] Tracked 425 frames at 18.31 fps
+[2026-03-08 18:15:11] [local-001-hybrid_reid] Tracked 450 frames at 18.40 fps
+[2026-03-08 18:15:13] [local-001-hybrid_reid] Tracked 475 frames at 18.43 fps
+[2026-03-08 18:15:14] [local-001-hybrid_reid] progress=30.04
+[2026-03-08 18:15:14] [local-001-hybrid_reid] Tracked 500 frames at 18.50 fps
+[2026-03-08 18:15:15] [local-001-hybrid_reid] Tracked 525 frames at 18.52 fps
+[2026-03-08 18:15:17] [local-001-hybrid_reid] Tracked 550 frames at 18.61 fps
+[2026-03-08 18:15:18] [local-001-hybrid_reid] Tracked 575 frames at 18.63 fps
+[2026-03-08 18:15:18] [local-001-hybrid_reid] progress=35.06
+[2026-03-08 18:15:19] [local-001-hybrid_reid] Tracked 600 frames at 18.70 fps
+[2026-03-08 18:15:20] [local-001-hybrid_reid] Tracked 625 frames at 18.72 fps
+[2026-03-08 18:15:22] [local-001-hybrid_reid] Tracked 650 frames at 18.82 fps
+[2026-03-08 18:15:22] [local-001-hybrid_reid] progress=40.01
+[2026-03-08 18:15:23] [local-001-hybrid_reid] Tracked 675 frames at 18.81 fps
+[2026-03-08 18:15:24] [local-001-hybrid_reid] Tracked 700 frames at 18.84 fps
+[2026-03-08 18:15:26] [local-001-hybrid_reid] Tracked 725 frames at 18.80 fps
+[2026-03-08 18:15:27] [local-001-hybrid_reid] progress=45.03
+[2026-03-08 18:15:27] [local-001-hybrid_reid] Tracked 750 frames at 18.77 fps
+[2026-03-08 18:15:29] [local-001-hybrid_reid] Tracked 775 frames at 18.67 fps
+[2026-03-08 18:15:30] [local-001-hybrid_reid] Tracked 800 frames at 18.64 fps
+[2026-03-08 18:15:32] [local-001-hybrid_reid] Tracked 825 frames at 18.54 fps
+[2026-03-08 18:15:32] [local-001-hybrid_reid] progress=50.05
+[2026-03-08 18:15:33] [local-001-hybrid_reid] Tracked 850 frames at 18.49 fps
+[2026-03-08 18:15:35] [local-001-hybrid_reid] Tracked 875 frames at 18.40 fps
+[2026-03-08 18:15:36] [local-001-hybrid_reid] Tracked 900 frames at 18.38 fps
+[2026-03-08 18:15:37] [local-001-hybrid_reid] progress=55.00
+[2026-03-08 18:15:38] [local-001-hybrid_reid] Tracked 925 frames at 18.22 fps
+[2026-03-08 18:15:39] [local-001-hybrid_reid] Tracked 950 frames at 18.18 fps
+[2026-03-08 18:15:41] [local-001-hybrid_reid] Tracked 975 frames at 18.10 fps
+[2026-03-08 18:15:42] [local-001-hybrid_reid] progress=60.02
+[2026-03-08 18:15:42] [local-001-hybrid_reid] Tracked 1000 frames at 18.06 fps
+[2026-03-08 18:15:44] [local-001-hybrid_reid] Tracked 1025 frames at 18.01 fps
+[2026-03-08 18:15:45] [local-001-hybrid_reid] Tracked 1050 frames at 17.97 fps
+[2026-03-08 18:15:47] [local-001-hybrid_reid] Tracked 1075 frames at 17.95 fps
+[2026-03-08 18:15:47] [local-001-hybrid_reid] progress=65.04
+[2026-03-08 18:15:49] [local-001-hybrid_reid] Tracked 1100 frames at 17.61 fps
+[2026-03-08 18:15:51] [local-001-hybrid_reid] Tracked 1125 frames at 17.57 fps
+[2026-03-08 18:15:51] [local-001-hybrid_reid] Stitched 49 fragmented player tracklets into 40 canonical IDs
+[2026-03-08 18:15:51] [local-001-hybrid_reid] Built two team color clusters from 14612 jersey crops
+[2026-03-08 18:15:52] [local-001-hybrid_reid] Rendering tactical overlay
+[2026-03-08 18:15:52] [local-001-hybrid_reid] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:15:52] [local-001-hybrid_reid] progress=70.01
+[2026-03-08 18:15:54] [local-001-hybrid_reid] progress=75.00
+[2026-03-08 18:15:56] [local-001-hybrid_reid] progress=80.01
+[2026-03-08 18:15:58] [local-001-hybrid_reid] progress=85.01
+[2026-03-08 18:16:00] [local-001-hybrid_reid] progress=90.00
+[2026-03-08 18:16:00] [local-001-hybrid_reid] Finalizing browser-ready overlay video
+[2026-03-08 18:16:02] [local-001-hybrid_reid] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:16:02] [local-001-hybrid_reid] progress=95.00
+[2026-03-08 18:16:03] [local-001-hybrid_reid] Summary written to summary.json
+[2026-03-08 18:16:03] [local-002] running palace_arsenal_goal_h1_45s.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/palace_arsenal_goal_h1_45s.mp4
+[2026-03-08 18:16:03] [local-002] tracker_mode=bytetrack
+[2026-03-08 18:16:03] [local-002-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/palace_arsenal_goal_h1_45s.mp4
+[2026-03-08 18:16:03] [local-002-bytetrack] Detector device chosen: mps
+[2026-03-08 18:16:03] [local-002-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:16:03] [local-002-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:16:03] [local-002-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:16:03] [local-002-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:16:03] [local-002-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:16:03] [local-002-bytetrack] progress=1.00
+[2026-03-08 18:16:08] [local-002-bytetrack] Tracked 25 frames at 4.98 fps
+[2026-03-08 18:16:12] [local-002-bytetrack] Tracked 50 frames at 5.28 fps
+[2026-03-08 18:16:17] [local-002-bytetrack] Tracked 75 frames at 5.46 fps
+[2026-03-08 18:16:18] [local-002-bytetrack] progress=5.02
+[2026-03-08 18:16:19] [local-002-bytetrack] Tracked 100 frames at 6.25 fps
+[2026-03-08 18:16:20] [local-002-bytetrack] Tracked 125 frames at 7.13 fps
+[2026-03-08 18:16:22] [local-002-bytetrack] Tracked 150 frames at 7.92 fps
+[2026-03-08 18:16:23] [local-002-bytetrack] progress=10.03
+[2026-03-08 18:16:24] [local-002-bytetrack] Tracked 175 frames at 8.36 fps
+[2026-03-08 18:16:25] [local-002-bytetrack] Tracked 200 frames at 8.95 fps
+[2026-03-08 18:16:27] [local-002-bytetrack] Tracked 225 frames at 9.42 fps
+[2026-03-08 18:16:28] [local-002-bytetrack] progress=15.05
+[2026-03-08 18:16:28] [local-002-bytetrack] Tracked 250 frames at 9.89 fps
+[2026-03-08 18:16:30] [local-002-bytetrack] Tracked 275 frames at 10.19 fps
+[2026-03-08 18:16:31] [local-002-bytetrack] Tracked 300 frames at 10.47 fps
+[2026-03-08 18:16:33] [local-002-bytetrack] Tracked 325 frames at 10.64 fps
+[2026-03-08 18:16:34] [local-002-bytetrack] progress=20.01
+[2026-03-08 18:16:35] [local-002-bytetrack] Tracked 350 frames at 10.92 fps
+[2026-03-08 18:16:36] [local-002-bytetrack] Tracked 375 frames at 11.13 fps
+[2026-03-08 18:16:38] [local-002-bytetrack] Tracked 400 frames at 11.37 fps
+[2026-03-08 18:16:39] [local-002-bytetrack] progress=25.02
+[2026-03-08 18:16:39] [local-002-bytetrack] Tracked 425 frames at 11.58 fps
+[2026-03-08 18:16:41] [local-002-bytetrack] Tracked 450 frames at 11.79 fps
+[2026-03-08 18:16:42] [local-002-bytetrack] Tracked 475 frames at 11.97 fps
+[2026-03-08 18:16:44] [local-002-bytetrack] progress=30.04
+[2026-03-08 18:16:44] [local-002-bytetrack] Tracked 500 frames at 12.13 fps
+[2026-03-08 18:16:46] [local-002-bytetrack] Tracked 525 frames at 12.25 fps
+[2026-03-08 18:16:47] [local-002-bytetrack] Tracked 550 frames at 12.40 fps
+[2026-03-08 18:16:49] [local-002-bytetrack] Tracked 575 frames at 12.52 fps
+[2026-03-08 18:16:49] [local-002-bytetrack] progress=35.06
+[2026-03-08 18:16:50] [local-002-bytetrack] Tracked 600 frames at 12.70 fps
+[2026-03-08 18:16:51] [local-002-bytetrack] Tracked 625 frames at 12.83 fps
+[2026-03-08 18:16:53] [local-002-bytetrack] Tracked 650 frames at 12.96 fps
+[2026-03-08 18:16:54] [local-002-bytetrack] progress=40.01
+[2026-03-08 18:16:54] [local-002-bytetrack] Tracked 675 frames at 13.07 fps
+[2026-03-08 18:16:56] [local-002-bytetrack] Tracked 700 frames at 13.19 fps
+[2026-03-08 18:16:57] [local-002-bytetrack] Tracked 725 frames at 13.29 fps
+[2026-03-08 18:16:58] [local-002-bytetrack] progress=45.03
+[2026-03-08 18:16:59] [local-002-bytetrack] Tracked 750 frames at 13.40 fps
+[2026-03-08 18:17:00] [local-002-bytetrack] Tracked 775 frames at 13.48 fps
+[2026-03-08 18:17:02] [local-002-bytetrack] Tracked 800 frames at 13.57 fps
+[2026-03-08 18:17:03] [local-002-bytetrack] Tracked 825 frames at 13.62 fps
+[2026-03-08 18:17:03] [local-002-bytetrack] progress=50.05
+[2026-03-08 18:17:05] [local-002-bytetrack] Tracked 850 frames at 13.70 fps
+[2026-03-08 18:17:06] [local-002-bytetrack] Tracked 875 frames at 13.76 fps
+[2026-03-08 18:17:08] [local-002-bytetrack] Tracked 900 frames at 13.84 fps
+[2026-03-08 18:17:08] [local-002-bytetrack] progress=55.00
+[2026-03-08 18:17:09] [local-002-bytetrack] Tracked 925 frames at 13.91 fps
+[2026-03-08 18:17:11] [local-002-bytetrack] Tracked 950 frames at 13.99 fps
+[2026-03-08 18:17:12] [local-002-bytetrack] Tracked 975 frames at 14.02 fps
+[2026-03-08 18:17:14] [local-002-bytetrack] progress=60.02
+[2026-03-08 18:17:14] [local-002-bytetrack] Tracked 1000 frames at 14.04 fps
+[2026-03-08 18:17:16] [local-002-bytetrack] Tracked 1025 frames at 14.09 fps
+[2026-03-08 18:17:17] [local-002-bytetrack] Tracked 1050 frames at 14.14 fps
+[2026-03-08 18:17:19] [local-002-bytetrack] Tracked 1075 frames at 14.16 fps
+[2026-03-08 18:17:19] [local-002-bytetrack] progress=65.04
+[2026-03-08 18:17:20] [local-002-bytetrack] Tracked 1100 frames at 14.21 fps
+[2026-03-08 18:17:22] [local-002-bytetrack] Tracked 1125 frames at 14.21 fps
+[2026-03-08 18:17:22] [local-002-bytetrack] Built two team color clusters from 6797 jersey crops
+[2026-03-08 18:17:22] [local-002-bytetrack] Rendering tactical overlay
+[2026-03-08 18:17:22] [local-002-bytetrack] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:17:23] [local-002-bytetrack] progress=70.01
+[2026-03-08 18:17:25] [local-002-bytetrack] progress=75.00
+[2026-03-08 18:17:26] [local-002-bytetrack] progress=80.01
+[2026-03-08 18:17:28] [local-002-bytetrack] progress=85.01
+[2026-03-08 18:17:30] [local-002-bytetrack] progress=90.00
+[2026-03-08 18:17:30] [local-002-bytetrack] Finalizing browser-ready overlay video
+[2026-03-08 18:17:33] [local-002-bytetrack] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:17:33] [local-002-bytetrack] progress=95.00
+[2026-03-08 18:17:33] [local-002-bytetrack] Summary written to summary.json
+[2026-03-08 18:17:33] [local-002] tracker_mode=hybrid_reid
+[2026-03-08 18:17:33] [local-002-hybrid_reid] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/palace_arsenal_goal_h1_45s.mp4
+[2026-03-08 18:17:33] [local-002-hybrid_reid] Detector device chosen: mps
+[2026-03-08 18:17:33] [local-002-hybrid_reid] Field calibration device chosen: cpu
+[2026-03-08 18:17:33] [local-002-hybrid_reid] Loading detector weights: soccana
+[2026-03-08 18:17:33] [local-002-hybrid_reid] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:17:34] [local-002-hybrid_reid] Player tracker mode: hybrid_reid
+[2026-03-08 18:17:34] [local-002-hybrid_reid] Identity embedding source: torchvision_resnet18_imagenet@mps
+[2026-03-08 18:17:34] [local-002-hybrid_reid] Ball tracking enabled through the shared football detector
+[2026-03-08 18:17:34] [local-002-hybrid_reid] progress=1.00
+[2026-03-08 18:17:39] [local-002-hybrid_reid] Tracked 25 frames at 4.78 fps
+[2026-03-08 18:17:43] [local-002-hybrid_reid] Tracked 50 frames at 5.20 fps
+[2026-03-08 18:17:47] [local-002-hybrid_reid] Tracked 75 frames at 5.38 fps
+[2026-03-08 18:17:49] [local-002-hybrid_reid] progress=5.02
+[2026-03-08 18:17:50] [local-002-hybrid_reid] Tracked 100 frames at 6.15 fps
+[2026-03-08 18:17:51] [local-002-hybrid_reid] Tracked 125 frames at 6.99 fps
+[2026-03-08 18:17:53] [local-002-hybrid_reid] Tracked 150 frames at 7.71 fps
+[2026-03-08 18:17:54] [local-002-hybrid_reid] progress=10.03
+[2026-03-08 18:17:55] [local-002-hybrid_reid] Tracked 175 frames at 8.26 fps
+[2026-03-08 18:17:56] [local-002-hybrid_reid] Tracked 200 frames at 8.86 fps
+[2026-03-08 18:17:57] [local-002-hybrid_reid] Tracked 225 frames at 9.39 fps
+[2026-03-08 18:17:59] [local-002-hybrid_reid] progress=15.05
+[2026-03-08 18:17:59] [local-002-hybrid_reid] Tracked 250 frames at 9.90 fps
+[2026-03-08 18:18:00] [local-002-hybrid_reid] Tracked 275 frames at 10.30 fps
+[2026-03-08 18:18:02] [local-002-hybrid_reid] Tracked 300 frames at 10.60 fps
+[2026-03-08 18:18:03] [local-002-hybrid_reid] Tracked 325 frames at 10.90 fps
+[2026-03-08 18:18:04] [local-002-hybrid_reid] progress=20.01
+[2026-03-08 18:18:05] [local-002-hybrid_reid] Tracked 350 frames at 11.22 fps
+[2026-03-08 18:18:06] [local-002-hybrid_reid] Tracked 375 frames at 11.49 fps
+[2026-03-08 18:18:07] [local-002-hybrid_reid] Tracked 400 frames at 11.78 fps
+[2026-03-08 18:18:08] [local-002-hybrid_reid] progress=25.02
+[2026-03-08 18:18:09] [local-002-hybrid_reid] Tracked 425 frames at 11.98 fps
+[2026-03-08 18:18:10] [local-002-hybrid_reid] Tracked 450 frames at 12.22 fps
+[2026-03-08 18:18:12] [local-002-hybrid_reid] Tracked 475 frames at 12.36 fps
+[2026-03-08 18:18:13] [local-002-hybrid_reid] progress=30.04
+[2026-03-08 18:18:13] [local-002-hybrid_reid] Tracked 500 frames at 12.52 fps
+[2026-03-08 18:18:15] [local-002-hybrid_reid] Tracked 525 frames at 12.66 fps
+[2026-03-08 18:18:16] [local-002-hybrid_reid] Tracked 550 frames at 12.86 fps
+[2026-03-08 18:18:18] [local-002-hybrid_reid] Tracked 575 frames at 13.02 fps
+[2026-03-08 18:18:18] [local-002-hybrid_reid] progress=35.06
+[2026-03-08 18:18:19] [local-002-hybrid_reid] Tracked 600 frames at 13.20 fps
+[2026-03-08 18:18:20] [local-002-hybrid_reid] Tracked 625 frames at 13.31 fps
+[2026-03-08 18:18:22] [local-002-hybrid_reid] Tracked 650 frames at 13.46 fps
+[2026-03-08 18:18:23] [local-002-hybrid_reid] progress=40.01
+[2026-03-08 18:18:23] [local-002-hybrid_reid] Tracked 675 frames at 13.52 fps
+[2026-03-08 18:18:25] [local-002-hybrid_reid] Tracked 700 frames at 13.64 fps
+[2026-03-08 18:18:26] [local-002-hybrid_reid] Tracked 725 frames at 13.73 fps
+[2026-03-08 18:18:28] [local-002-hybrid_reid] progress=45.03
+[2026-03-08 18:18:28] [local-002-hybrid_reid] Tracked 750 frames at 13.82 fps
+[2026-03-08 18:18:29] [local-002-hybrid_reid] Tracked 775 frames at 13.88 fps
+[2026-03-08 18:18:31] [local-002-hybrid_reid] Tracked 800 frames at 13.97 fps
+[2026-03-08 18:18:32] [local-002-hybrid_reid] Tracked 825 frames at 14.02 fps
+[2026-03-08 18:18:33] [local-002-hybrid_reid] progress=50.05
+[2026-03-08 18:18:34] [local-002-hybrid_reid] Tracked 850 frames at 14.10 fps
+[2026-03-08 18:18:35] [local-002-hybrid_reid] Tracked 875 frames at 14.15 fps
+[2026-03-08 18:18:37] [local-002-hybrid_reid] Tracked 900 frames at 14.22 fps
+[2026-03-08 18:18:37] [local-002-hybrid_reid] progress=55.00
+[2026-03-08 18:18:38] [local-002-hybrid_reid] Tracked 925 frames at 14.26 fps
+[2026-03-08 18:18:40] [local-002-hybrid_reid] Tracked 950 frames at 14.33 fps
+[2026-03-08 18:18:41] [local-002-hybrid_reid] Tracked 975 frames at 14.38 fps
+[2026-03-08 18:18:42] [local-002-hybrid_reid] progress=60.02
+[2026-03-08 18:18:43] [local-002-hybrid_reid] Tracked 1000 frames at 14.46 fps
+[2026-03-08 18:18:44] [local-002-hybrid_reid] Tracked 1025 frames at 14.51 fps
+[2026-03-08 18:18:46] [local-002-hybrid_reid] Tracked 1050 frames at 14.58 fps
+[2026-03-08 18:18:47] [local-002-hybrid_reid] Tracked 1075 frames at 14.61 fps
+[2026-03-08 18:18:47] [local-002-hybrid_reid] progress=65.04
+[2026-03-08 18:18:49] [local-002-hybrid_reid] Tracked 1100 frames at 14.67 fps
+[2026-03-08 18:18:50] [local-002-hybrid_reid] Tracked 1125 frames at 14.69 fps
+[2026-03-08 18:18:50] [local-002-hybrid_reid] Stitched 22 fragmented player tracklets into 80 canonical IDs
+[2026-03-08 18:18:50] [local-002-hybrid_reid] Built two team color clusters from 6797 jersey crops
+[2026-03-08 18:18:50] [local-002-hybrid_reid] Rendering tactical overlay
+[2026-03-08 18:18:50] [local-002-hybrid_reid] Writing overlay with mp4v then transcoding to H.264
+[2026-03-08 18:18:51] [local-002-hybrid_reid] progress=70.01
+[2026-03-08 18:18:52] [local-002-hybrid_reid] progress=75.00
+[2026-03-08 18:18:54] [local-002-hybrid_reid] progress=80.01
+[2026-03-08 18:18:56] [local-002-hybrid_reid] progress=85.01
+[2026-03-08 18:18:58] [local-002-hybrid_reid] progress=90.00
+[2026-03-08 18:18:58] [local-002-hybrid_reid] Finalizing browser-ready overlay video
+[2026-03-08 18:19:00] [local-002-hybrid_reid] Overlay video transcoded to H.264 for browser playback
+[2026-03-08 18:19:00] [local-002-hybrid_reid] progress=95.00
+[2026-03-08 18:19:00] [local-002-hybrid_reid] Summary written to summary.json
+[2026-03-08 18:19:01] [local-003] running swansea_united_goal1_h1_45s.mp4 from /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/swansea_united_goal1_h1_45s.mp4
+[2026-03-08 18:19:01] [local-003] tracker_mode=bytetrack
+[2026-03-08 18:19:01] [local-003-bytetrack] Opening video: /Users/davidmontgomery/football_pose_workbench/backend/datasets/bundesliga_sample/tracker_ab_reid_windows/swansea_united_goal1_h1_45s.mp4
+[2026-03-08 18:19:01] [local-003-bytetrack] Detector device chosen: mps
+[2026-03-08 18:19:01] [local-003-bytetrack] Field calibration device chosen: cpu
+[2026-03-08 18:19:01] [local-003-bytetrack] Loading detector weights: soccana
+[2026-03-08 18:19:01] [local-003-bytetrack] Loading field calibration weights: soccana_keypoint
+[2026-03-08 18:19:01] [local-003-bytetrack] Player tracker mode: bytetrack
+[2026-03-08 18:19:01] [local-003-bytetrack] Ball tracking enabled through the shared football detector
+[2026-03-08 18:19:01] [local-003-bytetrack] progress=1.00
+[2026-03-08 18:19:03] [local-003-bytetrack] Tracked 25 frames at 12.07 fps
+[2026-03-08 18:19:04] [local-003-bytetrack] Tracked 50 frames at 14.77 fps
+[2026-03-08 18:19:06] [local-003-bytetrack] Tracked 75 frames at 15.39 fps
+[2026-03-08 18:19:06] [local-003-bytetrack] progress=5.02
+[2026-03-08 18:19:07] [local-003-bytetrack] Tracked 100 frames at 16.10 fps
+[2026-03-08 18:19:08] [local-003-bytetrack] Tracked 125 frames at 16.43 fps
+[2026-03-08 18:19:10] [local-003-bytetrack] Tracked 150 frames at 16.91 fps
+[2026-03-08 18:19:10] [local-003-bytetrack] progress=10.03
+[2026-03-08 18:19:11] [local-003-bytetrack] Tracked 175 frames at 17.03 fps
+[2026-03-08 18:19:12] [local-003-bytetrack] Tracked 200 frames at 17.26 fps
+[2026-03-08 18:19:14] [local-003-bytetrack] Tracked 225 frames at 17.22 fps
+[2026-03-08 18:19:15] [local-003-bytetrack] progress=15.05
+[2026-03-08 18:19:15] [local-003-bytetrack] Tracked 250 frames at 17.36 fps
+[2026-03-08 18:19:16] [local-003-bytetrack] Tracked 275 frames at 17.43 fps
+[2026-03-08 18:19:18] [local-003-bytetrack] Tracked 300 frames at 17.54 fps
+[2026-03-08 18:19:19] [local-003-bytetrack] Tracked 325 frames at 17.53 fps
+[2026-03-08 18:19:20] [local-003-bytetrack] progress=20.01
+[2026-03-08 18:19:21] [local-003-bytetrack] Tracked 350 frames at 17.63 fps

@@ -1,0 +1,10 @@
+{
+  "epoch": 1,
+  "total_epochs": 1,
+  "metrics": {
+    "mAP50": 0.0,
+    "mAP50_95": 0.0
+  },
+  "done": true,
+  "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt"
+}

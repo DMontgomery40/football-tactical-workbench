@@ -1,0 +1,13 @@
+{
+  "base_weights": "soccana",
+  "dataset_path": "/private/tmp/fpw_train_smoke",
+  "run_name": "smoke-train",
+  "epochs": 1,
+  "imgsz": 320,
+  "batch": 1,
+  "device": "cpu",
+  "workers": 0,
+  "patience": 1,
+  "freeze": null,
+  "cache": false
+}
