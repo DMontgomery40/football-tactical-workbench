@@ -1,6 +1,69 @@
 {
-  "active_detector": "custom_20260309_072150_393217",
+  "active_detector": "soccana",
   "detectors": [
+    {
+      "id": "soccana",
+      "label": "soccana (pretrained)",
+      "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+      "is_pretrained": true,
+      "created_at": "2026-03-09T07:33:34.540151Z",
+      "metrics": null,
+      "training_run_id": null,
+      "class_ids": {
+        "player_class_id": 0,
+        "ball_class_id": 1,
+        "referee_class_id": 2,
+        "player_class_ids": [
+          0
+        ],
+        "ball_class_ids": [
+          1
+        ],
+        "referee_class_ids": [
+          2
+        ]
+      },
+      "resolved_device": null,
+      "backend": null,
+      "backend_version": null,
+      "summary_path": null,
+      "artifacts": null
+    },
+    {
+      "id": "custom_20260308_232225_e8d67f",
+      "label": "smoke-train",
+      "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
+      "is_pretrained": false,
+      "base_weights": "soccana",
+      "created_at": "2026-03-08T23:22:25.712531Z",
+      "metrics": {
+        "mAP50": 0.0,
+        "mAP50_95": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "training_run_id": "20260308_232225_e8d67f",
+      "class_ids": {
+        "player_class_id": 0,
+        "ball_class_id": 3,
+        "referee_class_id": 2,
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ]
+      },
+      "resolved_device": null,
+      "backend": null,
+      "backend_version": null,
+      "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/summary.json",
+      "artifacts": null
+    },
     {
       "id": "custom_20260309_072150_393217",
       "label": "studio-v1-smoke-2",
@@ -62,69 +125,6 @@
           "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/val_batch0_pred.jpg"
         ]
       }
-    },
-    {
-      "id": "soccana",
-      "label": "soccana (pretrained)",
-      "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
-      "is_pretrained": true,
-      "created_at": "2026-03-09T07:33:02.772016Z",
-      "metrics": null,
-      "training_run_id": null,
-      "class_ids": {
-        "player_class_id": 0,
-        "ball_class_id": 1,
-        "referee_class_id": 2,
-        "player_class_ids": [
-          0
-        ],
-        "ball_class_ids": [
-          1
-        ],
-        "referee_class_ids": [
-          2
-        ]
-      },
-      "resolved_device": null,
-      "backend": null,
-      "backend_version": null,
-      "summary_path": null,
-      "artifacts": null
-    },
-    {
-      "id": "custom_20260308_232225_e8d67f",
-      "label": "smoke-train",
-      "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
-      "is_pretrained": false,
-      "base_weights": "soccana",
-      "created_at": "2026-03-08T23:22:25.712531Z",
-      "metrics": {
-        "mAP50": 0.0,
-        "mAP50_95": 0.0,
-        "precision": 0.0,
-        "recall": 0.0
-      },
-      "training_run_id": "20260308_232225_e8d67f",
-      "class_ids": {
-        "player_class_id": 0,
-        "ball_class_id": 3,
-        "referee_class_id": 2,
-        "player_class_ids": [
-          0,
-          1
-        ],
-        "ball_class_ids": [
-          3
-        ],
-        "referee_class_ids": [
-          2
-        ]
-      },
-      "resolved_device": null,
-      "backend": null,
-      "backend_version": null,
-      "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/summary.json",
-      "artifacts": null
     }
   ]
 }
