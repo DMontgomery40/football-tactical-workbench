@@ -1024,9 +1024,28 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["diagnostics_summary_line"] = normalized.get("diagnostics_summary_line", "")
     normalized["diagnostics_error"] = normalized.get("diagnostics_error", "")
     normalized["diagnostics_json"] = normalized.get("diagnostics_json")
-    normalized["player_tracker_mode"] = normalized.get("player_tracker_mode", DEFAULT_PLAYER_TRACKER_MODE)
-    normalized["raw_unique_player_track_ids"] = normalized.get("raw_unique_player_track_ids", normalized.get("unique_player_track_ids", 0))
-    normalized["tracklet_merges_applied"] = normalized.get("tracklet_merges_applied", 0)
+    normalized["diagnostics_prompt_context"] = normalized.get("diagnostics_prompt_context")
+    has_identity_metrics = any(
+        key in normalized
+        for key in (
+            "player_tracker_mode",
+            "raw_unique_player_track_ids",
+            "tracklet_merges_applied",
+            "stitched_track_id_reduction",
+            "identity_embedding_updates",
+        )
+    )
+    if has_identity_metrics:
+        normalized["player_tracker_mode"] = normalized.get("player_tracker_mode", DEFAULT_PLAYER_TRACKER_MODE)
+        normalized["raw_unique_player_track_ids"] = normalized.get("raw_unique_player_track_ids", normalized.get("unique_player_track_ids", 0))
+        normalized["tracklet_merges_applied"] = normalized.get("tracklet_merges_applied", 0)
+    else:
+        normalized["player_tracker_mode"] = "legacy/unknown"
+        normalized["raw_unique_player_track_ids"] = None
+        normalized["tracklet_merges_applied"] = None
+        normalized["stitched_track_id_reduction"] = None
+        normalized["identity_embedding_updates"] = None
+        normalized["identity_embedding_interval_frames"] = None
     normalized["player_tracker_backend"] = normalized.get("player_tracker_backend")
 
     is_legacy = "field_calibration_refresh_frames" not in normalized
@@ -1083,6 +1102,7 @@ def refresh_run_diagnostics(run_dir: Path) -> dict[str, Any]:
     summary["diagnostics_summary_line"] = artifact.get("summary_line", "")
     summary["diagnostics_error"] = artifact.get("error", "")
     summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
+    summary["diagnostics_prompt_context"] = artifact.get("prompt_context")
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 

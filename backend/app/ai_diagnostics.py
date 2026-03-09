@@ -10,10 +10,108 @@ from typing import Any
 from urllib import error, request
 
 
-PROMPT_VERSION = "run-diagnostics-v2"
-DEFAULT_TIMEOUT_SECONDS = 45.0
+PROMPT_VERSION = "run-diagnostics-v5"
+DEFAULT_TIMEOUT_SECONDS = 75.0
+DEFAULT_MAX_OUTPUT_TOKENS = 3000
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+MAX_CODE_SLICE_LINES = 220
+MAX_CODE_SLICE_CHARS = 6000
+MAX_TOTAL_CODE_CONTEXT_CHARS = 45000
+MAX_CODE_SLICES = 6
+MAX_RECENT_LOGS = 120
+MAX_RECENT_LOG_CHARS = 4000
+MAX_CONTEXT_JSON_CHARS = 70000
+
+
+def _build_good_output_example() -> str:
+    return json.dumps(
+        {
+            "summary_line": "67497-frame run with severe player ID churn, unstable calibration refreshes, weak ball continuity, and goal-aligned experiment output that is not yet operationally useful.",
+            "diagnostics": [
+                {
+                    "level": "warn",
+                    "title": "Player IDs are exploding",
+                    "message": (
+                        "The run produced 5446 canonical player IDs across 67497 frames, with average track length 105.7 frames and 0 accepted tracklet merges. "
+                        "That means the current identity path is behaving like short raw tracklets, not like persistent player identity. If `player_tracker_mode` is `hybrid_reid` "
+                        "but `tracklet_merges_applied` and `identity_embedding_updates` stay near zero, the code path to inspect first is the stitcher gate rather than detector confidence."
+                    ),
+                    "next_step": (
+                        "1. Open the stitched-identity code path and confirm embeddings are actually being produced on this run rather than falling back to color-only or disabled identity features.\n"
+                        "2. Compare `raw_unique_player_track_ids` against `unique_player_track_ids`; if they are identical, inspect the merge thresholds, temporal gap limit, and any team/color gating that can reject every candidate.\n"
+                        "3. Review 3 to 5 crowded sequences in the overlay where a player leaves and re-enters frame. For each break, check whether the failure came from detector dropout, tracker handoff, or stitch rejection.\n"
+                        "4. Do not tune homography first for this issue. This metric pattern says the dominant failure is identity association, not projection."
+                    ),
+                    "evidence_keys": [
+                        "unique_player_track_ids",
+                        "raw_unique_player_track_ids",
+                        "average_track_length",
+                        "tracklet_merges_applied",
+                        "identity_embedding_updates",
+                    ],
+                },
+                {
+                    "level": "warn",
+                    "title": "Calibration refresh keeps failing",
+                    "message": (
+                        "Only 3339 of 6750 calibration refresh attempts succeeded, average visible pitch keypoints were 3.53, and the registered ratio was 0.916. "
+                        "That means the run usually had a usable minimap projection, but the refresh path was frequently close to the acceptance boundary. "
+                        "This is a stability problem in the live homography refresh loop, not evidence that the entire minimap is worthless."
+                    ),
+                    "next_step": (
+                        "1. Inspect the calibration acceptance code and verify which gates are causing the rejections: minimum visible keypoints, inlier count, reprojection error, or temporal drift against the latched homography.\n"
+                        "2. Pull example frames from accepted and rejected refreshes around the same camera phase. The goal is to learn whether failures are caused by partial line visibility, replay/zoom cuts, or an over-tight rejection threshold.\n"
+                        "3. If the last good homography is being latched for long periods, verify that projection drift on the minimap stays visually tolerable before changing the thresholds."
+                    ),
+                    "evidence_keys": [
+                        "field_calibration_refresh_attempts",
+                        "field_calibration_refresh_successes",
+                        "average_visible_pitch_keypoints",
+                        "field_registered_ratio",
+                        "last_good_calibration_frame",
+                    ],
+                },
+                {
+                    "level": "warn",
+                    "title": "Ball continuity is weak",
+                    "message": (
+                        "Ball detections averaged 0.53 per frame with 35785 ball rows across 67497 frames. That is enough to occasionally localize the ball, but not enough to trust possession chains, long aerial sequences, or event-timing features that assume stable continuity."
+                    ),
+                    "next_step": (
+                        "1. Review missed-ball phases at transitions, crosses, and long passes before changing tracker settings.\n"
+                        "2. Confirm the detector is not suppressing small/fast ball boxes through confidence or IOU choices that were tuned for players.\n"
+                        "3. Keep ball-led downstream analytics disabled until continuity improves on those fast-play segments."
+                    ),
+                    "evidence_keys": [
+                        "average_ball_detections_per_frame",
+                        "ball_rows",
+                        "unique_ball_track_ids",
+                    ],
+                },
+                {
+                    "level": "warn",
+                    "title": "Goal experiment is not usable yet",
+                    "message": (
+                        "Goal events were attached, but the goal-aligned experiment output did not separate the pre-goal window strongly enough from baseline. "
+                        "That makes this run exploratory only; it is not reliable evidence for operational anticipation or event forecasting."
+                    ),
+                    "next_step": (
+                        "1. Inspect the experiment card inputs and verify the goal windows are aligned to actual game context rather than replay or post-goal broadcast phases.\n"
+                        "2. Compare the experiment metrics against a baseline run with no goal alignment to see whether the feature moved at all.\n"
+                        "3. Do not report this experiment as 'working' until it separates multiple goal windows, not just one lucky clip."
+                    ),
+                    "evidence_keys": [
+                        "goal_events_count",
+                    ],
+                },
+            ],
+        },
+        indent=2,
+    )
+
+
+GOOD_OUTPUT_EXAMPLE = _build_good_output_example()
 
 
 def load_project_env() -> None:
@@ -42,6 +140,7 @@ class ProviderConfig:
     api_key: str
     timeout_seconds: float
     extra_headers: dict[str, str]
+    max_output_tokens: int
 
 
 def _env(name: str, default: str = "") -> str:
@@ -51,6 +150,7 @@ def _env(name: str, default: str = "") -> str:
 def resolve_provider_config() -> ProviderConfig | None:
     provider_pref = _env("AI_DIAGNOSTICS_PROVIDER", "auto").lower()
     timeout_seconds = float(_env("AI_DIAGNOSTICS_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)) or DEFAULT_TIMEOUT_SECONDS)
+    max_output_tokens = int(_env("AI_DIAGNOSTICS_MAX_OUTPUT_TOKENS", str(DEFAULT_MAX_OUTPUT_TOKENS)) or DEFAULT_MAX_OUTPUT_TOKENS)
     shared_model = _env("AI_DIAGNOSTICS_MODEL")
     local_base_url = _env("AI_DIAGNOSTICS_BASE_URL") or _env("OPENAI_COMPAT_BASE_URL") or _env("LOCAL_LLM_BASE_URL")
     local_api_key = _env("AI_DIAGNOSTICS_API_KEY") or _env("OPENAI_COMPAT_API_KEY") or _env("LOCAL_LLM_API_KEY")
@@ -65,10 +165,11 @@ def resolve_provider_config() -> ProviderConfig | None:
         return ProviderConfig(
             provider="openai",
             model=shared_model or _env("OPENAI_MODEL") or "gpt-5.4",
-            endpoint="https://api.openai.com/v1/chat/completions",
+            endpoint="https://api.openai.com/v1/responses",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers={},
+            max_output_tokens=max_output_tokens,
         )
 
     def build_openrouter() -> ProviderConfig | None:
@@ -87,6 +188,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers=headers,
+            max_output_tokens=max_output_tokens,
         )
 
     def build_anthropic() -> ProviderConfig | None:
@@ -100,6 +202,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers={"anthropic-version": _env("ANTHROPIC_VERSION") or "2023-06-01"},
+            max_output_tokens=max_output_tokens,
         )
 
     def build_local() -> ProviderConfig | None:
@@ -114,6 +217,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             api_key=local_api_key or "local",
             timeout_seconds=timeout_seconds,
             extra_headers={},
+            max_output_tokens=max_output_tokens,
         )
 
     builders = {
@@ -133,27 +237,384 @@ def resolve_provider_config() -> ProviderConfig | None:
     return None
 
 
+def _read_text_lines(path: Path) -> list[str]:
+    return path.read_text(encoding="utf-8").splitlines()
+
+
+def _find_anchor_index(lines: list[str], anchor: str) -> int:
+    needle = anchor.strip()
+    for index, line in enumerate(lines):
+        if line.strip().startswith(needle):
+            return index
+    for index, line in enumerate(lines):
+        if needle in line:
+            return index
+    return 0
+
+
+def _extract_top_level_block(lines: list[str], anchor_index: int) -> list[str]:
+    if not (0 <= anchor_index < len(lines)):
+        return []
+    line = lines[anchor_index]
+    stripped = line.lstrip()
+    indent = len(line) - len(stripped)
+    if not stripped.startswith(("def ", "async def ", "class ")):
+        return []
+
+    end_index = anchor_index + 1
+    while end_index < len(lines):
+        candidate = lines[end_index]
+        candidate_stripped = candidate.lstrip()
+        candidate_indent = len(candidate) - len(candidate_stripped)
+        if candidate_stripped and candidate_indent == indent and candidate_stripped.startswith(("def ", "async def ", "class ")):
+            break
+        end_index += 1
+    return lines[anchor_index:end_index]
+
+
+def _excerpt_lines(lines: list[str], anchor: str, before: int, after: int) -> str:
+    anchor_index = _find_anchor_index(lines, anchor)
+    block_lines = _extract_top_level_block(lines, anchor_index)
+    if block_lines:
+        excerpt = "\n".join(block_lines).rstrip()
+        if len(excerpt) > MAX_CODE_SLICE_CHARS:
+            return excerpt[: MAX_CODE_SLICE_CHARS].rstrip() + "\n# ...[truncated]"
+        return excerpt
+
+    start_index = max(0, anchor_index - before)
+    end_index = min(len(lines), anchor_index + after + 1, start_index + MAX_CODE_SLICE_LINES)
+    excerpt = "\n".join(lines[start_index:end_index]).rstrip()
+    if len(excerpt) > MAX_CODE_SLICE_CHARS:
+        return excerpt[: MAX_CODE_SLICE_CHARS].rstrip() + "\n# ...[truncated]"
+    return excerpt
+
+
+def _build_code_slice(path_relative: str, label: str, reason: str, anchor: str, before: int = 4, after: int = 60) -> dict[str, Any]:
+    path = REPO_ROOT / path_relative
+    lines = _read_text_lines(path)
+    return {
+        "label": label,
+        "reason": reason,
+        "path": path_relative,
+        "anchor": anchor,
+        "excerpt": _excerpt_lines(lines, anchor, before=before, after=after),
+    }
+
+
+def trim_recent_logs(logs: list[str]) -> list[str]:
+    trimmed: list[str] = []
+    total_chars = 0
+    for line in reversed(logs):
+        line_chars = len(line) + 1
+        if total_chars + line_chars > MAX_RECENT_LOG_CHARS:
+            break
+        trimmed.append(line)
+        total_chars += line_chars
+    return list(reversed(trimmed))
+
+
+def fit_code_context_budget(code_context: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    total_chars = 0
+    for item in code_context:
+        if len(selected) >= MAX_CODE_SLICES:
+            break
+        excerpt = str(item.get("excerpt") or "")
+        item_chars = len(excerpt)
+        if selected and (total_chars + item_chars) > MAX_TOTAL_CODE_CONTEXT_CHARS:
+            continue
+        selected.append(item)
+        total_chars += item_chars
+    return selected
+
+
+def fit_prompt_context_budget(context: dict[str, Any]) -> dict[str, Any]:
+    bounded = dict(context)
+    serialized = json.dumps(bounded, indent=2)
+    if len(serialized) <= MAX_CONTEXT_JSON_CHARS:
+        return bounded
+
+    code_context = list(bounded.get("code_context") or [])
+    while code_context and len(serialized) > MAX_CONTEXT_JSON_CHARS:
+        code_context.pop()
+        bounded["code_context"] = code_context
+        serialized = json.dumps(bounded, indent=2)
+
+    recent_logs = list(bounded.get("recent_logs") or [])
+    while recent_logs and len(serialized) > MAX_CONTEXT_JSON_CHARS:
+        recent_logs = recent_logs[len(recent_logs) // 2 :]
+        bounded["recent_logs"] = recent_logs
+        serialized = json.dumps(bounded, indent=2)
+    return bounded
+
+
+def infer_issue_categories(summary: dict[str, Any], heuristic_diagnostics: list[dict[str, str]]) -> list[str]:
+    categories: list[str] = ["diagnostics"]
+    combined_text = " ".join(
+        str(item.get(key, ""))
+        for item in heuristic_diagnostics
+        for key in ("title", "message", "next_step")
+    ).lower()
+
+    if (
+        "field" in combined_text
+        or "calibration" in combined_text
+        or "homography" in combined_text
+        or float(summary.get("field_registered_ratio") or 0.0) < 0.98
+        or float(summary.get("field_calibration_refresh_successes") or 0.0) < float(summary.get("field_calibration_refresh_attempts") or 0.0)
+    ):
+        categories.append("calibration")
+    if (
+        "track" in combined_text
+        or "fragment" in combined_text
+        or "identity" in combined_text
+        or "merge" in combined_text
+        or summary.get("tracklet_merges_applied") is not None
+    ):
+        categories.append("tracking")
+    if "ball" in combined_text or float(summary.get("average_ball_detections_per_frame") or 0.0) < 0.9:
+        categories.append("ball")
+    if "goal" in combined_text or int(summary.get("goal_events_count") or 0) == 0:
+        categories.append("experiments")
+    return categories
+
+
+def build_code_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[str, str]]) -> list[dict[str, Any]]:
+    categories = infer_issue_categories(summary, heuristic_diagnostics)
+    code_slices: list[dict[str, Any]] = [
+        _build_code_slice(
+            "backend/app/ai_diagnostics.py",
+            label="diagnostics_prompt_contract",
+            reason="Current diagnostics system prompt and JSON contract.",
+            anchor="def build_system_prompt()",
+            before=0,
+            after=90,
+        ),
+        _build_code_slice(
+            "backend/app/ai_diagnostics.py",
+            label="diagnostics_context_builder",
+            reason="Current run-context assembly for the AI diagnostics call.",
+            anchor="def build_run_context(",
+            before=0,
+            after=110,
+        ),
+        _build_code_slice(
+            "backend/app/ai_diagnostics.py",
+            label="diagnostics_sanitizer",
+            reason="Current post-processing and clipping rules applied to AI output.",
+            anchor="def sanitize_diagnostics(",
+            before=0,
+            after=45,
+        ),
+    ]
+
+    if "calibration" in categories:
+        code_slices.extend(
+            [
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="calibration_constants",
+                    reason="Field-calibration constants and acceptance thresholds.",
+                    anchor="CALIBRATION_REFRESH_FRAMES =",
+                    before=0,
+                    after=18,
+                ),
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="homography_detection",
+                    reason="Pitch homography detection and reprojection error calculation.",
+                    anchor="def detect_pitch_homography(",
+                    before=0,
+                    after=55,
+                ),
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="calibration_runtime_gate",
+                    reason="Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.",
+                    anchor="candidate_is_usable = (",
+                    before=18,
+                    after=48,
+                ),
+            ]
+        )
+
+    if "tracking" in categories:
+        code_slices.extend(
+            [
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="player_detection_and_tracking",
+                    reason="Player detection path and tracker-mode wiring in the active pipeline.",
+                    anchor="def detect_players_for_frame(",
+                    before=0,
+                    after=60,
+                ),
+                _build_code_slice(
+                    "backend/app/reid_tracker.py",
+                    label="appearance_embedder",
+                    reason="Sparse appearance embedder initialization and feature extraction fallback rules.",
+                    anchor="class SparseAppearanceEmbedder:",
+                    before=0,
+                    after=70,
+                ),
+                _build_code_slice(
+                    "backend/app/reid_tracker.py",
+                    label="tracklet_stitcher",
+                    reason="Current post-run track stitching logic and merge gates.",
+                    anchor="def build_stitched_track_map(",
+                    before=0,
+                    after=75,
+                ),
+            ]
+        )
+
+    if "ball" in categories:
+        code_slices.append(
+            _build_code_slice(
+                "backend/app/wide_angle.py",
+                label="ball_tracking_branch",
+                reason="Ball tracking branch inside the active analysis loop.",
+                anchor="if include_ball and ball_model is not None:",
+                before=8,
+                after=55,
+            )
+        )
+
+    unique_slices: list[dict[str, Any]] = []
+    seen_labels: set[str] = set()
+    for item in code_slices:
+        if item["label"] in seen_labels:
+            continue
+        seen_labels.add(item["label"])
+        unique_slices.append(item)
+    return fit_code_context_budget(unique_slices)
+
+
+def compact_context_for_provider(context: dict[str, Any]) -> dict[str, Any]:
+    code_blocks = [
+        f"FILE: {item.get('path')}\n{item.get('excerpt')}"
+        for item in (context.get("code_context") or [])
+    ]
+    return {
+        "prompt_version": context.get("prompt_version"),
+        "diagnostics_goal": context.get("diagnostics_goal"),
+        "input_video": context.get("input_video"),
+        "active_config": context.get("active_config"),
+        "run_metrics": context.get("run_metrics"),
+        "derived_metrics": context.get("derived_metrics"),
+        "heuristic_diagnostics": context.get("heuristic_diagnostics"),
+        "recent_logs": context.get("recent_logs"),
+        "debug_artifacts": context.get("debug_artifacts"),
+        "code_blocks": code_blocks,
+        "experiments": context.get("experiments"),
+        "top_tracks": context.get("top_tracks"),
+    }
+
+
+def render_context_for_provider(context: dict[str, Any]) -> str:
+    compact = compact_context_for_provider(context)
+    sections: list[str] = []
+
+    sections.append(f"DIAGNOSTICS GOAL\n{compact.get('diagnostics_goal')}")
+    sections.append(f"INPUT VIDEO\n{compact.get('input_video')}")
+    sections.append(f"ACTIVE CONFIG\n{json.dumps(compact.get('active_config') or {}, indent=2)}")
+    sections.append(f"RUN METRICS\n{json.dumps(compact.get('run_metrics') or {}, indent=2)}")
+    sections.append(f"DERIVED METRICS\n{json.dumps(compact.get('derived_metrics') or {}, indent=2)}")
+    sections.append(f"HEURISTIC DIAGNOSTICS\n{json.dumps(compact.get('heuristic_diagnostics') or [], indent=2)}")
+
+    recent_logs = compact.get("recent_logs") or []
+    if recent_logs:
+        sections.append("RECENT LOGS\n" + "\n".join(str(line) for line in recent_logs))
+
+    code_blocks = compact.get("code_blocks") or []
+    if code_blocks:
+        sections.append("LIVE IMPLEMENTATION CODE\n" + "\n\n".join(str(block) for block in code_blocks))
+
+    experiments = compact.get("experiments") or []
+    if experiments:
+        sections.append(f"EXPERIMENTS\n{json.dumps(experiments, indent=2)}")
+
+    top_tracks = compact.get("top_tracks") or []
+    if top_tracks:
+        sections.append(f"TOP TRACKS\n{json.dumps(top_tracks, indent=2)}")
+
+    debug_artifacts = compact.get("debug_artifacts") or {}
+    sections.append(f"DEBUG ARTIFACTS\n{json.dumps(debug_artifacts, indent=2)}")
+
+    return "\n\n".join(section for section in sections if section).strip()
+
+
+def load_recent_logs(summary: dict[str, Any], job_id: str, job_manager: Any | None) -> list[str]:
+    if job_manager is not None and hasattr(job_manager, "get"):
+        try:
+            job_state = job_manager.get(job_id)
+            if job_state is not None and getattr(job_state, "logs", None):
+                return trim_recent_logs(list(job_state.logs)[-MAX_RECENT_LOGS:])
+        except Exception:
+            pass
+
+    run_dir = summary.get("run_dir")
+    if not run_dir:
+        return []
+    state_path = Path(str(run_dir)) / "job_state.json"
+    if not state_path.exists():
+        return []
+    try:
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    logs = payload.get("logs")
+    return trim_recent_logs(list(logs)[-MAX_RECENT_LOGS:]) if isinstance(logs, list) else []
+
+
 def build_system_prompt() -> str:
-    return (
-        "You are generating UI diagnostics for one completed football video analysis run. "
-        "Analyze only the supplied run JSON. Do not invent observations. "
-        "Do not copy generic QA language, marketing language, or coaching cliches. "
-        "Avoid words such as strong, solid, reliable, effective, meaningful, usable, workable, supports, provides context, and believable unless they are numerically justified. "
-        "Prefer direct operator language tied to actual metrics. "
-        "Call out weaknesses or uncertainty when the metrics are mixed. "
-        "If experimental signals are missing, sparse, or not goal-aligned, say so directly. "
-        "Do not mention that you are an AI. "
-        "Return valid JSON only with this exact schema: "
-        '{"summary_line":"string","diagnostics":[{"level":"good|warn","title":"string","message":"string","next_step":"string","evidence_keys":["metric_key"]}]}. '
-        "Produce 3 to 5 diagnostics. "
-        "Use short UI-ready titles. "
-        "Each message must cite actual numeric evidence when possible. "
-        "Each next_step must be a concrete operator action. "
-        "Do not wrap the JSON in markdown fences."
-    )
+    return f"""
+You are generating debugging diagnostics for one completed football video analysis run.
+
+Stable repository facts:
+- This is a browser-first football analysis tool. The overlay video and minimap are the primary debugging artifacts.
+- The active football pipeline is detector -> player tracking / identity handling -> team clustering -> field registration -> overlay / exports / diagnostics.
+- The detector is football-specific (`soccana`), ball detection shares the football detector by default, and field registration uses `soccana_keypoint`.
+- Player identity may run in multiple tracker modes including legacy ByteTrack and hybrid ReID / stitch paths.
+- Field calibration is a live part of the pipeline, not a post-hoc note. Calibration failures can invalidate the minimap even when detection looks healthy.
+- The supplied code excerpts are current implementation truth. Prefer them over generic computer-vision assumptions.
+
+What to optimize for:
+- Diagnose the run like an engineer debugging the actual implementation.
+- Explain the boring implementation reasons behind failures: thresholds, gates, fallbacks, stale-state behavior, merge rules, refresh cadence, config precedence, and code paths.
+- Use the supplied metrics, logs, heuristics, and code excerpts together.
+- Treat `next_step` as a detailed operator / engineer action plan, not as a slogan.
+- Multi-step, educational, deeply actionable guidance is required when the run is weak or mixed.
+
+Output contract:
+- Return valid JSON only.
+- Use this exact top-level schema:
+  {{"summary_line":"string","diagnostics":[{{"level":"good|warn","title":"string","message":"string","next_step":"string","evidence_keys":["metric_key"]}}]}}
+- Produce 3 to 5 diagnostics.
+- Keep titles short enough for the UI, but messages and next_step may be long and detailed.
+- Each message must cite actual numeric evidence when possible.
+- Each next_step should tell the operator what to inspect, what thresholds/settings/code paths are implicated, and how to iterate.
+- Do not wrap the JSON in markdown fences.
+- Use the example below as the quality target for level of detail, specificity, and actionability. Match its depth, not its literal numbers.
+
+Exact output example:
+{GOOD_OUTPUT_EXAMPLE}
+
+Writing rules:
+- Do not invent observations.
+- Do not use generic QA, marketing, or coaching language.
+- Prefer direct, implementation-aware language over abstract advice.
+- If the supplied code reveals a likely failure mode or fallback, say so explicitly.
+- If the run is missing evidence, say that plainly instead of pretending certainty.
+""".strip()
 
 
-def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[str, str]]) -> dict[str, Any]:
+def build_run_context(
+    summary: dict[str, Any],
+    heuristic_diagnostics: list[dict[str, str]],
+    recent_logs: list[str],
+    code_context: list[dict[str, Any]],
+) -> dict[str, Any]:
     experiments = summary.get("experiments") or []
     top_tracks = summary.get("top_tracks") or []
     frames_processed = float(summary.get("frames_processed") or 0.0)
@@ -163,8 +624,9 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
     goal_events_count = float(summary.get("goal_events_count") or 0.0)
     return {
         "prompt_version": PROMPT_VERSION,
+        "diagnostics_goal": "Produce implementation-aware diagnostics and detailed next actions grounded in the current run, current code, and current logs.",
         "input_video": Path(str(summary.get("input_video", ""))).name,
-        "models": {
+        "active_config": {
             "detector": summary.get("player_model"),
             "ball": summary.get("ball_model"),
             "field_calibration": summary.get("field_calibration_model"),
@@ -172,6 +634,10 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "player_tracker_backend": summary.get("player_tracker_backend"),
             "device": summary.get("device"),
             "field_calibration_device": summary.get("field_calibration_device"),
+            "player_conf": summary.get("player_conf"),
+            "ball_conf": summary.get("ball_conf"),
+            "iou": summary.get("iou"),
+            "field_calibration_refresh_frames": summary.get("field_calibration_refresh_frames"),
         },
         "run_metrics": {
             "frames_processed": summary.get("frames_processed"),
@@ -199,11 +665,14 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "field_calibration_refresh_frames": summary.get("field_calibration_refresh_frames"),
             "field_calibration_refresh_attempts": summary.get("field_calibration_refresh_attempts"),
             "field_calibration_refresh_successes": summary.get("field_calibration_refresh_successes"),
+            "field_calibration_refresh_rejections": summary.get("field_calibration_refresh_rejections"),
             "average_visible_pitch_keypoints": summary.get("average_visible_pitch_keypoints"),
             "last_good_calibration_frame": summary.get("last_good_calibration_frame"),
             "goal_events_count": summary.get("goal_events_count"),
             "team_cluster_distance": summary.get("team_cluster_distance"),
             "jersey_crops_used": summary.get("jersey_crops_used"),
+            "identity_embedding_updates": summary.get("identity_embedding_updates"),
+            "identity_embedding_interval_frames": summary.get("identity_embedding_interval_frames"),
         },
         "derived_metrics": {
             "player_track_churn_ratio": round(unique_player_track_ids / frames_processed, 6) if frames_processed > 0 else None,
@@ -212,13 +681,22 @@ def build_run_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[
             "has_experiments": bool(experiments),
         },
         "heuristic_diagnostics": heuristic_diagnostics[:5],
+        "recent_logs": recent_logs,
+        "debug_artifacts": {
+            "overlay_video": summary.get("overlay_video"),
+            "detections_csv": summary.get("detections_csv"),
+            "track_summary_csv": summary.get("track_summary_csv"),
+            "projection_csv": summary.get("projection_csv"),
+            "summary_json": summary.get("summary_json"),
+        },
+        "code_context": code_context,
         "experiments": experiments,
         "top_tracks": top_tracks[:8],
     }
 
 
 def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
-    data = json.dumps(payload).encode("utf-8")
+    data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     req = request.Request(url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
     for key, value in headers.items():
@@ -238,6 +716,8 @@ def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any], timeo
         raise RuntimeError(f"HTTP {exc.code} from provider: {detail[:400]}") from exc
     except error.URLError as exc:
         raise RuntimeError(f"Provider request failed: {exc.reason}") from exc
+    if not raw.strip():
+        raise RuntimeError("Provider returned an empty response body.")
     return json.loads(raw)
 
 
@@ -260,6 +740,38 @@ def _extract_text_from_openai_compatible(payload: dict[str, Any]) -> str:
     raise RuntimeError("Provider returned unsupported message content.")
 
 
+def _extract_text_from_openai_responses(payload: dict[str, Any]) -> str:
+    if isinstance(payload.get("output_text"), str) and payload.get("output_text", "").strip():
+        return str(payload["output_text"])
+
+    output = payload.get("output")
+    if not isinstance(output, list):
+        error_payload = payload.get("error")
+        if error_payload:
+            raise RuntimeError(f"OpenAI Responses API error: {error_payload}")
+        raise RuntimeError("Responses API payload had no output array.")
+
+    parts: list[str] = []
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "output_text" and block.get("text"):
+                parts.append(str(block.get("text")))
+    if parts:
+        return "\n".join(parts)
+
+    error_payload = payload.get("error")
+    if error_payload:
+        raise RuntimeError(f"OpenAI Responses API error: {error_payload}")
+    raise RuntimeError("Responses API returned no text output.")
+
+
 def _extract_text_from_anthropic(payload: dict[str, Any]) -> str:
     content = payload.get("content")
     if not isinstance(content, list):
@@ -274,8 +786,31 @@ def _extract_text_from_anthropic(payload: dict[str, Any]) -> str:
 
 
 def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
-    user_payload = json.dumps(context, indent=2)
-    if config.provider in {"openai", "openrouter", "local"}:
+    user_payload = render_context_for_provider(context)
+    if config.provider == "openai":
+        response_payload = _post_json(
+            url=config.endpoint,
+            headers={
+                "Authorization": f"Bearer {config.api_key}",
+                **config.extra_headers,
+            },
+            payload={
+                "model": config.model,
+                "instructions": system_prompt,
+                "input": user_payload,
+                "temperature": 0.1,
+                "max_output_tokens": config.max_output_tokens,
+                "text": {
+                    "format": {
+                        "type": "json_object",
+                    }
+                },
+            },
+            timeout_seconds=config.timeout_seconds,
+        )
+        return _extract_text_from_openai_responses(response_payload)
+
+    if config.provider in {"openrouter", "local"}:
         payload = {
             "model": config.model,
             "temperature": 0.1,
@@ -284,11 +819,8 @@ def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str,
                 {"role": "user", "content": user_payload},
             ],
             "response_format": {"type": "json_object"},
+            "max_tokens": config.max_output_tokens,
         }
-        if config.provider == "openai" and config.model.startswith("gpt-5"):
-            payload["max_completion_tokens"] = 900
-        else:
-            payload["max_tokens"] = 900
         response_payload = _post_json(
             url=config.endpoint,
             headers={
@@ -310,7 +842,7 @@ def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str,
             payload={
                 "model": config.model,
                 "temperature": 0.1,
-                "max_tokens": 900,
+                "max_tokens": config.max_output_tokens,
                 "system": system_prompt,
                 "messages": [
                     {"role": "user", "content": user_payload},
@@ -356,10 +888,10 @@ def sanitize_diagnostics(candidate: Any, fallback: list[dict[str, str]]) -> list
         sanitized.append(
             {
                 "level": level,
-                "title": title[:96],
-                "message": message[:320],
-                "next_step": next_step[:220],
-                "evidence_keys": [str(key) for key in evidence_keys[:8]],
+                "title": title,
+                "message": message,
+                "next_step": next_step,
+                "evidence_keys": [str(key) for key in evidence_keys[:12]],
             }
         )
     return sanitized[:5] if sanitized else fallback
@@ -386,6 +918,165 @@ def build_heuristic_summary_line(summary: dict[str, Any]) -> str:
     return ", ".join(parts) + "."
 
 
+def build_summary_heuristic_diagnostics(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    frames_processed = int(summary.get("frames_processed") or 0)
+    player_rows = int(summary.get("player_rows") or 0)
+    ball_rows = int(summary.get("ball_rows") or 0)
+    unique_player_track_ids = int(summary.get("unique_player_track_ids") or 0)
+    raw_unique_player_track_ids = int(summary.get("raw_unique_player_track_ids") or unique_player_track_ids)
+    avg_player = float(summary.get("average_player_detections_per_frame") or 0.0)
+    avg_ball = float(summary.get("average_ball_detections_per_frame") or 0.0)
+    average_track_length = float(summary.get("average_track_length") or 0.0)
+    projected_player_points = int(summary.get("projected_player_points") or 0)
+    field_registered_ratio = float(summary.get("field_registered_ratio") or 0.0)
+    calibration_attempts = int(summary.get("field_calibration_refresh_attempts") or 0)
+    calibration_successes = int(summary.get("field_calibration_refresh_successes") or 0)
+    visible_keypoints = float(summary.get("average_visible_pitch_keypoints") or 0.0)
+    home_tracks = int(summary.get("home_tracks") or 0)
+    away_tracks = int(summary.get("away_tracks") or 0)
+    team_cluster_distance = float(summary.get("team_cluster_distance") or 0.0)
+    goal_events_count = int(summary.get("goal_events_count") or 0)
+    experiments = list(summary.get("experiments") or [])
+
+    diagnostics: list[dict[str, Any]] = []
+
+    if player_rows == 0:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Detector produced no objects",
+                "message": (
+                    f"Across {frames_processed} frames, the run emitted 0 player rows and 0 ball rows, with average player detections/frame {avg_player:.2f} "
+                    f"and average ball detections/frame {avg_ball:.2f}. That means the pipeline failed before tracking, team labeling, and projection."
+                ),
+                "next_step": (
+                    "Inspect the active detector checkpoint, class mapping, and confidence thresholds first. "
+                    "If this was a custom detector, verify the player and ball class ids used by the runtime match the checkpoint output order before touching tracker or calibration settings."
+                ),
+                "evidence_keys": ["player_rows", "ball_rows", "average_player_detections_per_frame", "average_ball_detections_per_frame"],
+            }
+        )
+    elif unique_player_track_ids / max(frames_processed, 1) > 0.1:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Player tracking is fragmented",
+                "message": (
+                    f"{unique_player_track_ids} player IDs were produced across {frames_processed} frames, with average track length {average_track_length:.1f}. "
+                    f"That is high identity churn for football continuity."
+                ),
+                "next_step": (
+                    "Inspect the overlay around dense phases and cutaways. If using stitched identity, compare raw and canonical ID counts before changing detector thresholds."
+                ),
+                "evidence_keys": ["unique_player_track_ids", "frames_processed", "average_track_length"],
+            }
+        )
+    else:
+        diagnostics.append(
+            {
+                "level": "good",
+                "title": "Player tracking is stable enough",
+                "message": (
+                    f"{unique_player_track_ids} player IDs across {frames_processed} frames with average track length {average_track_length:.1f} "
+                    f"looks acceptable for broad tactical review."
+                ),
+                "next_step": "Spot-check identity continuity through camera motion before using the run for player-level conclusions.",
+                "evidence_keys": ["unique_player_track_ids", "frames_processed", "average_track_length"],
+            }
+        )
+
+    if projected_player_points == 0 or field_registered_ratio <= 0.05:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Calibration produced no usable projection",
+                "message": (
+                    f"Calibration refreshes succeeded {calibration_successes}/{calibration_attempts} times with average visible keypoints {visible_keypoints:.1f}, "
+                    f"but projected player points are {projected_player_points} and registered ratio is {field_registered_ratio:.3f}."
+                ),
+                "next_step": (
+                    "Do not trust the minimap. Verify the homography acceptance path, visible keypoint quality, and anchor projection before debugging tracker behavior."
+                ),
+                "evidence_keys": ["field_calibration_refresh_successes", "field_calibration_refresh_attempts", "average_visible_pitch_keypoints", "projected_player_points", "field_registered_ratio"],
+            }
+        )
+    elif calibration_attempts > 0 and (calibration_successes / calibration_attempts) < 0.7:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Calibration refresh is unstable",
+                "message": (
+                    f"Only {calibration_successes}/{calibration_attempts} calibration refreshes succeeded, with average visible pitch keypoints {visible_keypoints:.1f} "
+                    f"and field registered ratio {field_registered_ratio:.3f}."
+                ),
+                "next_step": (
+                    "Review frames around rejected refreshes and confirm the field keypoint model still sees enough pitch structure before relying on minimap movement."
+                ),
+                "evidence_keys": ["field_calibration_refresh_successes", "field_calibration_refresh_attempts", "average_visible_pitch_keypoints", "field_registered_ratio"],
+            }
+        )
+    else:
+        diagnostics.append(
+            {
+                "level": "good",
+                "title": "Field mapping mostly present",
+                "message": (
+                    f"Calibration refreshes succeeded {calibration_successes}/{calibration_attempts} times and field registered ratio is {field_registered_ratio:.3f}."
+                ),
+                "next_step": "Use the minimap for review, but still spot-check late-match sequences and camera transitions for drift.",
+                "evidence_keys": ["field_calibration_refresh_successes", "field_calibration_refresh_attempts", "field_registered_ratio"],
+            }
+        )
+
+    if ball_rows == 0 or avg_ball < 0.15:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Ball signal is sparse",
+                "message": f"Ball detections/frame is {avg_ball:.2f} with {ball_rows} total ball rows, so ball continuity is weak.",
+                "next_step": "Avoid ball-led interpretation until detector coverage improves; inspect detector confidence and missed ball phases first.",
+                "evidence_keys": ["average_ball_detections_per_frame", "ball_rows"],
+            }
+        )
+    elif home_tracks > 0 and away_tracks > 0 and team_cluster_distance > 0.08:
+        diagnostics.append(
+            {
+                "level": "good",
+                "title": "Team split is usable",
+                "message": f"Home/away track counts are {home_tracks}/{away_tracks} with cluster distance {team_cluster_distance:.3f}.",
+                "next_step": "Validate borderline team assignments on long tracks before using team-level aggregates.",
+                "evidence_keys": ["home_tracks", "away_tracks", "team_cluster_distance"],
+            }
+        )
+    else:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Team split is weak",
+                "message": f"Home/away track counts are {home_tracks}/{away_tracks} with cluster distance {team_cluster_distance:.3f}.",
+                "next_step": "Inspect jersey crops and track-level vote stability before using home/away tactical summaries.",
+                "evidence_keys": ["home_tracks", "away_tracks", "team_cluster_distance"],
+            }
+        )
+
+    diagnostics.append(
+        {
+            "level": "warn" if goal_events_count == 0 or not experiments else "good",
+            "title": "Experiment context"
+            if goal_events_count > 0 and experiments
+            else "Experiment is not goal-ready",
+            "message": (
+                f"Goal events count is {goal_events_count} and experiment cards attached: {len(experiments)}."
+            ),
+            "next_step": (
+                "Use the experiment output only as exploratory context unless the run is goal-aligned and the metrics actually separate the target window."
+            ),
+            "evidence_keys": ["goal_events_count"],
+        }
+    )
+    return diagnostics[:5]
+
+
 def generate_run_diagnostics(
     summary: dict[str, Any],
     heuristic_diagnostics: list[dict[str, str]],
@@ -393,6 +1084,7 @@ def generate_run_diagnostics(
     job_id: str,
     job_manager: Any | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    fallback_diagnostics = build_summary_heuristic_diagnostics(summary)
     config = resolve_provider_config()
     artifact_path = outputs_dir / "diagnostics_ai.json"
 
@@ -405,23 +1097,46 @@ def generate_run_diagnostics(
         "summary_line": build_heuristic_summary_line(summary),
         "error": "",
         "raw_text": "",
-        "diagnostics": heuristic_diagnostics,
+        "prompt_context": {
+            "recent_logs": [],
+            "code_context": [],
+            "budget": {
+                "max_output_tokens": None,
+                "context_json_chars": 0,
+                "code_slice_count": 0,
+                "recent_log_count": 0,
+            },
+        },
+        "diagnostics": fallback_diagnostics,
     }
 
     if config is None:
         artifact_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-        return heuristic_diagnostics, artifact
+        return fallback_diagnostics, artifact
 
     if job_manager is not None:
         job_manager.log(job_id, f"Generating AI diagnostics via {config.provider}:{config.model}")
 
+    recent_logs = load_recent_logs(summary, job_id, job_manager)
+    code_context = build_code_context(summary, fallback_diagnostics)
     system_prompt = build_system_prompt()
-    context = build_run_context(summary, heuristic_diagnostics)
+    context = build_run_context(summary, fallback_diagnostics, recent_logs, code_context)
+    context = fit_prompt_context_budget(context)
+    prompt_context = {
+        "recent_logs": context.get("recent_logs", []),
+        "code_context": context.get("code_context", []),
+        "budget": {
+            "max_output_tokens": config.max_output_tokens,
+            "context_json_chars": len(json.dumps(context)),
+            "code_slice_count": len(context.get("code_context", [])),
+            "recent_log_count": len(context.get("recent_logs", [])),
+        },
+    }
 
     try:
         raw_text = call_provider(config, system_prompt, context)
         parsed = extract_json_object(raw_text)
-        diagnostics = sanitize_diagnostics(parsed.get("diagnostics"), heuristic_diagnostics)
+        diagnostics = sanitize_diagnostics(parsed.get("diagnostics"), fallback_diagnostics)
         summary_line = str(parsed.get("summary_line", "")).strip()
         artifact = {
             "prompt_version": PROMPT_VERSION,
@@ -429,9 +1144,10 @@ def generate_run_diagnostics(
             "status": "completed",
             "provider": config.provider,
             "model": config.model,
-            "summary_line": summary_line[:240],
+            "summary_line": summary_line,
             "error": "",
             "raw_text": raw_text,
+            "prompt_context": prompt_context,
             "diagnostics": diagnostics,
         }
         artifact_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
@@ -446,9 +1162,10 @@ def generate_run_diagnostics(
             "summary_line": build_heuristic_summary_line(summary),
             "error": str(exc),
             "raw_text": "",
-            "diagnostics": heuristic_diagnostics,
+            "prompt_context": prompt_context,
+            "diagnostics": fallback_diagnostics,
         }
         artifact_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
         if job_manager is not None:
             job_manager.log(job_id, f"AI diagnostics failed; using heuristic fallback. {exc}")
-        return heuristic_diagnostics, artifact
+        return fallback_diagnostics, artifact

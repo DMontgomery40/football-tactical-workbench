@@ -2430,28 +2430,22 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     ]
     average_team_vote_ratio = float(np.mean(assigned_vote_ratios)) if assigned_vote_ratios else 0.0
 
-    if appearance_embedder is not None:
+    if player_row_count == 0:
         diagnostics.append(
             {
-                "level": "good" if stitch_stats["merge_count"] > 0 else "warn",
-                "title": "Identity stitching"
-                if stitch_stats["merge_count"] > 0
-                else "Identity stitching: no merges",
+                "level": "warn",
+                "title": "Detector produced no players",
                 "message": (
-                    f"Player tracker ran in {tracker_mode_label(tracker_mode)} mode with "
-                    f"{tracker_backend.get('embedding_source', 'hsv_hist_only')}. "
-                    f"Raw track IDs dropped from {raw_unique_player_track_ids} to {len(player_track_ids_seen)} after "
-                    f"{stitch_stats['merge_count']} accepted merges."
+                    f"Across {frame_index} frames, the run emitted 0 player rows and average player detections per frame stayed {avg_players:.2f}. "
+                    "That means the pipeline never reached usable tracking, team assignment, or player-space projection."
                 ),
                 "next_step": (
-                    "Inspect long same-kit occlusions and restart phases to verify the stitched IDs stay on the same players."
-                    if stitch_stats["merge_count"] > 0
-                    else "If IDs still fragment, validate broadcast-cut segments and consider adding jersey-number evidence before using match-long identity."
+                    "Inspect the detector checkpoint, class mapping, and confidence thresholds first. "
+                    "If this is a custom detector, verify the player class id matches the active model output before touching tracker settings."
                 ),
             }
         )
-
-    if churn_ratio > 0.1:
+    elif churn_ratio > 0.1:
         diagnostics.append(
             {
                 "level": "warn",
@@ -2473,6 +2467,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                     f"(raw {raw_unique_player_track_ids}, longest {longest_track_length}, mean {average_track_length:.1f})."
                 ),
                 "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players.",
+            }
+        )
+
+    if appearance_embedder is not None:
+        diagnostics.append(
+            {
+                "level": "good" if stitch_stats["merge_count"] > 0 else "warn",
+                "title": "Identity stitching"
+                if stitch_stats["merge_count"] > 0
+                else "Identity stitching: no merges",
+                "message": (
+                    f"Player tracker ran in {tracker_mode_label(tracker_mode)} mode with "
+                    f"{tracker_backend.get('embedding_source', 'hsv_hist_only')}. "
+                    f"Raw track IDs dropped from {raw_unique_player_track_ids} to {len(player_track_ids_seen)} after "
+                    f"{stitch_stats['merge_count']} accepted merges."
+                ),
+                "next_step": (
+                    "Inspect long same-kit occlusions and restart phases to verify the stitched IDs stay on the same players."
+                    if stitch_stats["merge_count"] > 0
+                    else "If IDs still fragment, validate broadcast-cut segments and consider adding jersey-number evidence before using match-long identity."
+                ),
             }
         )
 
@@ -2502,7 +2517,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
 
     if include_ball:
-        if avg_ball < 0.15:
+        if ball_row_count == 0 or avg_ball < 0.15:
             diagnostics.append(
                 {
                     "level": "warn",
@@ -2521,7 +2536,19 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 }
             )
 
-    if calibration_refresh_successes > 0:
+    if player_row_count == 0 or projected_player_points == 0:
+        diagnostics.append(
+            {
+                "level": "warn",
+                "title": "Field calibration has no player projection",
+                "message": (
+                    f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded with mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}, "
+                    f"but projected player points stayed {projected_player_points} and registered ratio is {registered_frame_ratio * 100:.1f}%."
+                ),
+                "next_step": "Do not treat calibration as healthy until players are actually being projected onto the pitch. Fix detector output or anchor projection before trusting the minimap.",
+            }
+        )
+    elif calibration_refresh_successes > 0 and registered_frame_ratio >= 0.7:
         diagnostics.append(
             {
                 "level": "good",
@@ -2538,10 +2565,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         diagnostics.append(
             {
                 "level": "warn",
-                "title": "Field calibration: no stable lock",
+                "title": "Field calibration: unstable",
                 "message": (
                     f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded; "
-                    f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}."
+                    f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}; "
+                    f"{registered_frame_ratio * 100:.1f}% of player detections projected."
                 ),
                 "next_step": "Use a wider camera phase with clearer pitch markings if you need reliable minimap projection.",
             }
@@ -2660,6 +2688,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     summary["diagnostics_summary_line"] = diagnostics_artifact.get("summary_line", "")
     summary["diagnostics_error"] = diagnostics_artifact.get("error", "")
     summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
+    summary["diagnostics_prompt_context"] = diagnostics_artifact.get("prompt_context")
 
     checkpoint_job_control(job_control, job_id, job_manager)
     summary_json_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")

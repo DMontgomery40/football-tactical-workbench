@@ -1,0 +1,482 @@
+{
+  "job_id": "game-006-2",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/experiments/soccernet_train_10_goalaligned_v1_20260308_052341/runs/006_e0b5f17915_2",
+  "input_video": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet/england_epl/2015-2016/2015-08-29 - 17-00 Chelsea 1 - 2 Crystal Palace/2_720p.mkv",
+  "overlay_video": "/runs/006_e0b5f17915_2/outputs/overlay.mp4",
+  "detections_csv": "/runs/006_e0b5f17915_2/outputs/detections.csv",
+  "track_summary_csv": "/runs/006_e0b5f17915_2/outputs/track_summary.csv",
+  "projection_csv": "/runs/006_e0b5f17915_2/outputs/projections.csv",
+  "entropy_timeseries_csv": "/runs/006_e0b5f17915_2/outputs/entropy_timeseries.csv",
+  "goal_events_csv": "/runs/006_e0b5f17915_2/outputs/goal_events.csv",
+  "summary_json": "/runs/006_e0b5f17915_2/outputs/summary.json",
+  "all_outputs_zip": "/runs/006_e0b5f17915_2/outputs/all_outputs.zip",
+  "device": "mps",
+  "field_calibration_device": "cpu",
+  "player_model": "soccana",
+  "ball_model": "soccana",
+  "field_calibration_model": "soccana_keypoint",
+  "include_ball": true,
+  "player_conf": 0.25,
+  "ball_conf": 0.2,
+  "iou": 0.5,
+  "frames_processed": 67500,
+  "fps": 25.0,
+  "player_rows": 548440,
+  "ball_rows": 30981,
+  "unique_player_track_ids": 8700,
+  "unique_ball_track_ids": 1935,
+  "home_tracks": 4409,
+  "away_tracks": 4184,
+  "unassigned_tracks": 0,
+  "average_player_detections_per_frame": 8.125,
+  "average_ball_detections_per_frame": 0.459,
+  "longest_track_length": 1006,
+  "average_track_length": 62.8418,
+  "projected_player_points": 496105,
+  "projected_ball_points": 27193,
+  "field_registered_frames": 496105,
+  "field_registered_ratio": 0.9046,
+  "homography_enabled": true,
+  "field_calibration_refresh_frames": 10,
+  "field_calibration_refresh_attempts": 6750,
+  "field_calibration_refresh_successes": 3344,
+  "average_visible_pitch_keypoints": 3.6039,
+  "last_good_calibration_frame": 67490,
+  "goal_events_count": 3,
+  "goal_label_source": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/soccernet/england_epl/2015-2016/2015-08-29 - 17-00 Chelsea 1 - 2 Crystal Palace/Labels-v2.json",
+  "team_cluster_distance": 0.3858,
+  "jersey_crops_used": 542554,
+  "experiments": [
+    {
+      "id": "geometric_volatility_index",
+      "status": "experimental",
+      "title": "Geometric Volatility Index",
+      "summary": "1 Hz team-shape volatility built from spread, team length, inter-team centroid distance, and spatial entropy.",
+      "interpretation": "Higher values indicate rapid spatial reorganization and a more unstable game state.",
+      "metrics": [
+        {
+          "label": "Peak vol index",
+          "value": 4.7611,
+          "hint": "Highest normalized combined volatility over the half."
+        },
+        {
+          "label": "Average vol index",
+          "value": -0.0217,
+          "hint": "Baseline volatility across the half."
+        },
+        {
+          "label": "Latest vol index",
+          "value": -0.0197,
+          "hint": "Most recent combined volatility reading."
+        },
+        {
+          "label": "Sampling",
+          "value": "1 Hz / 10s",
+          "hint": "Per-second series with 10-second rolling mean absolute deltas."
+        },
+        {
+          "label": "Goals in clip",
+          "value": 3,
+          "hint": "Count of SoccerNet goal annotations aligned to this half."
+        },
+        {
+          "label": "30s pre-goal index",
+          "value": 0.0789,
+          "hint": "Average combined volatility index in rows that precede a goal within 30 seconds."
+        },
+        {
+          "label": "30s baseline index",
+          "value": -0.0252,
+          "hint": "Average combined volatility index outside those 30-second pre-goal windows."
+        },
+        {
+          "label": "30s uplift",
+          "value": 0.0,
+          "hint": "Relative lift of the volatility index in pre-goal windows versus baseline."
+        }
+      ]
+    }
+  ],
+  "top_tracks": [
+    {
+      "track_id": 18139,
+      "team_label": "away",
+      "team_vote_ratio": 0.8887,
+      "frames": 1006,
+      "first_frame": 32511,
+      "last_frame": 33516,
+      "average_confidence": 0.8128,
+      "average_bbox_area": 3739.6759,
+      "projected_points": 939
+    },
+    {
+      "track_id": 18,
+      "team_label": "away",
+      "team_vote_ratio": 0.8932,
+      "frames": 969,
+      "first_frame": 0,
+      "last_frame": 974,
+      "average_confidence": 0.7826,
+      "average_bbox_area": 2167.968,
+      "projected_points": 969
+    },
+    {
+      "track_id": 29,
+      "team_label": "home",
+      "team_vote_ratio": 0.9968,
+      "frames": 942,
+      "first_frame": 31,
+      "last_frame": 974,
+      "average_confidence": 0.8009,
+      "average_bbox_area": 2922.4618,
+      "projected_points": 942
+    },
+    {
+      "track_id": 49,
+      "team_label": "away",
+      "team_vote_ratio": 0.7338,
+      "frames": 909,
+      "first_frame": 66,
+      "last_frame": 974,
+      "average_confidence": 0.8394,
+      "average_bbox_area": 5902.747,
+      "projected_points": 795
+    },
+    {
+      "track_id": 27939,
+      "team_label": "home",
+      "team_vote_ratio": 0.7971,
+      "frames": 898,
+      "first_frame": 52232,
+      "last_frame": 53130,
+      "average_confidence": 0.8304,
+      "average_bbox_area": 4967.5145,
+      "projected_points": 660
+    },
+    {
+      "track_id": 18079,
+      "team_label": "home",
+      "team_vote_ratio": 0.8192,
+      "frames": 874,
+      "first_frame": 32434,
+      "last_frame": 33308,
+      "average_confidence": 0.813,
+      "average_bbox_area": 3672.6911,
+      "projected_points": 851
+    },
+    {
+      "track_id": 17903,
+      "team_label": "home",
+      "team_vote_ratio": 0.5729,
+      "frames": 864,
+      "first_frame": 32102,
+      "last_frame": 32965,
+      "average_confidence": 0.8124,
+      "average_bbox_area": 3221.3727,
+      "projected_points": 864
+    },
+    {
+      "track_id": 8119,
+      "team_label": "away",
+      "team_vote_ratio": 0.8244,
+      "frames": 854,
+      "first_frame": 13096,
+      "last_frame": 13950,
+      "average_confidence": 0.831,
+      "average_bbox_area": 4426.4133,
+      "projected_points": 854
+    },
+    {
+      "track_id": 27876,
+      "team_label": "away",
+      "team_vote_ratio": 0.7412,
+      "frames": 827,
+      "first_frame": 52121,
+      "last_frame": 52947,
+      "average_confidence": 0.7993,
+      "average_bbox_area": 2347.5115,
+      "projected_points": 690
+    },
+    {
+      "track_id": 29226,
+      "team_label": "home",
+      "team_vote_ratio": 0.9987,
+      "frames": 793,
+      "first_frame": 55201,
+      "last_frame": 55997,
+      "average_confidence": 0.8268,
+      "average_bbox_area": 5769.1425,
+      "projected_points": 773
+    },
+    {
+      "track_id": 26548,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 792,
+      "first_frame": 49650,
+      "last_frame": 50441,
+      "average_confidence": 0.8211,
+      "average_bbox_area": 3791.8598,
+      "projected_points": 782
+    },
+    {
+      "track_id": 20371,
+      "team_label": "away",
+      "team_vote_ratio": 0.9756,
+      "frames": 778,
+      "first_frame": 36337,
+      "last_frame": 37114,
+      "average_confidence": 0.8175,
+      "average_bbox_area": 3037.4216,
+      "projected_points": 768
+    },
+    {
+      "track_id": 20367,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 777,
+      "first_frame": 36337,
+      "last_frame": 37114,
+      "average_confidence": 0.8069,
+      "average_bbox_area": 3697.0811,
+      "projected_points": 697
+    },
+    {
+      "track_id": 101,
+      "team_label": "away",
+      "team_vote_ratio": 0.7056,
+      "frames": 771,
+      "first_frame": 196,
+      "last_frame": 974,
+      "average_confidence": 0.8067,
+      "average_bbox_area": 3367.0908,
+      "projected_points": 771
+    },
+    {
+      "track_id": 27954,
+      "team_label": "away",
+      "team_vote_ratio": 0.9869,
+      "frames": 765,
+      "first_frame": 52251,
+      "last_frame": 53015,
+      "average_confidence": 0.798,
+      "average_bbox_area": 2420.0588,
+      "projected_points": 755
+    },
+    {
+      "track_id": 18080,
+      "team_label": "home",
+      "team_vote_ratio": 0.9987,
+      "frames": 757,
+      "first_frame": 32436,
+      "last_frame": 33192,
+      "average_confidence": 0.7898,
+      "average_bbox_area": 2290.8758,
+      "projected_points": 650
+    },
+    {
+      "track_id": 20403,
+      "team_label": "away",
+      "team_vote_ratio": 0.7209,
+      "frames": 756,
+      "first_frame": 36351,
+      "last_frame": 37107,
+      "average_confidence": 0.8148,
+      "average_bbox_area": 4275.6005,
+      "projected_points": 676
+    },
+    {
+      "track_id": 26531,
+      "team_label": "away",
+      "team_vote_ratio": 0.9987,
+      "frames": 742,
+      "first_frame": 49647,
+      "last_frame": 50404,
+      "average_confidence": 0.8094,
+      "average_bbox_area": 3120.1496,
+      "projected_points": 742
+    },
+    {
+      "track_id": 26694,
+      "team_label": "home",
+      "team_vote_ratio": 0.9837,
+      "frames": 737,
+      "first_frame": 49752,
+      "last_frame": 50488,
+      "average_confidence": 0.7918,
+      "average_bbox_area": 2804.9701,
+      "projected_points": 699
+    },
+    {
+      "track_id": 3816,
+      "team_label": "away",
+      "team_vote_ratio": 0.9744,
+      "frames": 703,
+      "first_frame": 6236,
+      "last_frame": 6938,
+      "average_confidence": 0.8188,
+      "average_bbox_area": 3120.4339,
+      "projected_points": 672
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "Tracking stability: fragmented",
+      "message": "8700 unique player track IDs across 67500 frames (longest track 1006 frames, mean 62.8).",
+      "next_step": "Use a steadier wide-angle phase or retune confidence before trusting downstream team or pitch metrics."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "4409 home tracks and 4184 away tracks from 542554 jersey crops (cluster distance 0.386, mean vote ratio 0.91).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.46; projected ball anchors 27193.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "3344/6750 refreshes succeeded; mean visible pitch keypoints 3.6; 90.5% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "good",
+      "title": "Goal labels: loaded",
+      "message": "3 aligned goal events loaded from Labels-v2.json.",
+      "next_step": "Use the experiment outputs to compare pre-goal windows against baseline match state."
+    }
+  ],
+  "learn_cards": [
+    {
+      "title": "1. Player detection + ByteTrack",
+      "what_it_does": "Uses football-specific detector weights so player, ball, and referee detection are trained for broadcast football rather than generic COCO classes.",
+      "what_breaks": "Crowded boxes, camera pans, and tiny distant players still fragment track IDs.",
+      "what_to_try_next": "Start with shorter clips, then raise model size or lower confidence only after you inspect churn."
+    },
+    {
+      "title": "2. Team ID from jersey colors",
+      "what_it_does": "Samples upper-body jersey colors, clusters them into two groups, and tags tracks as home or away.",
+      "what_breaks": "Goalkeepers, referees, shadows, and tiny crops can poison the color signal.",
+      "what_to_try_next": "Use clips with clear kit contrast first and treat the labels as approximate, not gospel."
+    },
+    {
+      "title": "3. Ball tracking",
+      "what_it_does": "Runs a second detector for the ball so the demo is about play context, not just player boxes.",
+      "what_breaks": "The ball is small, fast, and happy to hide behind players or advertising boards.",
+      "what_to_try_next": "Keep the detector lightweight for now and judge it by overlay sanity, not by perfection."
+    },
+    {
+      "title": "4. Automatic field registration",
+      "what_it_does": "Refreshes pitch calibration from field keypoints every 10 frames so the minimap can follow a moving broadcast camera.",
+      "what_breaks": "If the keypoint model loses field structure during a fast cut or tight zoom, the projection has to coast on the last good calibration.",
+      "what_to_try_next": "Watch the live preview for calibration dropouts instead of trusting the minimap blindly."
+    },
+    {
+      "title": "5. Demo first, fancy later",
+      "what_it_does": "Packages detection, tracking, team ID, and rough spatial context into one believable tactical pipeline.",
+      "what_breaks": "It is easy to jump to pose or fancy models before the wide-angle basics are stable.",
+      "what_to_try_next": "Get the overlay and minimap looking trustworthy before you add anything more ambitious."
+    }
+  ],
+  "created_at": "2026-03-09T00:32:52.098493Z",
+  "heuristic_diagnostics": [
+    {
+      "level": "warn",
+      "title": "Tracking stability: fragmented",
+      "message": "8700 unique player track IDs across 67500 frames (longest track 1006 frames, mean 62.8).",
+      "next_step": "Use a steadier wide-angle phase or retune confidence before trusting downstream team or pitch metrics."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "4409 home tracks and 4184 away tracks from 542554 jersey crops (cluster distance 0.386, mean vote ratio 0.91).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.46; projected ball anchors 27193.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "good",
+      "title": "Field calibration: active",
+      "message": "3344/6750 refreshes succeeded; mean visible pitch keypoints 3.6; 90.5% of player detections projected.",
+      "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings."
+    },
+    {
+      "level": "good",
+      "title": "Goal labels: loaded",
+      "message": "3 aligned goal events loaded from Labels-v2.json.",
+      "next_step": "Use the experiment outputs to compare pre-goal windows against baseline match state."
+    }
+  ],
+  "diagnostics_source": "heuristic",
+  "diagnostics_provider": "openai",
+  "diagnostics_model": "gpt-5.4",
+  "diagnostics_status": "failed",
+  "diagnostics_summary_line": "67500-frame run, 8700 player IDs, 90.5% field registration, 0.46 ball detections/frame, 1 experiment card.",
+  "diagnostics_error": "Expecting value: line 1 column 1 (char 0)",
+  "diagnostics_json": "/runs/006_e0b5f17915_2/outputs/diagnostics_ai.json",
+  "split": "train",
+  "game": "england_epl/2015-2016/2015-08-29 - 17-00 Chelsea 1 - 2 Crystal Palace",
+  "half_file": "2_720p.mkv",
+  "diagnostics_prompt_context": {
+    "recent_logs": [],
+    "code_context": [
+      {
+        "label": "diagnostics_prompt_contract",
+        "reason": "Current diagnostics system prompt and JSON contract.",
+        "path": "backend/app/ai_diagnostics.py",
+        "anchor": "def build_system_prompt()",
+        "excerpt": "0266:             anchor=\"def build_system_prompt()\",\n0267:             before=0,\n0268:             after=90,\n0269:         ),\n0270:         _build_code_slice(\n0271:             \"backend/app/ai_diagnostics.py\",\n0272:             label=\"diagnostics_context_builder\",\n0273:             reason=\"Current run-context assembly for the AI diagnostics call.\",\n0274:             anchor=\"def build_run_context(\",\n0275:             before=0,\n0276:             after=110,\n0277:         ),\n0278:         _build_code_slice(\n0279:             \"backend/app/ai_diagnostics.py\",\n0280:             label=\"diagnostics_sanitizer\",\n0281:             reason=\"Current post-processing and clipping rules applied to AI output.\",\n0282:             anchor=\"def sanitize_diagnostics(\",\n0283:             before=0,\n0284:             after=45,\n0285:         ),\n0286:     ]\n0287: \n0288:     if \"calibration\" in categories:\n0289:         code_slices.extend(\n0290:             [\n0291:                 _build_code_slice(\n0292:                     \"backend/app/wide_angle.py\",\n0293:                     label=\"calibration_constants\",\n0294:                     reason=\"Field-calibration constants and acceptance thresholds.\",\n0295:                     anchor=\"CALIBRATION_REFRESH_FRAMES =\",\n0296:                     before=0,\n0297:                     after=18,\n0298:                 ),\n0299:                 _build_code_slice(\n0300:                     \"backend/app/wide_angle.py\",\n0301:                     label=\"homography_detection\",\n0302:                     reason=\"Pitch homography detection and reprojection error calculation.\",\n0303:                     anchor=\"def detect_pitch_homography(\",\n0304:                     before=0,\n0305:                     after=85,\n0306:                 ),\n0307:                 _build_code_slice(\n0308:                     \"backend/app/wide_angle.py\",\n0309:                     label=\"calibration_runtime_gate\",\n0310:                     reason=\"Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.\",\n0311:                     anchor=\"candidate_is_usable = (\",\n0312:                     before=18,\n0313:                     after=70,\n0314:                 ),\n0315:             ]\n0316:         )\n0317: \n0318:     if \"tracking\" in categories:\n0319:         code_slices.extend(\n0320:             [\n0321:                 _build_code_slice(\n0322:                     \"backend/app/wide_angle.py\",\n0323:                     label=\"player_detection_and_tracking\",\n0324:                     reason=\"Player detection path and tracker-mode wiring in the active pipeline.\",\n0325:                     anchor=\"def detect_players_for_frame(\",\n0326:                     before=0,\n0327:                     after=90,\n0328:                 ),\n0329:                 _build_code_slice(\n0330:                     \"backend/app/reid_tracker.py\",\n0331:                     label=\"appearance_embedder\",\n0332:                     reason=\"Sparse appearance embedder initialization and feature extraction fallback rules.\",\n0333:                     anchor=\"class SparseAppearanceEmbedder:\",\n0334:                     before=0,\n0335:                     after=120,\n0336:\n...[truncated]"
+      },
+      {
+        "label": "diagnostics_context_builder",
+        "reason": "Current run-context assembly for the AI diagnostics call.",
+        "path": "backend/app/ai_diagnostics.py",
+        "anchor": "def build_run_context(",
+        "excerpt": "0274:             anchor=\"def build_run_context(\",\n0275:             before=0,\n0276:             after=110,\n0277:         ),\n0278:         _build_code_slice(\n0279:             \"backend/app/ai_diagnostics.py\",\n0280:             label=\"diagnostics_sanitizer\",\n0281:             reason=\"Current post-processing and clipping rules applied to AI output.\",\n0282:             anchor=\"def sanitize_diagnostics(\",\n0283:             before=0,\n0284:             after=45,\n0285:         ),\n0286:     ]\n0287: \n0288:     if \"calibration\" in categories:\n0289:         code_slices.extend(\n0290:             [\n0291:                 _build_code_slice(\n0292:                     \"backend/app/wide_angle.py\",\n0293:                     label=\"calibration_constants\",\n0294:                     reason=\"Field-calibration constants and acceptance thresholds.\",\n0295:                     anchor=\"CALIBRATION_REFRESH_FRAMES =\",\n0296:                     before=0,\n0297:                     after=18,\n0298:                 ),\n0299:                 _build_code_slice(\n0300:                     \"backend/app/wide_angle.py\",\n0301:                     label=\"homography_detection\",\n0302:                     reason=\"Pitch homography detection and reprojection error calculation.\",\n0303:                     anchor=\"def detect_pitch_homography(\",\n0304:                     before=0,\n0305:                     after=85,\n0306:                 ),\n0307:                 _build_code_slice(\n0308:                     \"backend/app/wide_angle.py\",\n0309:                     label=\"calibration_runtime_gate\",\n0310:                     reason=\"Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.\",\n0311:                     anchor=\"candidate_is_usable = (\",\n0312:                     before=18,\n0313:                     after=70,\n0314:                 ),\n0315:             ]\n0316:         )\n0317: \n0318:     if \"tracking\" in categories:\n0319:         code_slices.extend(\n0320:             [\n0321:                 _build_code_slice(\n0322:                     \"backend/app/wide_angle.py\",\n0323:                     label=\"player_detection_and_tracking\",\n0324:                     reason=\"Player detection path and tracker-mode wiring in the active pipeline.\",\n0325:                     anchor=\"def detect_players_for_frame(\",\n0326:                     before=0,\n0327:                     after=90,\n0328:                 ),\n0329:                 _build_code_slice(\n0330:                     \"backend/app/reid_tracker.py\",\n0331:                     label=\"appearance_embedder\",\n0332:                     reason=\"Sparse appearance embedder initialization and feature extraction fallback rules.\",\n0333:                     anchor=\"class SparseAppearanceEmbedder:\",\n0334:                     before=0,\n0335:                     after=120,\n0336:                 ),\n0337:                 _build_code_slice(\n0338:                     \"backend/app/reid_tracker.py\",\n0339:                     label=\"tracklet_stitcher\",\n0340:                     reason=\"Current post-run track stitching logic and merge gates.\",\n0341:                     anchor=\"def build_stitched_track_map(\",\n0342:                     be\n...[truncated]"
+      },
+      {
+        "label": "diagnostics_sanitizer",
+        "reason": "Current post-processing and clipping rules applied to AI output.",
+        "path": "backend/app/ai_diagnostics.py",
+        "anchor": "def sanitize_diagnostics(",
+        "excerpt": "0282:             anchor=\"def sanitize_diagnostics(\",\n0283:             before=0,\n0284:             after=45,\n0285:         ),\n0286:     ]\n0287: \n0288:     if \"calibration\" in categories:\n0289:         code_slices.extend(\n0290:             [\n0291:                 _build_code_slice(\n0292:                     \"backend/app/wide_angle.py\",\n0293:                     label=\"calibration_constants\",\n0294:                     reason=\"Field-calibration constants and acceptance thresholds.\",\n0295:                     anchor=\"CALIBRATION_REFRESH_FRAMES =\",\n0296:                     before=0,\n0297:                     after=18,\n0298:                 ),\n0299:                 _build_code_slice(\n0300:                     \"backend/app/wide_angle.py\",\n0301:                     label=\"homography_detection\",\n0302:                     reason=\"Pitch homography detection and reprojection error calculation.\",\n0303:                     anchor=\"def detect_pitch_homography(\",\n0304:                     before=0,\n0305:                     after=85,\n0306:                 ),\n0307:                 _build_code_slice(\n0308:                     \"backend/app/wide_angle.py\",\n0309:                     label=\"calibration_runtime_gate\",\n0310:                     reason=\"Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.\",\n0311:                     anchor=\"candidate_is_usable = (\",\n0312:                     before=18,\n0313:                     after=70,\n0314:                 ),\n0315:             ]\n0316:         )\n0317: \n0318:     if \"tracking\" in categories:\n0319:         code_slices.extend(\n0320:             [\n0321:                 _build_code_slice(\n0322:                     \"backend/app/wide_angle.py\",\n0323:                     label=\"player_detection_and_tracking\",\n0324:                     reason=\"Player detection path and tracker-mode wiring in the active pipeline.\",\n0325:                     anchor=\"def detect_players_for_frame(\",\n0326:                     before=0,\n0327:                     after=90,"
+      },
+      {
+        "label": "calibration_constants",
+        "reason": "Field-calibration constants and acceptance thresholds.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "CALIBRATION_REFRESH_FRAMES =",
+        "excerpt": "0039: CALIBRATION_REFRESH_FRAMES = 1\n0040: CALIBRATION_SMOOTHING_WINDOW = 5\n0041: CALIBRATION_MAX_AGE_FRAMES = 30\n0042: FIELD_KEYPOINT_CONFIDENCE = 0.35\n0043: MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5\n0044: MIN_CALIBRATION_INLIERS = 4\n0045: MAX_CALIBRATION_REPROJECTION_ERROR_CM = 250.0\n0046: MAX_CALIBRATION_TEMPORAL_DRIFT_CM = 1800.0\n0047: EXPERIMENT_WINDOW_SECONDS = 10.0\n0048: EXPERIMENT_GRID_COLS = 6\n0049: EXPERIMENT_GRID_ROWS = 4\n0050: GOAL_LOOKAHEAD_SECONDS = (30, 60)\n0051: PROGRESS_TRACKING_MAX = 68.0\n0052: PROGRESS_RENDER_END = 90.0\n0053: PROGRESS_VIDEO_FINALIZE_END = 94.0\n0054: PROGRESS_DIAGNOSTICS_END = 98.0\n0055: PROGRESS_PACKAGING_END = 99.0\n0056: \n0057: DETECTOR_MODEL_SOURCES = {"
+      },
+      {
+        "label": "homography_detection",
+        "reason": "Pitch homography detection and reprojection error calculation.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "def detect_pitch_homography(",
+        "excerpt": "0811: def detect_pitch_homography(\n0812:     frame: np.ndarray,\n0813:     keypoint_model: YOLO,\n0814:     device: str,\n0815:     confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE,\n0816: ) -> tuple[np.ndarray | None, np.ndarray | None, int, int, float]:\n0817:     results = keypoint_model(source=frame, conf=0.05, device=device, verbose=False)\n0818:     if not results:\n0819:         return None, None, 0, 0, float(\"inf\")\n0820: \n0821:     result = results[0]\n0822:     if not hasattr(result, \"keypoints\") or result.keypoints is None or result.keypoints.data is None:\n0823:         return None, None, 0, 0, float(\"inf\")\n0824: \n0825:     keypoints_data = result.keypoints.data.cpu().numpy().astype(np.float32)\n0826:     if keypoints_data.size == 0:\n0827:         return None, None, 0, 0, float(\"inf\")\n0828: \n0829:     best_index = int(np.argmax((keypoints_data[:, :, 2] >= confidence_threshold).sum(axis=1)))\n0830:     keypoints = keypoints_data[best_index]\n0831:     valid_mask = keypoints[:, 2] >= confidence_threshold\n0832:     visible_count = int(valid_mask.sum())\n0833:     if visible_count < 4:\n0834:         return None, keypoints, visible_count, 0, float(\"inf\")\n0835: \n0836:     image_points = keypoints[valid_mask, :2].astype(np.float32)\n0837:     field_points = PITCH_REFERENCE_POINTS[valid_mask].astype(np.float32)\n0838:     homography_matrix, inlier_mask = cv2.findHomography(image_points, field_points, cv2.RANSAC, 35.0)\n0839:     inlier_count = int(inlier_mask.sum()) if inlier_mask is not None else visible_count\n0840:     if homography_matrix is None or inlier_count < 4:\n0841:         return None, keypoints, visible_count, inlier_count, float(\"inf\")\n0842:     reprojection_error = homography_reprojection_error_cm(homography_matrix.astype(np.float32), image_points, field_points)\n0843:     return homography_matrix.astype(np.float32), keypoints, visible_count, inlier_count, reprojection_error\n0844: \n0845: \n0846: def overlay_minimap(frame: np.ndarray, minimap: np.ndarray, style: dict[str, Any]) -> None:\n0847:     inset_height, inset_width = minimap.shape[:2]\n0848:     margin = style[\"margin\"]\n0849:     panel_padding = style[\"panel_padding\"]\n0850:     title_band_height = style[\"title_band_height\"]\n0851:     panel_top = max(0, frame.shape[0] - inset_height - margin - title_band_height - panel_padding * 2)\n0852:     panel_left = max(0, frame.shape[1] - inset_width - margin - panel_padding * 2)\n0853:     panel_bottom = min(frame.shape[0], panel_top + inset_height + title_band_height + panel_padding * 2)\n0854:     panel_right = min(frame.shape[1], panel_left + inset_width + panel_padding * 2)\n0855:     cv2.rectangle(frame, (panel_left, panel_top), (panel_right, panel_bottom), (18, 18, 18), -1)\n0856: \n0857:     map_top = panel_top + title_band_height + panel_padding\n0858:     map_left = panel_left + panel_padding\n0859:     frame[map_top:map_top + inset_height, map_left:map_left + inset_width] = minimap\n0860:     cv2.putText(\n0861:         frame,\n0862:         \"Minimap\",\n0863:         (panel_left + panel_padding, panel_top + title_band_height - max(4, panel_padding // 2)),\n0864:         cv2.FONT_HERSHEY_SIMPLEX,\n0865:         style[\"minimap_title_scale\"],\n0866:\n...[truncated]"
+      },
+      {
+        "label": "calibration_runtime_gate",
+        "reason": "Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "candidate_is_usable = (",
+        "excerpt": "1388:     last_calibration_frame = -1\n1389:     latest_reprojection_error_cm = float(\"inf\")\n1390: \n1391:     jersey_samples: list[np.ndarray] = []\n1392:     jersey_sample_track_ids: list[int] = []\n1393:     team_info_by_track: dict[int, dict[str, Any]] = {}\n1394:     frame_index = 0\n1395: \n1396:     try:\n1397:         while True:\n1398:             frame_started = time.perf_counter()\n1399:             ok, frame = cap.read()\n1400:             if not ok:\n1401:                 break\n1402: \n1403:             if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:\n1404:                 homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)\n1405:                 temporal_drift = homography_temporal_drift_cm(field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float(\"inf\")\n1406:                 candidate_is_usable = (\n1407:                     homography_candidate is not None\n1408:                     and visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS\n1409:                     and inlier_count >= MIN_CALIBRATION_INLIERS\n1410:                     and reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM\n1411:                     and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM\n1412:                 )\n1413:                 if candidate_is_usable:\n1414:                     normalized_candidate = normalize_homography_matrix(homography_candidate)\n1415:                     if normalized_candidate is not None:\n1416:                         accepted_homographies.append(normalized_candidate)\n1417:                         smoothed_homography = smooth_homography_history(accepted_homographies)\n1418:                         field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate\n1419:                     last_calibration_frame = frame_index\n1420:                     latest_reprojection_error_cm = reprojection_error\n1421:                 latest_field_keypoints = detected_keypoints\n1422:                 latest_visible_keypoints = visible_count\n1423:                 latest_inlier_count = inlier_count\n1424:             calibration_is_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)\n1425:             projection_homography = field_homography\n1426: \n1427:             current_players: list[dict[str, Any]] = []\n1428:             current_ball: dict[str, Any] | None = None\n1429: \n1430:             player_detections = detect_players_for_frame(\n1431:                 frame=frame,\n1432:                 player_model=player_model,\n1433:                 detector_spec=detector_spec,\n1434:                 detector_device=detector_device,\n1435:                 player_conf=player_conf,\n1436:                 iou=iou,\n1437:                 frame_width=frame_width,\n1438:                 frame_height=frame_height,\n1439:                 field_homography=projection_homography,\n1440:                 frame_index=frame_index,\n1441:                 tracker_mode=tracker_mode,\n1442:                 appearance_embedder=ap\n...[truncated]"
+      }
+    ],
+    "budget": {
+      "max_output_tokens": 1400,
+      "context_json_chars": 23958,
+      "code_slice_count": 6,
+      "recent_log_count": 0
+    }
+  }
+}

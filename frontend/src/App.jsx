@@ -147,6 +147,77 @@ function DiagnosticCard({ item }) {
   );
 }
 
+function PromptContextPanel({ summary }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [artifactState, setArtifactState] = useState({ loading: false, error: '', promptContext: null });
+
+  const promptContext = summary?.diagnostics_prompt_context || artifactState.promptContext;
+
+  useEffect(() => {
+    if (!isExpanded || promptContext || artifactState.loading || !summary?.diagnostics_json) {
+      return;
+    }
+
+    let cancelled = false;
+    setArtifactState((current) => ({ ...current, loading: true, error: '' }));
+    fetch(`${API_BASE}${summary.diagnostics_json}`)
+      .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+      .then(({ ok, data }) => {
+        if (cancelled) return;
+        if (!ok) {
+          throw new Error(data?.detail || 'Could not load diagnostics artifact');
+        }
+        setArtifactState({ loading: false, error: '', promptContext: data?.prompt_context || null });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setArtifactState({ loading: false, error: error.message || 'Could not load diagnostics artifact', promptContext: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isExpanded, promptContext, artifactState.loading, summary?.diagnostics_json]);
+
+  if (!summary?.diagnostics_json) {
+    return null;
+  }
+
+  return (
+    <details className="card prompt-context-card" onToggle={(event) => setIsExpanded(event.currentTarget.open)}>
+      <summary className="section-title prompt-context-summary">Prompt Debug Context</summary>
+      <div className="prompt-context-meta">
+        This is the selected runtime context sent to the diagnostics model. It is collapsed by default so the main diagnostics view stays unchanged.
+      </div>
+      {artifactState.loading ? <div className="muted">Loading prompt context…</div> : null}
+      {artifactState.error ? <div className="error-box">{artifactState.error}</div> : null}
+      {promptContext ? (
+        <>
+          <div className="prompt-context-grid">
+            <div><span className="micro-label">Context chars</span><div>{promptContext.budget?.context_json_chars ?? 'n/a'}</div></div>
+            <div><span className="micro-label">Code slices</span><div>{promptContext.budget?.code_slice_count ?? 0}</div></div>
+            <div><span className="micro-label">Recent logs</span><div>{promptContext.budget?.recent_log_count ?? 0}</div></div>
+            <div><span className="micro-label">Max output tokens</span><div>{promptContext.budget?.max_output_tokens ?? 'n/a'}</div></div>
+          </div>
+          {(promptContext.recent_logs || []).length ? (
+            <details className="prompt-context-subdetail">
+              <summary>Recent Logs</summary>
+              <pre className="prompt-context-code">{promptContext.recent_logs.join('\n')}</pre>
+            </details>
+          ) : null}
+          {(promptContext.code_context || []).map((slice) => (
+            <details key={slice.label} className="prompt-context-subdetail">
+              <summary>{slice.label} · {slice.path}</summary>
+              <div className="prompt-context-meta">{slice.reason}</div>
+              <pre className="prompt-context-code">{slice.excerpt}</pre>
+            </details>
+          ))}
+        </>
+      ) : null}
+    </details>
+  );
+}
+
 function ExperimentCard({ item }) {
   return (
     <div className="card experiment-card">
@@ -499,6 +570,7 @@ export default function App() {
     () => (summary?.diagnostics || []).slice(0, 4),
     [summary],
   );
+  const hasExplicitIdentityMetrics = summary && summary.tracklet_merges_applied != null && summary.raw_unique_player_track_ids != null;
   const reviewQuickFacts = useMemo(() => {
     if (!summary) return [];
     return [
@@ -506,26 +578,31 @@ export default function App() {
       ['Frames', summary.frames_processed || 0],
       ['Tracker', summary.player_tracker_mode || 'n/a'],
       ['Calibration', `${summary.field_calibration_refresh_successes || 0}/${summary.field_calibration_refresh_attempts || 0}`],
-      ['Player IDs', `${summary.raw_unique_player_track_ids ?? summary.unique_player_track_ids ?? 0} -> ${summary.unique_player_track_ids || 0}`],
+      ['Player IDs', hasExplicitIdentityMetrics ? `${summary.raw_unique_player_track_ids} -> ${summary.unique_player_track_ids || 0}` : (summary.unique_player_track_ids || 0)],
       ['Teams', `${summary.home_tracks || 0} home / ${summary.away_tracks || 0} away`],
       ['Ball / frame', summary.average_ball_detections_per_frame ?? 'n/a'],
     ];
-  }, [summary, reviewedClipName]);
+  }, [summary, reviewedClipName, hasExplicitIdentityMetrics]);
 
   const runStats = useMemo(() => {
     if (!summary) return [];
-    return [
+    const rows = [
       ['Frames', summary.frames_processed || 0, 'Decoded frames pushed through detection and tracking'],
       ['Tracker mode', summary.player_tracker_mode || 'n/a', 'Hybrid ReID adds appearance features and a stitch pass; ByteTrack is the legacy fallback'],
-      ['Player track IDs', summary.unique_player_track_ids || 0, 'Canonical stitched IDs after any tracklet merges'],
-      ['Raw player IDs', summary.raw_unique_player_track_ids ?? summary.unique_player_track_ids ?? 0, 'Unstitched online tracker IDs before the merge pass'],
-      ['Tracklet merges', summary.tracklet_merges_applied ?? 0, 'Accepted raw-to-canonical identity merges'],
+      ['Player track IDs', summary.unique_player_track_ids || 0, hasExplicitIdentityMetrics ? 'Canonical stitched IDs after any tracklet merges' : 'Track IDs from the saved run summary'],
       ['Home tracks', summary.home_tracks || 0, 'Unsupervised jersey-color split, not official metadata'],
       ['Away tracks', summary.away_tracks || 0, 'Should roughly match the second main kit cluster'],
       ['Projected player anchors', summary.projected_player_points || 0, 'Per-frame player anchor samples that landed on the pitch map, not unique players'],
       ['Avg pitch keypoints', summary.average_visible_pitch_keypoints || 0, 'Visible field keypoints on each 10-frame calibration refresh'],
     ];
-  }, [summary]);
+    if (hasExplicitIdentityMetrics) {
+      rows.splice(2, 0,
+        ['Raw player IDs', summary.raw_unique_player_track_ids, 'Unstitched online tracker IDs before the merge pass'],
+        ['Tracklet merges', summary.tracklet_merges_applied ?? 0, 'Accepted raw-to-canonical identity merges'],
+      );
+    }
+    return rows;
+  }, [summary, hasExplicitIdentityMetrics]);
 
   function updateForm(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -1700,6 +1777,10 @@ export default function App() {
                   <section className="workspace-panel diagnostics-stack">
                     <div className="section-title inset-title">Detailed Diagnostics</div>
                     {summary?.diagnostics?.length ? summary.diagnostics.map((item) => <DiagnosticCard key={item.title} item={item} />) : <div className="card empty-card">No diagnostics available for the selected run.</div>}
+                  </section>
+
+                  <section className="workspace-panel">
+                    <PromptContextPanel summary={summary} />
                   </section>
                 </>
               ) : null}
