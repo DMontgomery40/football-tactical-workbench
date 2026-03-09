@@ -10,7 +10,8 @@ venv/
 UI_AGENT_HANDOFF_PROMPT.md
 CLAUDE.md
 .playwright/
-
+output/playwright/*
+output/*
 
 backend_server.log
 backend_server.pid
@@ -18,7 +19,7 @@ backend_server.pid
 frontend/node_modules/
 frontend/dist/
 
-backend/experiments/*.log
+backend/experiments/*
 backend/experiments/*.json
 backend/experiments/*.csv
 backend/experiments/*.zip

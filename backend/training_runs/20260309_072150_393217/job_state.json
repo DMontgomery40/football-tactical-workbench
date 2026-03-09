@@ -312,6 +312,7 @@
     "precision": 0.0,
     "recall": 0.0
   },
+  "training_curves": {},
   "artifacts": {
     "config": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/config.json",
     "dataset_scan": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_scan.json",

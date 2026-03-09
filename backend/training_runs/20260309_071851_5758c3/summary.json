@@ -227,6 +227,7 @@
   "backend_version": "8.3.81",
   "validation_strategy": "existing_split",
   "metrics": {},
+  "training_curves": {},
   "artifacts": {
     "dataset_scan": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_scan.json",
     "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_runtime.yaml"

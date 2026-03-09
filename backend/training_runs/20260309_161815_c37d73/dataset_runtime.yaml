@@ -1,0 +1,9 @@
+path: /Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data
+train: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/splits/train.txt
+val: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/splits/val.txt
+names:
+  0: ball
+  1: goalkeeper
+  2: player
+  3: referee
+test: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/splits/test.txt

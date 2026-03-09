@@ -55,14 +55,45 @@ DATASET_SPECS: dict[str, DatasetSpec] = {
     "real": DatasetSpec(
         key="real",
         repo_id="Voxel51/SoccerNet-V3",
+        local_dir_name="voxel51_soccernet_v3_sample",
+        purpose="Broadcast-real SoccerNet-V3 slice for serious local reference work without pulling the full benchmark.",
+        format_hint="FiftyOne / metadata-driven object-detection dataset, not YOLO-native",
+        training_ready=False,
+        allow_patterns=(
+            "README.md",
+            "fiftyone.yml",
+            "metadata.json",
+            "samples.json",
+            "data/data_0/**",
+            "data/data_1/**",
+            "data/data_2/**",
+            "data/data_3/**",
+            "data/data_4/**",
+            "data/data_5/**",
+            "data/data_6/**",
+            "data/data_7/**",
+            "data/data_8/**",
+            "data/data_9/**",
+        ),
+        notes=(
+            "Representative broadcast-real slice of SoccerNet-V3 with much stronger realism than a smoke set.",
+            "Good local reference pull for future conversion, evaluation, and serious data work without forcing a full multi-gig download on day one.",
+            "License declared in dataset card README frontmatter: MIT.",
+        ),
+        recommended_scan_subpath=None,
+        max_workers=1,
+    ),
+    "benchmark_full": DatasetSpec(
+        key="benchmark_full",
+        repo_id="Voxel51/SoccerNet-V3",
         local_dir_name="voxel51_soccernet_v3",
-        purpose="Broadcast-real football benchmark/reference dataset from Hugging Face.",
+        purpose="Full SoccerNet-V3 benchmark pull for offline archival and large-scale experimentation.",
         format_hint="FiftyOne / metadata-driven object-detection dataset, not YOLO-native",
         training_ready=False,
         allow_patterns=("README.md", "fiftyone.yml", "metadata.json", "samples.json", "data/**"),
         notes=(
-            "Professional broadcast football benchmark dataset with much stronger realism than a smoke set.",
-            "Excellent reference pull for future conversion, evaluation, and serious data work.",
+            "Full SoccerNet-V3 benchmark pull.",
+            "Much heavier than the curated `real` slice and best treated as an explicit long-running download.",
             "License declared in dataset card README frontmatter: MIT.",
         ),
         recommended_scan_subpath=None,
@@ -147,7 +178,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Pull recommended football datasets from Hugging Face into backend/datasets/huggingface.")
     parser.add_argument(
         "--dataset",
-        choices=["smoke", "real", "all"],
+        choices=["smoke", "real", "benchmark_full", "all"],
         default="all",
         help="Which preset to pull.",
     )
@@ -158,7 +189,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    selected = list(DATASET_SPECS.values()) if args.dataset == "all" else [DATASET_SPECS[args.dataset]]
+    selected = [DATASET_SPECS["smoke"], DATASET_SPECS["real"]] if args.dataset == "all" else [DATASET_SPECS[args.dataset]]
 
     DATASETS_DIR.mkdir(parents=True, exist_ok=True)
     for spec in selected:

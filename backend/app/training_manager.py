@@ -43,6 +43,7 @@ class TrainingJobState:
     backend_version: str | None = None
     validation_strategy: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+    training_curves: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
     best_checkpoint: str | None = None
     summary_path: str | None = None
@@ -71,6 +72,7 @@ class TrainingJobState:
             "backend_version": self.backend_version,
             "validation_strategy": self.validation_strategy,
             "metrics": self.metrics or {},
+            "training_curves": self.training_curves or {},
             "artifacts": self.artifacts or {},
             "best_checkpoint": self.best_checkpoint,
             "summary_path": self.summary_path,
@@ -303,6 +305,7 @@ class TrainingManager:
                 backend_version=str(payload.get("backend_version")) if payload.get("backend_version") else None,
                 validation_strategy=str(payload.get("validation_strategy")) if payload.get("validation_strategy") else None,
                 metrics=dict(payload.get("metrics") or {}),
+                training_curves=dict(payload.get("training_curves") or {}),
                 artifacts=dict(payload.get("artifacts") or {}),
                 best_checkpoint=str(payload.get("best_checkpoint")) if payload.get("best_checkpoint") else None,
                 summary_path=str(payload.get("summary_path")) if payload.get("summary_path") else str((run_dir / SUMMARY_FILENAME).resolve()),
@@ -453,6 +456,7 @@ class TrainingManager:
         epoch = int(payload.get("epoch") or 0)
         total_epochs = max(int(payload.get("total_epochs") or 0), 1)
         metrics = dict(payload.get("metrics") or {})
+        training_curves = dict(payload.get("training_curves") or {})
         done = bool(payload.get("done", False))
         progress = 100.0 if done else min((epoch / total_epochs) * 100.0, 99.0)
         resolved_device = str(payload.get("resolved_device") or "") or None
@@ -468,6 +472,8 @@ class TrainingManager:
             job.progress = max(float(job.progress or 0.0), float(progress))
             if metrics:
                 job.metrics = metrics
+            if training_curves:
+                job.training_curves = training_curves
             if resolved_device:
                 job.resolved_device = resolved_device
             if backend:

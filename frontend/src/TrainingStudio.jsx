@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+import { buildHelpIndex, FieldLabel, HelpPopover, MicroLabelWithHelp, SectionTitleWithHelp } from './helpUi';
 
 const STUDIO_TABS = [
   { id: 'datasets', label: 'Datasets' },
@@ -34,6 +46,18 @@ function formatMetric(value) {
   return numeric.toFixed(3);
 }
 
+function formatCurveAxis(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '';
+  return `E${numeric.toFixed(1)}`;
+}
+
+function formatCurveTooltipLabel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'Training sample';
+  return `Epoch progress ${numeric.toFixed(2)}`;
+}
+
 function formatPathTail(value) {
   if (!value) return 'n/a';
   const parts = String(value).split(/[\\/]+/).filter(Boolean);
@@ -46,14 +70,14 @@ function formatClassIds(value) {
   return value.join(', ');
 }
 
-function ActiveDetectorSummary({ registry, activeDetector }) {
+function ActiveDetectorSummary({ registry, activeDetector, helpIndex }) {
   const activeId = registry?.active_detector || activeDetector || 'soccana';
   const activeEntry = (registry?.detectors || []).find((item) => item.id === activeId);
 
   return (
     <div className="studio-active-detector">
       <div>
-        <div className="micro-label">Active detector</div>
+        <MicroLabelWithHelp label="Active detector" entry={helpIndex.get('training.active_detector')} />
         <div className="studio-active-detector-name">{activeEntry?.label || activeId}</div>
         <div className="muted">{formatPathTail(activeEntry?.path || '')}</div>
       </div>
@@ -94,7 +118,78 @@ function ArtifactList({ artifacts }) {
   );
 }
 
-export default function TrainingStudio({ apiBase, activeDetector, onActiveDetectorChange }) {
+function TrainingCurvesPanel({ trainingCurves }) {
+  const lossData = Array.isArray(trainingCurves?.loss) ? trainingCurves.loss : [];
+  const optimizerData = Array.isArray(trainingCurves?.optimizer) ? trainingCurves.optimizer : [];
+
+  if (lossData.length === 0 && optimizerData.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="studio-chart-grid">
+      <div className="card studio-chart-card">
+        <div className="row-between">
+          <div>
+            <div className="micro-label">Live loss curves</div>
+            <div className="section-title">Detection losses</div>
+          </div>
+          <div className="muted">{lossData.length} samples</div>
+        </div>
+        <div className="studio-chart-shell">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={lossData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(125, 143, 160, 0.24)" />
+              <XAxis dataKey="epoch_progress" tickFormatter={formatCurveAxis} minTickGap={24} stroke="currentColor" />
+              <YAxis stroke="currentColor" width={44} />
+              <Tooltip
+                formatter={(value) => formatMetric(value)}
+                labelFormatter={formatCurveTooltipLabel}
+                contentStyle={{ borderRadius: 12, border: '1px solid rgba(125, 143, 160, 0.32)' }}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="box_loss" name="box" stroke="#1f5f92" strokeWidth={2.2} dot={false} connectNulls />
+              <Line type="monotone" dataKey="cls_loss" name="cls" stroke="#b5541f" strokeWidth={2.2} dot={false} connectNulls />
+              <Line type="monotone" dataKey="dfl_loss" name="dfl" stroke="#2f6f4f" strokeWidth={2.2} dot={false} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="card studio-chart-card">
+        <div className="row-between">
+          <div>
+            <div className="micro-label">Live optimizer signals</div>
+            <div className="section-title">Gradient norm and learning rate</div>
+          </div>
+          <div className="muted">{optimizerData.length} samples</div>
+        </div>
+        <div className="studio-chart-shell">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={optimizerData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(125, 143, 160, 0.24)" />
+              <XAxis dataKey="epoch_progress" tickFormatter={formatCurveAxis} minTickGap={24} stroke="currentColor" />
+              <YAxis yAxisId="left" stroke="currentColor" width={44} />
+              <YAxis yAxisId="right" orientation="right" stroke="currentColor" width={52} tickFormatter={(value) => Number(value).toExponential(0)} />
+              <Tooltip
+                formatter={(value, name) => (
+                  name === 'lr' ? Number(value).toExponential(3) : formatMetric(value)
+                )}
+                labelFormatter={formatCurveTooltipLabel}
+                contentStyle={{ borderRadius: 12, border: '1px solid rgba(125, 143, 160, 0.32)' }}
+              />
+              <Legend />
+              <Line yAxisId="left" type="monotone" dataKey="grad_norm" name="grad norm" stroke="#7d2349" strokeWidth={2.2} dot={false} connectNulls />
+              <Line yAxisId="right" type="monotone" dataKey="lr" name="lr" stroke="#0f766e" strokeWidth={2.2} dot={false} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function TrainingStudio({ apiBase, activeDetector, helpCatalog = [], onActiveDetectorChange }) {
   const [studioTab, setStudioTab] = useState('datasets');
   const [datasetPath, setDatasetPath] = useState(() => readStoredString(STORAGE_KEYS.datasetPath, ''));
   const [trainingConfig, setTrainingConfig] = useState(null);
@@ -122,6 +217,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     cache: false,
   });
   const pollRef = useRef(null);
+  const helpIndex = useMemo(() => buildHelpIndex(helpCatalog), [helpCatalog]);
 
   async function requestJson(path, options = {}) {
     const response = await fetch(`${apiBase}${path}`, options);
@@ -378,7 +474,10 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       <section className="card studio-header training-studio-hero">
         <div className="studio-header-copy">
           <div className="eyebrow">training studio</div>
-          <div className="section-title">Fine-tune the football detector in its own workspace.</div>
+          <SectionTitleWithHelp
+            title="Fine-tune the football detector in its own workspace."
+            entry={helpIndex.get('training.studio_overview')}
+          />
           <p className="studio-intro">
             This V1 stays focused: start from the football-pretrained `soccana` checkpoint, adapt it to your camera domain locally,
             and then promote the best checkpoint straight back into analysis.
@@ -391,7 +490,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
           </div>
         </div>
         <div className="studio-header-side">
-          <ActiveDetectorSummary registry={registry} activeDetector={activeDetector} />
+          <ActiveDetectorSummary registry={registry} activeDetector={activeDetector} helpIndex={helpIndex} />
           {trainingConfig?.license_note ? (
             <div className="studio-license-note">
               <div className="micro-label">Licensing caveat</div>
@@ -419,12 +518,12 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       {studioTab === 'datasets' ? (
         <section className="studio-panel-grid">
           <section className="card studio-panel">
-            <div className="section-title">Dataset intake</div>
+            <SectionTitleWithHelp title="Dataset intake" entry={helpIndex.get('training.dataset_intake')} />
             <div className="field-note">
               Point this at a YOLO detector dataset root. The scanner checks split structure, label integrity, class mapping, and whether the trained checkpoint can safely come back into analysis.
             </div>
             <label>
-              <span>Dataset path</span>
+              <FieldLabel label="Dataset path" entry={helpIndex.get('training.dataset_path')} />
               <input
                 type="text"
                 value={datasetPath}
@@ -449,7 +548,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
           <section className={`card studio-panel scan-result-card ${datasetScan?.tier || 'neutral'}`}>
             <div className="row-between">
               <div>
-                <div className="section-title">Scan result</div>
+                <SectionTitleWithHelp title="Scan result" entry={helpIndex.get('training.scan_result')} />
                 <div className="muted">
                   {datasetScan ? (datasetScan.can_start ? 'Ready for detector fine-tuning.' : 'Needs fixes before a run can start.') : 'Run a scan to inspect readiness.'}
                 </div>
@@ -471,7 +570,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                     <div className="studio-meta-value">{datasetScan.has_yaml ? datasetScan.yaml_path : 'Missing'}</div>
                   </div>
                   <div>
-                    <div className="micro-label">Validation strategy</div>
+                    <MicroLabelWithHelp label="Validation strategy" entry={helpIndex.get('training.validation_strategy')} />
                     <div className="studio-meta-value">{datasetScan.suggested_validation_strategy || 'existing_split'}</div>
                   </div>
                   <div>
@@ -493,15 +592,15 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
                 <div className="studio-class-map">
                   <div className="studio-class-map-card">
-                    <div className="micro-label">Player / keeper ids</div>
+                    <MicroLabelWithHelp label="Player / keeper ids" entry={helpIndex.get('training.class_mapping')} />
                     <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.player_class_ids)}</div>
                   </div>
                   <div className="studio-class-map-card">
-                    <div className="micro-label">Ball ids</div>
+                    <MicroLabelWithHelp label="Ball ids" entry={helpIndex.get('training.class_mapping')} />
                     <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.ball_class_ids)}</div>
                   </div>
                   <div className="studio-class-map-card">
-                    <div className="micro-label">Referee ids</div>
+                    <MicroLabelWithHelp label="Referee ids" entry={helpIndex.get('training.class_mapping')} />
                     <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.referee_class_ids)}</div>
                   </div>
                 </div>
@@ -541,7 +640,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       {studioTab === 'train' ? (
         <section className="studio-panel-grid">
           <section className="card studio-panel">
-            <div className="section-title">Training family</div>
+            <SectionTitleWithHelp title="Training family" entry={helpIndex.get('training.training_family')} />
             <div className="studio-family-grid">
               <div className="studio-family-card active-family-card">
                 <div className="micro-label">Enabled now</div>
@@ -570,12 +669,12 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
           <form className="card studio-panel" onSubmit={handleStartTraining}>
             <div className="row-between">
-              <div className="section-title">Detector fine-tuning</div>
+              <SectionTitleWithHelp title="Detector fine-tuning" entry={helpIndex.get('training.detector_finetuning')} />
               <div className="muted">{datasetPath ? datasetPath : 'Choose a dataset first'}</div>
             </div>
             <div className="training-form-grid">
               <label>
-                <span>Base weights</span>
+                <FieldLabel label="Base weights" entry={helpIndex.get('training.base_weights')} />
                 <select value={form.baseWeights} onChange={(event) => updateForm('baseWeights', event.target.value)}>
                   {enabledBaseWeights.map((item) => (
                     <option key={item.id} value={item.id}>{item.label}</option>
@@ -583,7 +682,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 </select>
               </label>
               <label>
-                <span>Run name</span>
+                <FieldLabel label="Run name" entry={helpIndex.get('training.run_name')} />
                 <input
                   type="text"
                   value={form.runName}
@@ -592,19 +691,19 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 />
               </label>
               <label>
-                <span>Epochs</span>
+                <FieldLabel label="Epochs" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="1" value={form.epochs} onChange={(event) => updateForm('epochs', event.target.value)} />
               </label>
               <label>
-                <span>Image size</span>
+                <FieldLabel label="Image size" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="32" step="32" value={form.imgsz} onChange={(event) => updateForm('imgsz', event.target.value)} />
               </label>
               <label>
-                <span>Batch</span>
+                <FieldLabel label="Batch" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="1" value={form.batch} onChange={(event) => updateForm('batch', event.target.value)} />
               </label>
               <label>
-                <span>Device</span>
+                <FieldLabel label="Device" entry={helpIndex.get('training.device')} />
                 <select value={form.device} onChange={(event) => updateForm('device', event.target.value)}>
                   {deviceOptions.map((item) => (
                     <option key={item.id || item} value={item.id || item}>{item.label || item}</option>
@@ -612,25 +711,28 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 </select>
               </label>
               <label>
-                <span>Workers</span>
+                <FieldLabel label="Workers" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="0" value={form.workers} onChange={(event) => updateForm('workers', event.target.value)} />
               </label>
               <label>
-                <span>Patience</span>
+                <FieldLabel label="Patience" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="0" value={form.patience} onChange={(event) => updateForm('patience', event.target.value)} />
               </label>
               <label>
-                <span>Freeze</span>
+                <FieldLabel label="Freeze" entry={helpIndex.get('training.hyperparameters')} />
                 <input type="number" min="0" value={form.freeze} onChange={(event) => updateForm('freeze', event.target.value)} placeholder="leave blank for none" />
               </label>
               <label className="studio-checkbox-field">
-                <span>Cache images</span>
+                <span className="checkbox-label-row">
+                  <span>Cache images</span>
+                  <HelpPopover entry={helpIndex.get('training.hyperparameters')} />
+                </span>
                 <input type="checkbox" checked={form.cache} onChange={(event) => updateForm('cache', event.target.checked)} />
               </label>
             </div>
 
             <div className="studio-runtime-note">
-              <div className="micro-label">Runtime behavior</div>
+              <MicroLabelWithHelp label="Runtime behavior" entry={helpIndex.get('training.runtime_behavior')} />
               <div>
                 The worker gets a run-local <code>dataset_runtime.yaml</code>, writes <code>summary.json</code>, <code>train.log</code>,
                 plot artifacts, and the best checkpoint under <code>backend/training_runs/&lt;run_id&gt;/</code>.
@@ -654,6 +756,10 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
       {studioTab === 'jobs' ? (
         <section className="studio-stack">
+          <section className="card studio-panel">
+            <SectionTitleWithHelp title="Training jobs" entry={helpIndex.get('training.jobs')} />
+            <div className="field-note">Use this view to judge run health, inspect artifacts, and promote completed checkpoints into the detector registry.</div>
+          </section>
           {jobsError ? <div className="error-box">{jobsError}</div> : null}
           {jobs.length === 0 ? (
             <div className="card empty-card studio-panel">No training jobs yet. Start a fine-tuning run from the Train tab.</div>
@@ -711,6 +817,8 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   </div>
                 </div>
 
+                <TrainingCurvesPanel trainingCurves={job.training_curves} />
+
                 {job.error ? <div className="error-box">{job.error}</div> : null}
 
                 <div className="source-toolbar">
@@ -743,7 +851,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   <summary>Run artifacts and dataset contract</summary>
                   <div className="studio-detail-stack">
                     <div className="studio-runtime-note">
-                      <div className="micro-label">Generated dataset manifest</div>
+                      <MicroLabelWithHelp label="Generated dataset manifest" entry={helpIndex.get('training.job_artifacts')} />
                       <div>{job.generated_dataset_yaml || 'Not written yet'}</div>
                     </div>
                     <ArtifactList artifacts={job.artifacts} />
@@ -798,7 +906,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
           <section className="card studio-panel">
             <div className="row-between">
               <div>
-                <div className="section-title">Detector registry</div>
+                <SectionTitleWithHelp title="Detector registry" entry={helpIndex.get('training.registry')} />
                 <div className="field-note">Analysis and live preview use the active detector whenever the analysis selector stays on `soccana`.</div>
               </div>
               <div className="active-badge">{activeRegistryId === 'soccana' ? 'using pretrained detector' : 'using custom detector'}</div>

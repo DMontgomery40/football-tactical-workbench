@@ -11,6 +11,8 @@ from ultralytics import YOLO, __version__ as ULTRALYTICS_VERSION
 from app.training import TRAINING_BACKEND
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+MAX_CURVE_POINTS = 240
+TARGET_SAMPLES_PER_EPOCH = 24
 
 
 def choose_training_device(config_value: str) -> str:
@@ -42,6 +44,12 @@ def safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def trim_curve(points: list[dict[str, Any]], max_points: int = MAX_CURVE_POINTS) -> list[dict[str, Any]]:
+    if len(points) <= max_points:
+        return points
+    return points[-max_points:]
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit("Usage: python -m app.train_worker /abs/path/to/run_dir")
@@ -63,6 +71,13 @@ def main() -> None:
         raise RuntimeError("Training config is missing generated_dataset_yaml.")
 
     model = YOLO(weights_path)
+    training_curves: dict[str, list[dict[str, Any]]] = {"loss": [], "optimizer": []}
+    curve_state = {
+        "epoch_step": 0,
+        "steps_per_epoch": 1,
+        "sample_every": 1,
+        "last_grad_norm": 0.0,
+    }
 
     def write_progress(epoch: int, total_epochs: int, metrics: dict[str, float], done: bool) -> None:
         payload = {
@@ -74,9 +89,82 @@ def main() -> None:
             "backend": TRAINING_BACKEND,
             "backend_version": ULTRALYTICS_VERSION,
             "generated_dataset_yaml": data_arg,
+            "training_curves": training_curves,
             "best_checkpoint": str((weights_dir / "best.pt").resolve()),
         }
         progress_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def record_curve_point(trainer: Any, *, force: bool = False) -> None:
+        epoch_number = int(getattr(trainer, "epoch", 0)) + 1
+        step_number = max(int(curve_state["epoch_step"]), 1)
+        steps_per_epoch = max(int(curve_state["steps_per_epoch"]), 1)
+        sample_every = max(int(curve_state["sample_every"]), 1)
+        if not force and step_number % sample_every != 0 and step_number != steps_per_epoch:
+            return
+
+        epoch_progress = round((epoch_number - 1) + (step_number / steps_per_epoch), 4)
+        loss_items = {}
+        if hasattr(trainer, "label_loss_items") and getattr(trainer, "tloss", None) is not None:
+            try:
+                loss_items = trainer.label_loss_items(trainer.tloss)
+            except Exception:
+                loss_items = {}
+
+        training_curves["loss"] = trim_curve([
+            *training_curves["loss"],
+            {
+                "epoch": epoch_number,
+                "step": step_number,
+                "epoch_progress": epoch_progress,
+                "box_loss": safe_float(loss_items.get("train/box_loss")),
+                "cls_loss": safe_float(loss_items.get("train/cls_loss")),
+                "dfl_loss": safe_float(loss_items.get("train/dfl_loss")),
+            },
+        ])
+
+        optimizer_lr = 0.0
+        optimizer = getattr(trainer, "optimizer", None)
+        if optimizer and getattr(optimizer, "param_groups", None):
+            optimizer_lr = safe_float(optimizer.param_groups[0].get("lr"))
+
+        training_curves["optimizer"] = trim_curve([
+            *training_curves["optimizer"],
+            {
+                "epoch": epoch_number,
+                "step": step_number,
+                "epoch_progress": epoch_progress,
+                "grad_norm": safe_float(curve_state["last_grad_norm"]),
+                "lr": optimizer_lr,
+            },
+        ])
+
+    def on_pretrain_routine_end(trainer: Any) -> None:
+        import torch
+
+        def instrumented_optimizer_step() -> None:
+            trainer.scaler.unscale_(trainer.optimizer)
+            grad_norm = torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), max_norm=10.0)
+            curve_state["last_grad_norm"] = safe_float(grad_norm.item() if hasattr(grad_norm, "item") else grad_norm)
+            trainer.scaler.step(trainer.optimizer)
+            trainer.scaler.update()
+            trainer.optimizer.zero_grad()
+            if trainer.ema:
+                trainer.ema.update(trainer.model)
+
+        trainer.optimizer_step = instrumented_optimizer_step
+
+    def on_epoch_start(trainer: Any) -> None:
+        curve_state["epoch_step"] = 0
+        try:
+          steps_per_epoch = len(trainer.train_loader)
+        except Exception:
+          steps_per_epoch = 1
+        curve_state["steps_per_epoch"] = max(int(steps_per_epoch), 1)
+        curve_state["sample_every"] = max(1, int(curve_state["steps_per_epoch"] / TARGET_SAMPLES_PER_EPOCH))
+
+    def on_train_batch_end(trainer: Any) -> None:
+        curve_state["epoch_step"] = int(curve_state["epoch_step"]) + 1
+        record_curve_point(trainer)
 
     def on_epoch_end(trainer: Any) -> None:
         trainer_metrics = getattr(trainer, "metrics", None) or {}
@@ -86,9 +174,13 @@ def main() -> None:
             "mAP50": safe_float(trainer_metrics.get("metrics/mAP50(B)")),
             "mAP50_95": safe_float(trainer_metrics.get("metrics/mAP50-95(B)")),
         }
+        record_curve_point(trainer, force=True)
         write_progress(epoch, total_epochs, metrics, done=False)
 
     write_progress(0, int(config.get("epochs", 50)), {}, done=False)
+    model.add_callback("on_pretrain_routine_end", on_pretrain_routine_end)
+    model.add_callback("on_train_epoch_start", on_epoch_start)
+    model.add_callback("on_train_batch_end", on_train_batch_end)
     model.add_callback("on_train_epoch_end", on_epoch_end)
 
     train_kwargs: dict[str, Any] = {

@@ -1,0 +1,16 @@
+{
+  "epoch": 5,
+  "total_epochs": 5,
+  "metrics": {
+    "mAP50": 0.14127754491203356,
+    "mAP50_95": 0.07927281473998586,
+    "precision": 0.926382930389926,
+    "recall": 0.1289825282631038
+  },
+  "done": true,
+  "resolved_device": "mps",
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/dataset_runtime.yaml",
+  "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/weights/best.pt"
+}
