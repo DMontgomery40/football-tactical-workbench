@@ -35,7 +35,6 @@ from app.training import (
     build_training_backend_config,
     inspect_training_dataset,
     prepare_training_run_inputs,
-    scan_training_dataset_path,
 )
 from app.wide_angle import (
     AnalysisStoppedError,
@@ -739,7 +738,7 @@ def training_config() -> dict[str, Any]:
 @app.post("/api/train/datasets/scan")
 def scan_training_dataset(request: TrainDatasetScanRequest) -> dict[str, Any]:
     require_training_available()
-    return scan_training_dataset_path(Path(request.path))
+    return inspect_training_dataset(Path(request.path)).to_dict()
 
 
 @app.post("/api/train/jobs/detect")
