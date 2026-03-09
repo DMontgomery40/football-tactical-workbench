@@ -169,6 +169,20 @@ class TrainingRegistry:
             activate=True,
         )
 
+    def activate_detector_id(self, detector_id: str) -> dict[str, Any]:
+        normalized_id = str(detector_id or "").strip()
+        if not normalized_id:
+            raise RuntimeError("Detector id is required")
+        with self._lock:
+            payload = self._load_locked()
+            detectors = list(payload.get("detectors") or [])
+            match = next((item for item in detectors if str(item.get("id")) == normalized_id), None)
+            if match is None:
+                raise RuntimeError(f"Detector {normalized_id} is not registered")
+            payload["active_detector"] = normalized_id
+            self._save_locked(payload)
+            return dict(match)
+
     def _load_locked(self) -> dict[str, Any]:
         self._registry_path.parent.mkdir(parents=True, exist_ok=True)
         if self._registry_path.exists():

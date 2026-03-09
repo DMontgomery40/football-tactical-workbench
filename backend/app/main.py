@@ -35,6 +35,7 @@ from app.training import (
     build_training_backend_config,
     inspect_training_dataset,
     prepare_training_run_inputs,
+    scan_training_dataset_path,
 )
 from app.wide_angle import (
     AnalysisStoppedError,
@@ -120,6 +121,10 @@ class TrainingDetectJobRequest(BaseModel):
     patience: int = 20
     freeze: int | None = None
     cache: bool = False
+
+
+class TrainingRegistryActivateRequest(BaseModel):
+    detector_id: str
 
 
 @dataclass
@@ -738,7 +743,7 @@ def training_config() -> dict[str, Any]:
 @app.post("/api/train/datasets/scan")
 def scan_training_dataset(request: TrainDatasetScanRequest) -> dict[str, Any]:
     require_training_available()
-    return inspect_training_dataset(Path(request.path)).to_dict()
+    return scan_training_dataset_path(Path(request.path))
 
 
 @app.post("/api/train/jobs/detect")
@@ -886,6 +891,17 @@ def activate_training_run(run_id: str) -> dict[str, Any]:
 @app.get("/api/train/registry")
 def get_training_registry() -> dict[str, Any]:
     return build_training_registry_snapshot()
+
+
+@app.post("/api/train/registry/activate")
+def activate_registered_detector(request: TrainingRegistryActivateRequest) -> dict[str, Any]:
+    _manager, registry = require_training_available()
+    build_training_registry_snapshot()
+    try:
+        entry = registry.activate_detector_id(request.detector_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"success": True, "active_detector": entry["id"]}
 
 
 @app.get("/api/jobs")
@@ -1842,12 +1858,7 @@ def _launch_training_job_async(job_id: str, run_dir: Path, config_payload: dict[
     try:
         training_manager.launch(job_id, run_dir, config_payload)
     except Exception as exc:
-        training_manager.update(
-            job_id,
-            status="failed",
-            error=str(exc),
-            finished_at=datetime.utcnow().isoformat() + "Z",
-        )
+        training_manager.update(job_id, status="failed", error=str(exc))
         training_manager.append_log(job_id, f"Training failed to launch: {exc}")
 
 def choose_device() -> str:

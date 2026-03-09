@@ -120,7 +120,7 @@
     "title": "Automatic field registration",
     "summary": "Field calibration refreshes from pitch keypoints and quality gates. It can fail even when player boxes look healthy.",
     "body": [
-      "This pipeline refreshes pitch geometry from field keypoints every 10 frames, then accepts or rejects each candidate homography based on visibility and geometric quality. A run can have good detections and still lose minimap quality if calibration refreshes keep failing.",
+      "This pipeline refreshes pitch geometry from field keypoints, then accepts or rejects each candidate homography based on visibility and geometric quality. A run can have good detections and still lose minimap quality if calibration refreshes keep failing.",
       "The review metrics around calibration success, stale recovery, gate rejects, and projection stages are there to show whether the minimap is using fresh geometry, coasting on stale state, or being blocked entirely.",
       "Treat field registration as a live runtime component, not a cosmetic post-process. If calibration is weak, projected player positions and ball locations should be considered suspect even when image-space boxes look stable."
     ],

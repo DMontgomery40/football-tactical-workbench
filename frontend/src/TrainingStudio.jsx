@@ -134,8 +134,6 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
   async function loadTrainingConfig() {
     const data = await requestJson('/api/train/config');
-    const deviceOptionIds = new Set((data.device_options || []).map((item) => item.id || item));
-    const defaultDevice = (data.device_options || [])[0]?.id || (data.device_options || [])[0] || data.default_hyperparameters?.device || 'auto';
     setTrainingConfig(data);
     setForm((current) => ({
       ...current,
@@ -143,7 +141,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       epochs: current.epochs || String(data.default_hyperparameters?.epochs || 50),
       imgsz: current.imgsz || String(data.default_hyperparameters?.imgsz || 640),
       batch: current.batch || String(data.default_hyperparameters?.batch || 16),
-      device: deviceOptionIds.has(current.device) ? current.device : defaultDevice,
+      device: current.device || data.default_hyperparameters?.device || 'auto',
       workers: current.workers || String(data.default_hyperparameters?.workers || 4),
       patience: current.patience || String(data.default_hyperparameters?.patience || 20),
       freeze: current.freeze ?? '',
@@ -332,6 +330,28 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     }
   }
 
+  async function handleActivateRegistryEntry(entry) {
+    setRegistryError('');
+    setPendingActionRunId(entry.id);
+    try {
+      await requestJson('/api/train/registry/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ detector_id: entry.id }),
+      });
+      const nextRegistry = await loadRegistry();
+      const activeEntry = (nextRegistry.detectors || []).find((item) => item.id === nextRegistry.active_detector);
+      onActiveDetectorChange?.({
+        id: nextRegistry.active_detector,
+        label: activeEntry?.label || nextRegistry.active_detector,
+      });
+    } catch (error) {
+      setRegistryError(error.message || 'Could not activate detector.');
+    } finally {
+      setPendingActionRunId('');
+    }
+  }
+
   const enabledBaseWeights = trainingConfig?.available_base_weights || [{ id: 'soccana', label: 'soccana (football-pretrained)' }];
   const deviceOptions = trainingConfig?.device_options || [
     { id: 'auto', label: 'Auto' },
@@ -339,8 +359,6 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     { id: 'cpu', label: 'CPU only' },
     { id: 'cuda', label: 'CUDA GPU' },
   ];
-  const runtimeProfile = trainingConfig?.runtime_profile || null;
-  const plannedBackendsLabel = (runtimeProfile?.planned_backends || []).map((item) => item.label).filter(Boolean).join(' · ');
   const activeRegistryId = registry?.active_detector || activeDetector || 'soccana';
   const scanTierClass = datasetScan?.tier === 'valid' ? 'completed' : datasetScan?.tier === 'invalid' ? 'failed' : 'stopping';
   const trainDisabledReason = !datasetPath.trim()
@@ -368,8 +386,8 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
           <div className="studio-status-ribbon">
             <span>{trainingConfig?.backend_label || 'Training backend'}</span>
             {trainingConfig?.backend_version ? <span>v{trainingConfig.backend_version}</span> : null}
-            {runtimeProfile?.preferred_device ? <span>{String(runtimeProfile.preferred_device).toUpperCase()} preferred</span> : null}
-            {plannedBackendsLabel ? <span>{plannedBackendsLabel}</span> : null}
+            <span>mac-first via MPS</span>
+            <span>CUDA-ready path preserved</span>
           </div>
         </div>
         <div className="studio-header-side">
@@ -857,14 +875,14 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   ) : null}
                 </div>
 
-                {entry.id !== activeRegistryId && entry.training_run_id ? (
+                {entry.id !== activeRegistryId ? (
                   <button
                     className="primary-button compact-button"
                     type="button"
-                    onClick={() => handleActivateRun(entry.training_run_id)}
-                    disabled={pendingActionRunId === entry.training_run_id}
+                    onClick={() => handleActivateRegistryEntry(entry)}
+                    disabled={pendingActionRunId === entry.id}
                   >
-                    {pendingActionRunId === entry.training_run_id ? 'Activating...' : 'Activate'}
+                    {pendingActionRunId === entry.id ? 'Activating...' : entry.is_pretrained ? 'Use pretrained' : 'Activate'}
                   </button>
                 ) : null}
               </section>

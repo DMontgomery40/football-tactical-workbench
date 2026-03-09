@@ -32,9 +32,6 @@ backend/datasets/
 backend/runs/
 backend/models/soccana_keypoint/.cache
 backend/models/soccana/.cache
-workflows.md
-WORKFLOWS.md
-
 *.mp4
 *.mov
 *.mkv

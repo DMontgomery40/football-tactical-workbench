@@ -93,9 +93,13 @@ def _find_dataset_yaml_candidate(dataset_path: Path) -> Path | None:
     candidates: list[Path] = [
         dataset_path / "dataset.yaml",
         dataset_path / "data.yaml",
+        dataset_path / "data" / "dataset.yaml",
+        dataset_path / "data" / "data.yaml",
     ]
     candidates.extend(sorted(dataset_path.glob("*.yaml")))
     candidates.extend(sorted(dataset_path.glob("*.yml")))
+    candidates.extend(sorted(dataset_path.glob("*/*.yaml")))
+    candidates.extend(sorted(dataset_path.glob("*/*.yml")))
 
     seen: set[Path] = set()
     for candidate in candidates:

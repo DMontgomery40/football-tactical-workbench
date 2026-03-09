@@ -144,7 +144,7 @@ TACTICAL_LEARN_CARDS = [
     },
     {
         "title": "4. Automatic field registration",
-        "what_it_does": "Refreshes pitch calibration from field keypoints every 10 frames and smooths the recent accepted homographies so the minimap can follow a moving broadcast camera without jitter.",
+        "what_it_does": "Refreshes pitch calibration from field keypoints every frame and smooths the last few accepted homographies so the minimap can follow a moving broadcast camera without jitter.",
         "what_breaks": "If the keypoint model loses field structure during a fast cut or tight zoom, the projection has to coast on the last good calibration.",
         "what_to_try_next": "Watch the live preview for calibration dropouts instead of trusting the minimap blindly.",
     },

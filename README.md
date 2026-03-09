@@ -1,16 +1,22 @@
 # Football Tactical Workbench
 
-Browser-first football analysis workbench built with React and FastAPI.
+Browser-first football analysis and detector-fine-tuning workbench built with React and FastAPI.
 
-The current codebase is a wide-angle football pipeline with five core stages:
+The app now has two top-level product surfaces:
 
-- detects players, referees, and the ball with `soccana`
-- tracks players with a hybrid appearance-aware ReID tracker and post-pass stitcher
-- separates home and away tracks with jersey-colour clustering
-- refreshes pitch calibration every 10 frames with `soccana_keypoint` and smooths recent accepted homographies
-- writes a saved overlay run with CSV, JSON, and review artifacts
+- `Analysis Workspace`
+  - load a local clip or upload a source
+  - stream `/api/live-preview`
+  - run `/api/analyze`
+  - review saved overlay, diagnostics, metrics, and exports
+  - browse SoccerNet and scan local folders
+- `Training Studio`
+  - scan a YOLO detector dataset on local disk
+  - fine-tune from football-pretrained `soccana`
+  - monitor training jobs, logs, and artifacts
+  - register a finished checkpoint and optionally promote it into analysis defaults
 
-This README follows the current code and verified runtime behaviour.
+This README stays intentionally high-level. The detailed setup, workflow, and API contracts live in the linked docs below.
 
 ## Screenshots
 
@@ -20,16 +26,26 @@ This README follows the current code and verified runtime behaviour.
 
 ![Workbench run review](docs/screenshots/workbench-run-review.png)
 
-## What The App Does
+## Current Pipeline
 
-- load a football clip from upload or local filesystem path
-- stream a live preview from `/api/live-preview`
-- run a saved analysis job through `/api/analyze`
-- review completed runs from `backend/runs/<run_id>/outputs`
-- generate AI-curated per-run diagnostics and run briefs when a provider is configured
-- browse and download SoccerNet halves and label files from the UI
-- scan a local dataset folder for videos and annotations
-- export overlay video, detections, track summaries, pitch projections, experiment data, and a zipped run bundle
+The active analysis/runtime path is:
+
+- `soccana` player / referee / ball detection
+- hybrid appearance-aware player tracking plus tracklet stitching
+- jersey-colour home/away separation
+- `soccana_keypoint` field registration
+- automatic pitch-calibration refresh every 10 frames
+- live browser preview plus saved overlay output
+
+The current training V1 is deliberately narrower:
+
+- detector fine-tuning only
+- base weights default to `soccana`
+- local YOLO-style datasets only
+- on-disk JSON manifests and local run folders only
+- no cloud training
+- no database
+- keypoint / ReID / team-classifier training are future families, not part of V1
 
 ## Current Defaults
 
@@ -38,17 +54,20 @@ This README follows the current code and verified runtime behaviour.
 - field calibration model: `soccana_keypoint`
 - player tracker: `hybrid_reid`
 - ball tracker: `bytetrack.yaml`
-- calibration refresh cadence: every 10 frames, with a rolling 5-homography smooth
-- runtime today: Ultralytics + PyTorch, Mac-first on Apple Silicon with MPS preferred for detector workloads
+- calibration refresh cadence: every 10 frames
+- detector training base weight: `soccana`
+- training runtime today: Ultralytics + PyTorch, Mac-first on Apple Silicon with MPS preferred when available
 - planned inference runway: ONNX Runtime with CoreML on Apple Silicon and ONNX Runtime with CUDA on GPU hosts
 - frontend dev server: `0.0.0.0:4317`
 - backend API server: `0.0.0.0:8431`
-- run storage: `backend/runs/`
+- analysis runs: `backend/runs/`
+- training runs: `backend/training_runs/`
+- detector registry: `backend/models/registry.json`
 - model cache: `backend/models/`
 
 ## Quick Start
 
-### 1. Install backend dependencies
+1. Install backend dependencies.
 
 ```bash
 cd backend
@@ -58,124 +77,120 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2. Install frontend dependencies
+2. Install frontend dependencies.
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 3. Optional environment file
+3. Start both halves together.
 
 ```bash
-cp .env.example .env
+./run_all.sh
 ```
 
-You only need `.env` if you want:
-
-- SoccerNet downloads through the batch launcher
-- AI diagnostics through OpenAI, OpenRouter, Anthropic, or a local OpenAI-compatible endpoint
-
-### 4. Start the app
-
-Backend:
+Or start them separately:
 
 ```bash
 cd backend
 ./run_backend.sh
 ```
 
-Frontend:
-
 ```bash
 cd frontend
 ./run_frontend.sh
 ```
 
-Or run both together:
+For the full setup guide, environment variables, training notes, and first validation passes, use [Getting Started](docs/getting-started.md).
 
-```bash
-./run_all.sh
-```
+## First Run Paths
 
-To stop a backend started through `run_all.sh`:
+### Analysis quick pass
 
-```bash
-./stop_backend.sh
-```
+1. Open `http://127.0.0.1:4317`.
+2. In `Analysis Workspace`, paste a local video path or upload a clip.
+3. Click `Load input clip`.
+4. Optionally open `Live Preview`.
+5. Click `Analyze loaded clip`.
+6. Inspect the overlay, diagnostics, and files in `Run Review`.
 
-## First Run Workflow
+### Training quick pass
 
-1. Open `http://127.0.0.1:4317` on the host machine, or `http://<host-lan-ip>:4317` from another device on the same LAN.
-2. Load a clip from upload or paste a local filesystem path.
-3. Optionally open the live preview workspace to stream the detector output.
-4. Click `Analyze loaded clip`.
-5. Watch the active job logs until the run completes.
-6. Switch to `Run Review` and inspect the overlay, run brief, diagnostics, tracks, and exported files.
+1. Switch to `Training Studio`.
+2. In `Datasets`, scan a local YOLO detector dataset.
+3. In `Train`, fine-tune from `soccana`.
+4. In `Jobs`, watch progress and logs.
+5. In `Registry`, inspect the completed checkpoint and activate it when you want analysis to use it while the analysis selector stays on `soccana`.
 
-## Runtime Behaviour
+The full UI walk-through lives in [Workflows](docs/workflows.md).
 
-- Backend startup prewarms the default detector and field-calibration models from the local model cache or configured model source.
-- The current runtime is Mac-first for local development. On Apple Silicon, detector inference prefers MPS while field calibration still falls back to CPU.
-- The default player tracker now uses sparse appearance embeddings plus a tracklet stitch pass; run summaries report both raw IDs and stitched canonical IDs.
-- The first `hybrid_reid` run may need to populate torchvision appearance weights in the local torch cache before tracking starts.
-- Overlay export targets browser playback: the backend transcodes to H.264 when `ffmpeg` is available and also attempts direct browser-codec writing when it is not.
-- Loaded sources and job snapshots are persisted, so sources survive restarts and interrupted jobs resume automatically instead of disappearing.
-- Every completed run stores a run brief and diagnostics artifact. With a provider configured, the run brief and diagnostics are AI-curated for that run.
-- Warn-level diagnostics now include a collapsed code drilldown in Run Review with the likely failing function, why that logic is failing, and the concrete code change to try next.
-- Goal-aligned experiment inputs can come from discovered label files or from an explicit label path selected in the UI.
-- The UI includes a `Reset` control for clearing saved theme and form state from browser local storage.
-- Training remains on the current Ultralytics stack today. ONNX Runtime is the planned inference direction, not the active default yet.
+## Runtime Notes
+
+- Backend startup prewarms the default detector and field-calibration models from the local cache or model source.
+- On Apple Silicon, detector inference prefers MPS while field calibration still falls back to CPU.
+- Training jobs run in isolated Python subprocesses and persist their own `config.json`, `dataset_scan.json`, `dataset_runtime.yaml`, `train.log`, `summary.json`, and artifacts inside `backend/training_runs/<run_id>/`.
+- Completed detector runs are added to the local detector registry, and a promoted checkpoint becomes the active detector for analysis whenever the analysis selector remains on `soccana`.
+- The app stores analysis sources, analysis job snapshots, and training job snapshots on disk so restarts do not silently wipe state.
+- AI diagnostics remain a real post-run path. If a provider is configured, completed analysis runs get AI-curated run briefs and diagnostics; otherwise they fall back to heuristic diagnostics.
+- Warn-level diagnostics include a collapsed code drilldown in review with the likely failing function and a concrete code change to try next.
 
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
+  Setup, environment variables, launch commands, model/runtime notes, first validation, and training prerequisites.
 - [Workflows](docs/workflows.md)
+  Analysis Workspace and Training Studio UI flows, persistence rules, and operator-facing behavior.
 - [Outputs, API, and Batch Experiments](docs/outputs-and-api.md)
+  Analysis outputs, training outputs, FastAPI endpoints, and batch tooling.
 
 ## Repository Map
 
 - `backend/app/main.py`
-  FastAPI entrypoint, source loading, SoccerNet endpoints, run loading, live preview, and analysis job creation.
+  FastAPI entrypoint for analysis, training, source loading, SoccerNet, live preview, and persisted run loading.
 - `backend/app/wide_angle.py`
-  Active football analysis pipeline, hybrid ReID player tracking, live preview generator, overlay rendering, experiment export, and diagnostics integration.
+  Active football analysis pipeline, detector resolution, field calibration, tracking, live preview generation, and overlay export.
 - `backend/app/reid_tracker.py`
-  Appearance-aware player tracking, sparse embedding extraction, field-aware association, and post-pass tracklet stitching.
+  Sparse appearance embedding extraction, field-aware player association, and post-pass tracklet stitching.
 - `backend/app/ai_diagnostics.py`
-  Provider selection, prompt construction, OpenAI-compatible/Anthropic calls, and diagnostics artifact writing.
-- `backend/scripts/soccernet_batch_experiment.py`
-  Batch SoccerNet downloader plus repeated analysis runner, with optional tracker-mode A/B comparison output.
-- `backend/scripts/start_soccernet_batch_tmux.sh`
-  Convenience launcher for long SoccerNet batch experiments in `tmux`, including optional tracker-mode selection.
+  Provider selection, prompt construction, OpenAI-compatible / Anthropic calls, and diagnostics artifact writing.
+- `backend/app/training.py`
+  Training Studio dataset scan, runtime dataset-manifest generation, backend metadata, and artifact helpers.
+- `backend/app/training_manager.py`
+  Detector training job persistence, log streaming, progress ingestion, and training summary writing.
+- `backend/app/training_registry.py`
+  Local detector registry and active-detector resolution for analysis defaults.
+- `backend/app/train_worker.py`
+  Detector fine-tuning worker subprocess entrypoint.
 - `frontend/src/App.jsx`
-  Single-page application for clip loading, live preview, active jobs, run review, folder scan, and SoccerNet browsing.
+  Top-level app shell, Analysis Workspace, persisted state, SoccerNet UI, and review flows.
+- `frontend/src/TrainingStudio.jsx`
+  Dedicated training shell for dataset scan, training form, jobs, and registry.
 - `frontend/src/styles.css`
-  Complete UI styling, theme tokens, responsive layout, and review workspace presentation.
+  Full shared styling for analysis and training surfaces.
 
 ## SoccerNet
 
-The application has first-class SoccerNet support in code:
+The app still has first-class SoccerNet support:
 
-- it lists train, valid, test, and challenge splits
-- it searches official game paths
-- it downloads halves and labels into `backend/datasets/soccernet/`
-- it can scan that folder directly from the UI
-- it prefers `Labels-v2.json` for goal-aligned experiment work
-
-If you want to evaluate the geometric volatility experiment against actual goals, use a source clip with SoccerNet labels nearby or select an explicit label path in the UI.
+- browse `train`, `valid`, `test`, and `challenge`
+- search official game paths reactively from the UI
+- download halves and labels into `backend/datasets/soccernet/`
+- scan that folder directly from the UI
+- prefer `Labels-v2.json` for goal-aligned experiment work
 
 ## Acknowledgements
 
 - [SoccerNet](https://www.soccer-net.org/) for match data structure, labels, and downloader tooling
 - [Soccana](https://huggingface.co/Adit-jain/soccana) for football-specific detector weights
 - [Soccana Keypoint](https://huggingface.co/Adit-jain/Soccana_Keypoint) for pitch keypoint weights
-- [Ultralytics](https://www.ultralytics.com/) for the YOLO runtime used by the detector and keypoint models
+- [Ultralytics](https://www.ultralytics.com/) for the current YOLO runtime used by detector and training paths
 - ByteTrack via Ultralytics tracker integration for the current ball-tracking path and the legacy player-tracking fallback
 - Torchvision ResNet-18 weights for sparse appearance embeddings in the player ReID path
 
 ## Runtime Note
 
-This repository is MIT, but the current detector/training runtime still depends on the local Ultralytics stack, which Ultralytics distributes under AGPL-3.0 by default unless you have a separate enterprise license. The planned long-term inference direction is ONNX Runtime so the app can stay Mac-first on Apple Silicon while keeping a clean path to CUDA hosts.
+This repository is MIT, but the current detector and detector-training runtime still depends on the local Ultralytics stack, which Ultralytics distributes under AGPL-3.0 by default unless you have a separate enterprise license. The longer-term inference direction remains ONNX Runtime so the app can stay Mac-first on Apple Silicon while keeping a clean path to CUDA hosts.
 
 ## License
 

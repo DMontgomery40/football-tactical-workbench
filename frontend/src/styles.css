@@ -410,9 +410,8 @@ summary {
 }
 
 .help-panel {
+  position: fixed;
   z-index: 200;
-  width: min(420px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
   padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid var(--line-strong);
@@ -1592,9 +1591,55 @@ textarea {
   color: var(--accent-strong);
 }
 
+.soccernet-results-section {
+  display: grid;
+  gap: 10px;
+}
+
+.soccernet-results-header {
+  align-items: center;
+}
+
+.soccernet-results-title {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.soccernet-results-preview {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--surface) 84%, var(--surface-soft));
+  color: var(--text);
+  text-align: left;
+}
+
+.soccernet-results-preview:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 38%, var(--surface));
+}
+
+.soccernet-results-preview-title {
+  color: var(--text-strong);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.soccernet-results-preview-meta,
+.soccernet-results-preview-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .game-browser {
   margin-top: 6px;
-  min-height: 260px;
+  min-height: 188px;
+  max-height: 260px;
   resize: vertical;
   overflow: auto;
   border-radius: 12px;

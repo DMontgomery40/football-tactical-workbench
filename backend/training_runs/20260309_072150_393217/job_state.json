@@ -89,7 +89,9 @@
     "[07:22:09] Speed: 0.2ms preprocess, 19.4ms inference, 0.0ms loss, 0.5ms postprocess per image",
     "[07:22:09] Results saved to \u001b[1m/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train\u001b[0m",
     "[07:22:12] Training completed",
-    "[07:22:23] Activated detector custom_20260309_072150_393217."
+    "[07:22:23] Activated detector custom_20260309_072150_393217.",
+    "[15:40:31] Activated detector custom_20260309_072150_393217.",
+    "[15:47:40] Activated detector custom_20260309_072150_393217."
   ],
   "created_at": "2026-03-09T07:21:50.905752Z",
   "started_at": "2026-03-09T07:21:50.925084Z",

@@ -1,6 +1,8 @@
 # Outputs, API, And Batch Experiments
 
-## Run Directory Layout
+This document covers both persisted analysis outputs and persisted detector-training outputs, plus the current FastAPI surface.
+
+## Analysis Run Directory Layout
 
 Each analysis run writes to:
 
@@ -11,11 +13,29 @@ backend/runs/<run_id>/
   job_state.json
 ```
 
-The backend only treats a run as reviewable if `outputs/summary.json` exists.
+The backend only treats an analysis run as reviewable if `outputs/summary.json` exists.
 
-## Output Files
+## Detector Training Run Directory Layout
 
-The active pipeline writes the following artifacts.
+Each detector training run writes to:
+
+```text
+backend/training_runs/<run_id>/
+  config.json
+  dataset_scan.json
+  dataset_runtime.yaml
+  progress.json
+  summary.json
+  train.log
+  job_state.json
+  splits/
+  weights/
+  yolo_output/
+```
+
+The Training Studio reads job state from the persisted run folder and surfaces the current summary/artifact paths through `/api/train/jobs/*` and `/api/train/runs/*`.
+
+## Analysis Output Files
 
 | File | When it exists | Purpose |
 | --- | --- | --- |
@@ -25,13 +45,48 @@ The active pipeline writes the following artifacts.
 | `projections.csv` | when projected rows exist | Field and minimap coordinates |
 | `entropy_timeseries.csv` | always on successful run | 1 Hz experiment series |
 | `goal_events.csv` | only when goal labels exist | Parsed goal events beside the source clip |
-| `diagnostics_ai.json` | always after diagnostics generation step | Per-run diagnostics artifact, with AI-curated output when a provider is configured |
-| `summary.json` | always on successful run | Main run contract used by the UI |
+| `diagnostics_ai.json` | always after diagnostics generation | Per-run diagnostics artifact |
+| `summary.json` | always on successful run | Main analysis contract used by the UI |
 | `all_outputs.zip` | always on successful run | Bundle of output artifacts |
 
-## `summary.json` Highlights
+## Detector Training Output Files
 
-The saved run summary is the main contract between backend and frontend.
+| File | When it exists | Purpose |
+| --- | --- | --- |
+| `config.json` | always | Requested training config |
+| `dataset_scan.json` | always for a started run | Persisted scan snapshot used by the worker |
+| `dataset_runtime.yaml` | always for a started run | Run-local training manifest handed to Ultralytics |
+| `progress.json` | during and after worker execution | Structured progress handoff from worker to manager |
+| `summary.json` | always after run creation | Main training contract used by Training Studio |
+| `train.log` | always after worker launch | Full training subprocess log |
+| `weights/best.pt` | on successful run | Best detector checkpoint |
+| `yolo_output/train/results.csv` | on successful run | Ultralytics metrics export |
+| `yolo_output/train/args.yaml` | on successful run | Effective Ultralytics args |
+| `yolo_output/train/*.png`, `*.jpg` | on successful run | Curves, confusion matrix, label plots, batches |
+
+## Detector Registry
+
+The local detector registry lives at:
+
+```text
+backend/models/registry.json
+```
+
+It stores:
+
+- the active detector ID
+- pretrained and custom detector entries
+- checkpoint path
+- metrics summary
+- class ID mapping
+- backend/runtime metadata
+- summary/artifact paths for custom runs
+
+When a custom detector is active in the registry, analysis uses it whenever the analysis selector remains on `soccana`.
+
+## Analysis `summary.json` Highlights
+
+The saved analysis summary is the main contract between backend and frontend.
 
 ### Identity and paths
 
@@ -62,7 +117,7 @@ The saved run summary is the main contract between backend and frontend.
 - `ball_conf`
 - `iou`
 
-The app-level `/api/config` surface now also reports:
+The app-level `/api/config` surface also reports:
 
 - `runtime_profile.backend`
 - `runtime_profile.backend_label`
@@ -130,9 +185,54 @@ The app-level `/api/config` surface now also reports:
 - `diagnostics_summary_line`
 - `diagnostics_error`
 
+## Detector Training `summary.json` Highlights
+
+The saved training summary is the main contract between backend and Training Studio.
+
+### Identity and status
+
+- `job_id`
+- `run_id`
+- `run_dir`
+- `status`
+- `progress`
+- `created_at`
+- `started_at`
+- `finished_at`
+
+### Training configuration and scan state
+
+- `config`
+- `dataset_scan`
+- `generated_dataset_yaml`
+- `generated_split_lists`
+- `validation_strategy`
+
+### Runtime and metrics
+
+- `resolved_device`
+- `backend`
+- `backend_version`
+- `metrics`
+- `best_checkpoint`
+
+### Artifact paths
+
+- `summary_path`
+- `artifacts.config`
+- `artifacts.dataset_scan`
+- `artifacts.generated_dataset_yaml`
+- `artifacts.train_log`
+- `artifacts.progress`
+- `artifacts.weights_dir`
+- `artifacts.best_checkpoint`
+- `artifacts.results_csv`
+- `artifacts.args_yaml`
+- `artifacts.plots`
+
 ## `detections.csv`
 
-The current code writes these detection columns:
+The current analysis detection export writes:
 
 - `frame_index`
 - `row_type`
@@ -172,7 +272,7 @@ The current track summary columns are:
 - `projected_points`
 - `sampled_color_rgb`
 
-The frontend trajectory review surface combines `track_summary.csv` with `projections.csv` so it can rank projected tracks and draw the recent window of player and ball movement on the pitch map.
+The frontend trajectory review surface combines `track_summary.csv` with `projections.csv` so it can rank projected tracks and draw recent player and ball movement on the pitch map.
 
 ## `entropy_timeseries.csv`
 
@@ -189,38 +289,6 @@ The current experiment export is a 1 Hz rollup with:
 - combined `vol_index`
 - goal lookahead columns
 
-The current header includes:
-
-- `second`
-- `seconds`
-- `home_player_count`
-- `away_player_count`
-- `home_centroid_x_cm`
-- `home_centroid_y_cm`
-- `away_centroid_x_cm`
-- `away_centroid_y_cm`
-- `home_spread_rms_cm`
-- `away_spread_rms_cm`
-- `home_length_axis_cm`
-- `away_length_axis_cm`
-- `home_width_axis_cm`
-- `away_width_axis_cm`
-- `home_hull_area_cm2`
-- `away_hull_area_cm2`
-- `centroid_distance_cm`
-- `entropy_grid`
-- `home_spread_rms_cm_volatility`
-- `away_spread_rms_cm_volatility`
-- `home_length_axis_cm_volatility`
-- `away_length_axis_cm_volatility`
-- `centroid_distance_cm_volatility`
-- `entropy_grid_volatility`
-- `vol_index`
-- `seconds_to_next_goal`
-- `next_goal_team`
-- `goal_in_next_30s`
-- `goal_in_next_60s`
-
 ## `diagnostics_ai.json`
 
 The diagnostics artifact currently contains:
@@ -235,10 +303,6 @@ The diagnostics artifact currently contains:
 - `raw_text`
 - `diagnostics`
 
-This file is the stored per-run diagnostics artifact used by review flows and refresh actions.
-
-With a configured provider, it contains an AI-curated summary line and diagnostics for the completed run.
-
 If no provider resolves:
 
 - the file still exists
@@ -247,7 +311,7 @@ If no provider resolves:
 
 ## Backend API Surface
 
-The current FastAPI application exposes these routes:
+The current FastAPI application exposes these routes.
 
 ### Configuration and health
 
@@ -266,11 +330,24 @@ The current FastAPI application exposes these routes:
 - `GET /api/source/{source_id}/video`
 - `GET /api/live-preview`
 
-### Persisted runs
+### Persisted analysis runs
 
 - `GET /api/runs/recent`
 - `GET /api/runs/{run_id}`
 - `POST /api/runs/{run_id}/refresh-diagnostics`
+
+### Detector training
+
+- `GET /api/train/config`
+- `POST /api/train/datasets/scan`
+- `GET /api/train/jobs`
+- `GET /api/train/jobs/{job_id}`
+- `POST /api/train/jobs/{job_id}/stop`
+- `POST /api/train/jobs/detect`
+- `GET /api/train/runs/recent`
+- `GET /api/train/runs/{run_id}`
+- `POST /api/train/runs/{run_id}/activate`
+- `GET /api/train/registry`
 
 ### Local folder scan
 
@@ -323,6 +400,28 @@ Multipart form fields:
 - `ball_conf`
 - `iou`
 
+### `POST /api/train/datasets/scan`
+
+JSON body:
+
+- `path`
+
+### `POST /api/train/jobs/detect`
+
+JSON body:
+
+- `base_weights`
+- `dataset_path`
+- `run_name`
+- `epochs`
+- `imgsz`
+- `batch`
+- `device`
+- `workers`
+- `patience`
+- `freeze`
+- `cache`
+
 ### `POST /api/scan-folder`
 
 JSON body:
@@ -340,7 +439,7 @@ JSON body:
 
 ## Batch Experiment Tooling
 
-The repository includes an offline batch runner:
+The repository still includes an offline batch runner:
 
 ```text
 backend/scripts/soccernet_batch_experiment.py
@@ -385,12 +484,6 @@ python scripts/soccernet_batch_experiment.py \
 cd backend
 ./scripts/start_soccernet_batch_tmux.sh train 20 0 "1_224p.mkv 2_224p.mkv Labels-v2.json" "bytetrack hybrid_reid"
 ```
-
-That launcher:
-
-- loads `SOCCERNET_PASSWORD` from the repository root `.env`
-- creates a timestamped experiment directory in `backend/experiments/`
-- runs the batch script inside a detached `tmux` session
 
 ## Batch Outputs
 
