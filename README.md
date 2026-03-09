@@ -119,6 +119,7 @@ To stop a backend started through `run_all.sh`:
 - Overlay export targets browser playback: the backend transcodes to H.264 when `ffmpeg` is available and also attempts direct browser-codec writing when it is not.
 - Loaded sources and job snapshots are persisted, so sources survive restarts and interrupted jobs resume automatically instead of disappearing.
 - Every completed run stores a run brief and diagnostics artifact. With a provider configured, the run brief and diagnostics are AI-curated for that run.
+- Warn-level diagnostics now include a collapsed code drilldown in Run Review with the likely failing function, why that logic is failing, and the concrete code change to try next.
 - Goal-aligned experiment inputs can come from discovered label files or from an explicit label path selected in the UI.
 - The UI includes a `Reset` control for clearing saved theme and form state from browser local storage.
 

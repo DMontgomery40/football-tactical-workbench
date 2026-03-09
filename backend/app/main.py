@@ -28,7 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.ai_diagnostics import generate_run_diagnostics, resolve_provider_config
+from app.ai_diagnostics import PROMPT_VERSION as CURRENT_DIAGNOSTICS_PROMPT_VERSION, generate_run_diagnostics, resolve_provider_config
 from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
 from app.wide_angle import (
     AnalysisStoppedError,
@@ -1025,6 +1025,29 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["diagnostics_error"] = normalized.get("diagnostics_error", "")
     normalized["diagnostics_json"] = normalized.get("diagnostics_json")
     normalized["diagnostics_prompt_context"] = normalized.get("diagnostics_prompt_context")
+    diagnostics_prompt_version = normalized.get("diagnostics_prompt_version")
+    if not diagnostics_prompt_version:
+        run_dir_value = normalized.get("run_dir")
+        if run_dir_value:
+            artifact_path = Path(str(run_dir_value)) / "outputs" / "diagnostics_ai.json"
+            if artifact_path.exists():
+                try:
+                    diagnostics_prompt_version = json.loads(artifact_path.read_text(encoding="utf-8")).get("prompt_version")
+                except Exception:
+                    diagnostics_prompt_version = None
+    normalized["diagnostics_prompt_version"] = diagnostics_prompt_version
+    normalized["diagnostics_current_prompt_version"] = CURRENT_DIAGNOSTICS_PROMPT_VERSION
+    normalized["diagnostics_stale"] = bool(
+        normalized.get("diagnostics_source") == "ai"
+        and diagnostics_prompt_version != CURRENT_DIAGNOSTICS_PROMPT_VERSION
+    )
+    if normalized["diagnostics_stale"]:
+        shown_version = diagnostics_prompt_version or "unknown"
+        normalized["diagnostics_stale_reason"] = (
+            f"Stored AI diagnostics were generated with {shown_version}; current backend prompt version is {CURRENT_DIAGNOSTICS_PROMPT_VERSION}."
+        )
+    else:
+        normalized["diagnostics_stale_reason"] = ""
     has_identity_metrics = any(
         key in normalized
         for key in (
@@ -1075,6 +1098,21 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     else:
         normalized["legacy_summary"] = False
 
+    if normalized.get("diagnostics_stale") and not normalized.get("legacy_summary"):
+        stale_title = "Stored AI diagnostics are outdated"
+        existing = list(normalized.get("diagnostics") or [])
+        if not any(str(item.get("title")) == stale_title for item in existing if isinstance(item, dict)):
+            existing.insert(
+                0,
+                {
+                    "level": "warn",
+                    "title": stale_title,
+                    "message": normalized["diagnostics_stale_reason"],
+                    "next_step": "Click Regenerate in Run Review to rebuild this run's AI diagnostics with the current code-aware prompt and contract.",
+                },
+            )
+            normalized["diagnostics"] = existing
+
     return normalized
 
 
@@ -1103,6 +1141,10 @@ def refresh_run_diagnostics(run_dir: Path) -> dict[str, Any]:
     summary["diagnostics_error"] = artifact.get("error", "")
     summary["diagnostics_json"] = f"/runs/{run_dir.name}/outputs/diagnostics_ai.json"
     summary["diagnostics_prompt_context"] = artifact.get("prompt_context")
+    summary["diagnostics_prompt_version"] = artifact.get("prompt_version")
+    summary["diagnostics_current_prompt_version"] = CURRENT_DIAGNOSTICS_PROMPT_VERSION
+    summary["diagnostics_stale"] = False
+    summary["diagnostics_stale_reason"] = ""
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 

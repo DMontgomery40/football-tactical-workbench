@@ -1135,6 +1135,33 @@ textarea {
   white-space: pre-wrap;
 }
 
+.diagnostic-drilldown {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--page-panel));
+}
+
+.diagnostic-drilldown summary {
+  cursor: pointer;
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.diagnostic-drilldown-block + .diagnostic-drilldown-block {
+  margin-top: 12px;
+}
+
+.diagnostic-drilldown-text,
+.diagnostic-code-refs {
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .prompt-context-card {
   padding: 16px 18px;
 }

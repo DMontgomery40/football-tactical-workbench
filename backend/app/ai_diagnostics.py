@@ -27,82 +27,94 @@ MAX_CONTEXT_JSON_CHARS = 70000
 def _build_good_output_example() -> str:
     return json.dumps(
         {
-            "summary_line": "67497-frame run with severe player ID churn, unstable calibration refreshes, weak ball continuity, and goal-aligned experiment output that is not yet operationally useful.",
+            "summary_line": "300-frame run where a custom detector likely collapsed because the runtime hardcoded the wrong class ids, leaving calibration alive but player, ball, team, and projection outputs empty.",
             "diagnostics": [
                 {
                     "level": "warn",
-                    "title": "Player IDs are exploding",
+                    "title": "Custom detector class ids are likely wrong",
                     "message": (
-                        "The run produced 5446 canonical player IDs across 67497 frames, with average track length 105.7 frames and 0 accepted tracklet merges. "
-                        "That means the current identity path is behaving like short raw tracklets, not like persistent player identity. If `player_tracker_mode` is `hybrid_reid` "
-                        "but `tracklet_merges_applied` and `identity_embedding_updates` stay near zero, the code path to inspect first is the stitcher gate rather than detector confidence."
+                        "The run produced 0 player rows and 0 ball rows even though the detector checkpoint loaded and the pipeline continued through overlay rendering. "
+                        "The most likely code-level cause is `backend/app/wide_angle.py::resolve_detector_spec`: for any custom checkpoint that is not in `DETECTOR_MODEL_SOURCES`, "
+                        "it hardcodes `player_class_id=0`, `ball_class_id=1`, and `referee_class_id=2`. `detect_players_for_frame` then passes `classes=[detector_spec[\"player_class_id\"]]` "
+                        "into `player_model.track`, and the ball branch does the same for `ball_class_id`. If the checkpoint label order differs, both streams go to zero while the model still appears to 'work'."
                     ),
                     "next_step": (
-                        "1. Open the stitched-identity code path and confirm embeddings are actually being produced on this run rather than falling back to color-only or disabled identity features.\n"
-                        "2. Compare `raw_unique_player_track_ids` against `unique_player_track_ids`; if they are identical, inspect the merge thresholds, temporal gap limit, and any team/color gating that can reject every candidate.\n"
-                        "3. Review 3 to 5 crowded sequences in the overlay where a player leaves and re-enters frame. For each break, check whether the failure came from detector dropout, tracker handoff, or stitch rejection.\n"
-                        "4. Do not tune homography first for this issue. This metric pattern says the dominant failure is identity association, not projection."
+                        "Change `resolve_detector_spec` so custom checkpoints derive class ids from model or dataset metadata instead of silently defaulting to `0/1/2`. "
+                        "If metadata cannot be resolved, fail fast with a hard error that prints the discovered class names rather than returning a spec that can zero the whole pipeline."
                     ),
+                    "implementation_diagnosis": (
+                        "Broken logic: `resolve_detector_spec` assumes custom checkpoints always use player=0, ball=1, referee=2. "
+                        "That assumption is consumed directly by `detect_players_for_frame` and the ball detection branch through the `classes=[...]` filter, so a label-order mismatch can erase all detections upstream of tracking."
+                    ),
+                    "suggested_fix": (
+                        "Replace the fallback `0/1/2` mapping with metadata-driven class resolution. If the checkpoint or adjacent dataset YAML exposes class names, map them to player/ball/referee ids there. "
+                        "If not, raise a configuration error instead of returning a guessed mapping."
+                    ),
+                    "code_refs": [
+                        "backend/app/wide_angle.py::resolve_detector_spec",
+                        "backend/app/wide_angle.py::detect_players_for_frame",
+                        "backend/app/wide_angle.py::analyze_video",
+                    ],
                     "evidence_keys": [
-                        "unique_player_track_ids",
-                        "raw_unique_player_track_ids",
-                        "average_track_length",
-                        "tracklet_merges_applied",
-                        "identity_embedding_updates",
+                        "player_rows",
+                        "ball_rows",
+                        "player_model",
+                        "ball_model",
                     ],
                 },
                 {
                     "level": "warn",
-                    "title": "Calibration refresh keeps failing",
+                    "title": "Calibration is rejecting on gates tighter than visibility",
                     "message": (
-                        "Only 3339 of 6750 calibration refresh attempts succeeded, average visible pitch keypoints were 3.53, and the registered ratio was 0.916. "
-                        "That means the run usually had a usable minimap projection, but the refresh path was frequently close to the acceptance boundary. "
-                        "This is a stability problem in the live homography refresh loop, not evidence that the entire minimap is worthless."
+                        "Calibration attempts are not failing just because pitch keypoints disappear. `detect_pitch_homography` can form a candidate with 4 visible points, but the runtime acceptance gate additionally requires "
+                        "`visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS`, `inlier_count >= MIN_CALIBRATION_INLIERS`, `reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM`, and "
+                        "`temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM`. When visible keypoints remain above the minimum but success rate is still poor, the failing logic is the acceptance gate, not the model loader."
                     ),
                     "next_step": (
-                        "1. Inspect the calibration acceptance code and verify which gates are causing the rejections: minimum visible keypoints, inlier count, reprojection error, or temporal drift against the latched homography.\n"
-                        "2. Pull example frames from accepted and rejected refreshes around the same camera phase. The goal is to learn whether failures are caused by partial line visibility, replay/zoom cuts, or an over-tight rejection threshold.\n"
-                        "3. If the last good homography is being latched for long periods, verify that projection drift on the minimap stays visually tolerable before changing the thresholds."
+                        "Capture and log the exact rejecting term per frame. The code already computes `visible_count`, `inlier_count`, `reprojection_error`, and `temporal_drift`; persist those values and report which gate failed instead of emitting one aggregate refresh-rate number."
                     ),
+                    "implementation_diagnosis": (
+                        "The rejection logic lives in the `candidate_is_usable` condition inside the main analysis loop. Without per-gate logging, diagnostics cannot distinguish 'no candidate homography' from 'candidate rejected by drift/inliers/error', so the user gets a weak aggregate warning."
+                    ),
+                    "suggested_fix": (
+                        "Add per-frame calibration rejection reasons to the run summary or diagnostics context. Record one of: `no_candidate`, `low_visible_keypoints`, `low_inliers`, `high_reprojection_error`, or `high_temporal_drift`."
+                    ),
+                    "code_refs": [
+                        "backend/app/wide_angle.py::detect_pitch_homography",
+                        "backend/app/wide_angle.py::analyze_video",
+                    ],
                     "evidence_keys": [
                         "field_calibration_refresh_attempts",
                         "field_calibration_refresh_successes",
+                        "field_calibration_refresh_rejections",
                         "average_visible_pitch_keypoints",
-                        "field_registered_ratio",
-                        "last_good_calibration_frame",
                     ],
                 },
                 {
                     "level": "warn",
-                    "title": "Ball continuity is weak",
+                    "title": "Projection exporter is downstream-empty, not independently broken",
                     "message": (
-                        "Ball detections averaged 0.53 per frame with 35785 ball rows across 67497 frames. That is enough to occasionally localize the ball, but not enough to trust possession chains, long aerial sequences, or event-timing features that assume stable continuity."
+                        "If `projected_player_points=0`, `projected_ball_points=0`, `field_registered_frames=0`, and `projection_csv` is null while detection rows are also zero, projection is not the primary failure. "
+                        "The projection path depends on both a non-stale homography and actual player/ball anchors, so upstream detector collapse makes the exporter look dead even when the projection code itself is unchanged."
                     ),
                     "next_step": (
-                        "1. Review missed-ball phases at transitions, crosses, and long passes before changing tracker settings.\n"
-                        "2. Confirm the detector is not suppressing small/fast ball boxes through confidence or IOU choices that were tuned for players.\n"
-                        "3. Keep ball-led downstream analytics disabled until continuity improves on those fast-play segments."
+                        "Do not patch the projection exporter first. Fix the detector/class-id failure, rerun, and only patch projection if projected points stay at zero after player rows recover."
                     ),
-                    "evidence_keys": [
-                        "average_ball_detections_per_frame",
-                        "ball_rows",
-                        "unique_ball_track_ids",
+                    "implementation_diagnosis": (
+                        "The exporter is operating on empty upstream inputs. In the active loop, player detections are projected only after detection and calibration state exist; with zero detections, the projection CSV will naturally remain empty."
+                    ),
+                    "suggested_fix": (
+                        "Keep the exporter as-is for now, but add a diagnostic note or status flag that explicitly distinguishes `projection unavailable because upstream anchors were empty` from `projection code failed`."
+                    ),
+                    "code_refs": [
+                        "backend/app/wide_angle.py::detect_players_for_frame",
+                        "backend/app/wide_angle.py::analyze_video",
                     ],
-                },
-                {
-                    "level": "warn",
-                    "title": "Goal experiment is not usable yet",
-                    "message": (
-                        "Goal events were attached, but the goal-aligned experiment output did not separate the pre-goal window strongly enough from baseline. "
-                        "That makes this run exploratory only; it is not reliable evidence for operational anticipation or event forecasting."
-                    ),
-                    "next_step": (
-                        "1. Inspect the experiment card inputs and verify the goal windows are aligned to actual game context rather than replay or post-goal broadcast phases.\n"
-                        "2. Compare the experiment metrics against a baseline run with no goal alignment to see whether the feature moved at all.\n"
-                        "3. Do not report this experiment as 'working' until it separates multiple goal windows, not just one lucky clip."
-                    ),
                     "evidence_keys": [
-                        "goal_events_count",
+                        "projected_player_points",
+                        "projected_ball_points",
+                        "field_registered_frames",
+                        "projection_csv",
                     ],
                 },
             ],
@@ -349,13 +361,19 @@ def fit_prompt_context_budget(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def infer_issue_categories(summary: dict[str, Any], heuristic_diagnostics: list[dict[str, str]]) -> list[str]:
-    categories: list[str] = ["diagnostics"]
+    categories: list[str] = []
     combined_text = " ".join(
         str(item.get(key, ""))
         for item in heuristic_diagnostics
         for key in ("title", "message", "next_step")
     ).lower()
 
+    if (
+        int(summary.get("player_rows") or 0) == 0
+        or int(summary.get("ball_rows") or 0) == 0
+        or float(summary.get("average_player_detections_per_frame") or 0.0) <= 0.05
+    ):
+        categories.append("detection")
     if (
         "field" in combined_text
         or "calibration" in combined_text
@@ -376,37 +394,36 @@ def infer_issue_categories(summary: dict[str, Any], heuristic_diagnostics: list[
         categories.append("ball")
     if "goal" in combined_text or int(summary.get("goal_events_count") or 0) == 0:
         categories.append("experiments")
+    if "diagnostic" in combined_text or "prompt" in combined_text or "ui" in combined_text:
+        categories.append("diagnostics")
     return categories
 
 
 def build_code_context(summary: dict[str, Any], heuristic_diagnostics: list[dict[str, str]]) -> list[dict[str, Any]]:
     categories = infer_issue_categories(summary, heuristic_diagnostics)
-    code_slices: list[dict[str, Any]] = [
-        _build_code_slice(
-            "backend/app/ai_diagnostics.py",
-            label="diagnostics_prompt_contract",
-            reason="Current diagnostics system prompt and JSON contract.",
-            anchor="def build_system_prompt()",
-            before=0,
-            after=90,
-        ),
-        _build_code_slice(
-            "backend/app/ai_diagnostics.py",
-            label="diagnostics_context_builder",
-            reason="Current run-context assembly for the AI diagnostics call.",
-            anchor="def build_run_context(",
-            before=0,
-            after=110,
-        ),
-        _build_code_slice(
-            "backend/app/ai_diagnostics.py",
-            label="diagnostics_sanitizer",
-            reason="Current post-processing and clipping rules applied to AI output.",
-            anchor="def sanitize_diagnostics(",
-            before=0,
-            after=45,
-        ),
-    ]
+    code_slices: list[dict[str, Any]] = []
+
+    if "detection" in categories:
+        code_slices.extend(
+            [
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="detector_spec_resolution",
+                    reason="Custom detector class-id resolution and fallback mapping.",
+                    anchor="def resolve_detector_spec(",
+                    before=0,
+                    after=40,
+                ),
+                _build_code_slice(
+                    "backend/app/wide_angle.py",
+                    label="player_detection_and_tracking",
+                    reason="Player detection path and tracker-mode wiring in the active pipeline.",
+                    anchor="def detect_players_for_frame(",
+                    before=0,
+                    after=60,
+                ),
+            ]
+        )
 
     if "calibration" in categories:
         code_slices.extend(
@@ -442,14 +459,6 @@ def build_code_context(summary: dict[str, Any], heuristic_diagnostics: list[dict
         code_slices.extend(
             [
                 _build_code_slice(
-                    "backend/app/wide_angle.py",
-                    label="player_detection_and_tracking",
-                    reason="Player detection path and tracker-mode wiring in the active pipeline.",
-                    anchor="def detect_players_for_frame(",
-                    before=0,
-                    after=60,
-                ),
-                _build_code_slice(
                     "backend/app/reid_tracker.py",
                     label="appearance_embedder",
                     reason="Sparse appearance embedder initialization and feature extraction fallback rules.",
@@ -480,6 +489,36 @@ def build_code_context(summary: dict[str, Any], heuristic_diagnostics: list[dict
             )
         )
 
+    if "diagnostics" in categories:
+        code_slices.extend(
+            [
+                _build_code_slice(
+                    "backend/app/ai_diagnostics.py",
+                    label="diagnostics_prompt_contract",
+                    reason="Current diagnostics system prompt and JSON contract.",
+                    anchor="def build_system_prompt()",
+                    before=0,
+                    after=90,
+                ),
+                _build_code_slice(
+                    "backend/app/ai_diagnostics.py",
+                    label="diagnostics_context_builder",
+                    reason="Current run-context assembly for the AI diagnostics call.",
+                    anchor="def build_run_context(",
+                    before=0,
+                    after=110,
+                ),
+                _build_code_slice(
+                    "backend/app/ai_diagnostics.py",
+                    label="diagnostics_sanitizer",
+                    reason="Current post-processing and clipping rules applied to AI output.",
+                    anchor="def sanitize_diagnostics(",
+                    before=0,
+                    after=45,
+                ),
+            ]
+        )
+
     unique_slices: list[dict[str, Any]] = []
     seen_labels: set[str] = set()
     for item in code_slices:
@@ -492,7 +531,7 @@ def build_code_context(summary: dict[str, Any], heuristic_diagnostics: list[dict
 
 def compact_context_for_provider(context: dict[str, Any]) -> dict[str, Any]:
     code_blocks = [
-        f"FILE: {item.get('path')}\n{item.get('excerpt')}"
+        f"FILE: {item.get('path')}\nANCHOR: {item.get('anchor')}\n{item.get('excerpt')}"
         for item in (context.get("code_context") or [])
     ]
     return {
@@ -589,11 +628,14 @@ What to optimize for:
 Output contract:
 - Return valid JSON only.
 - Use this exact top-level schema:
-  {{"summary_line":"string","diagnostics":[{{"level":"good|warn","title":"string","message":"string","next_step":"string","evidence_keys":["metric_key"]}}]}}
+  {{"summary_line":"string","diagnostics":[{{"level":"good|warn","title":"string","message":"string","next_step":"string","implementation_diagnosis":"string","suggested_fix":"string","code_refs":["path::symbol"],"evidence_keys":["metric_key"]}}]}}
 - Produce 3 to 5 diagnostics.
 - Keep titles short enough for the UI, but messages and next_step may be long and detailed.
 - Each message must cite actual numeric evidence when possible.
-- Each next_step should tell the operator what to inspect, what thresholds/settings/code paths are implicated, and how to iterate.
+- Each `warn` diagnostic must name the exact function, condition, or fallback that is most likely responsible and propose a concrete code change to try.
+- `next_step` is the operator action. `implementation_diagnosis` is the exact code-level explanation. `suggested_fix` is the change to make.
+- Do not stop at "inspect", "review", "check", or "verify". If the code in context is enough to name the likely broken logic, do that and propose the fix directly.
+- If the code is insufficient to justify a concrete patch, say that explicitly in `implementation_diagnosis` instead of faking certainty.
 - Do not wrap the JSON in markdown fences.
 - Use the example below as the quality target for level of detail, specificity, and actionability. Match its depth, not its literal numbers.
 
@@ -882,18 +924,26 @@ def sanitize_diagnostics(candidate: Any, fallback: list[dict[str, str]]) -> list
         title = str(item.get("title", "")).strip()
         message = str(item.get("message", "")).strip()
         next_step = str(item.get("next_step", "")).strip()
+        implementation_diagnosis = str(item.get("implementation_diagnosis", "")).strip()
+        suggested_fix = str(item.get("suggested_fix", "")).strip()
+        code_refs = item.get("code_refs") or []
         evidence_keys = item.get("evidence_keys") or []
         if not title or not message or not next_step:
             continue
-        sanitized.append(
-            {
-                "level": level,
-                "title": title,
-                "message": message,
-                "next_step": next_step,
-                "evidence_keys": [str(key) for key in evidence_keys[:12]],
-            }
-        )
+        payload = {
+            "level": level,
+            "title": title,
+            "message": message,
+            "next_step": next_step,
+            "evidence_keys": [str(key) for key in evidence_keys[:12]],
+        }
+        if implementation_diagnosis:
+            payload["implementation_diagnosis"] = implementation_diagnosis
+        if suggested_fix:
+            payload["suggested_fix"] = suggested_fix
+        if code_refs:
+            payload["code_refs"] = [str(ref) for ref in code_refs[:8]]
+        sanitized.append(payload)
     return sanitized[:5] if sanitized else fallback
 
 
@@ -953,6 +1003,19 @@ def build_summary_heuristic_diagnostics(summary: dict[str, Any]) -> list[dict[st
                     "Inspect the active detector checkpoint, class mapping, and confidence thresholds first. "
                     "If this was a custom detector, verify the player and ball class ids used by the runtime match the checkpoint output order before touching tracker or calibration settings."
                 ),
+                "implementation_diagnosis": (
+                    "The most likely code-level failure is the class-id resolution path for custom detector checkpoints. "
+                    "`resolve_detector_spec` falls back to hardcoded class ids, and `detect_players_for_frame` / the ball branch pass those ids directly into the YOLO `classes=[...]` filter."
+                ),
+                "suggested_fix": (
+                    "Resolve class ids from checkpoint or dataset metadata instead of defaulting to 0/1/2. "
+                    "If metadata is unavailable, fail fast and print discovered class names rather than silently filtering on guessed ids."
+                ),
+                "code_refs": [
+                    "backend/app/wide_angle.py::resolve_detector_spec",
+                    "backend/app/wide_angle.py::detect_players_for_frame",
+                    "backend/app/wide_angle.py::analyze_video",
+                ],
                 "evidence_keys": ["player_rows", "ball_rows", "average_player_detections_per_frame", "average_ball_detections_per_frame"],
             }
         )
@@ -997,6 +1060,17 @@ def build_summary_heuristic_diagnostics(summary: dict[str, Any]) -> list[dict[st
                 "next_step": (
                     "Do not trust the minimap. Verify the homography acceptance path, visible keypoint quality, and anchor projection before debugging tracker behavior."
                 ),
+                "implementation_diagnosis": (
+                    "The projection path is downstream of both the homography gate and anchor generation. "
+                    "If projected points stay at zero, the likely failing code is either the `candidate_is_usable` acceptance condition or an upstream empty-detection path that leaves nothing to project."
+                ),
+                "suggested_fix": (
+                    "Log the calibration rejection reason per frame and distinguish `no detections to project` from `homography rejected` in the summary."
+                ),
+                "code_refs": [
+                    "backend/app/wide_angle.py::detect_pitch_homography",
+                    "backend/app/wide_angle.py::analyze_video",
+                ],
                 "evidence_keys": ["field_calibration_refresh_successes", "field_calibration_refresh_attempts", "average_visible_pitch_keypoints", "projected_player_points", "field_registered_ratio"],
             }
         )
@@ -1035,6 +1109,17 @@ def build_summary_heuristic_diagnostics(summary: dict[str, Any]) -> list[dict[st
                 "title": "Ball signal is sparse",
                 "message": f"Ball detections/frame is {avg_ball:.2f} with {ball_rows} total ball rows, so ball continuity is weak.",
                 "next_step": "Avoid ball-led interpretation until detector coverage improves; inspect detector confidence and missed ball phases first.",
+                "implementation_diagnosis": (
+                    "The ball stream uses the same football detector class map as the player stream. "
+                    "When both player and ball rows collapse together, the shared detector class filter is a stronger suspect than the ball tracker itself."
+                ),
+                "suggested_fix": (
+                    "Verify the ball class id used in the YOLO `classes=[...]` filter and stop assuming the fallback custom-detector mapping is correct."
+                ),
+                "code_refs": [
+                    "backend/app/wide_angle.py::resolve_detector_spec",
+                    "backend/app/wide_angle.py::analyze_video",
+                ],
                 "evidence_keys": ["average_ball_detections_per_frame", "ball_rows"],
             }
         )

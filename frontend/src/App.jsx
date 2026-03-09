@@ -138,11 +138,36 @@ function StatCard({ label, value, hint }) {
 }
 
 function DiagnosticCard({ item }) {
+  const hasCodeDrilldown = item.implementation_diagnosis || item.suggested_fix || (item.code_refs || []).length;
+
   return (
     <div className={`card diagnostic ${item.level === 'warn' ? 'warn' : 'good'}`}>
       <div className="diagnostic-title">{item.title}</div>
       <p>{item.message}</p>
       <div className="diagnostic-next">Next action: {item.next_step}</div>
+      {hasCodeDrilldown ? (
+        <details className="diagnostic-drilldown">
+          <summary>Code diagnosis</summary>
+          {item.implementation_diagnosis ? (
+            <div className="diagnostic-drilldown-block">
+              <div className="micro-label">Why the code is failing</div>
+              <div className="diagnostic-drilldown-text">{item.implementation_diagnosis}</div>
+            </div>
+          ) : null}
+          {item.suggested_fix ? (
+            <div className="diagnostic-drilldown-block">
+              <div className="micro-label">Suggested change</div>
+              <div className="diagnostic-drilldown-text">{item.suggested_fix}</div>
+            </div>
+          ) : null}
+          {(item.code_refs || []).length ? (
+            <div className="diagnostic-drilldown-block">
+              <div className="micro-label">Code refs</div>
+              <div className="diagnostic-code-refs">{item.code_refs.join('\n')}</div>
+            </div>
+          ) : null}
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -1718,7 +1743,7 @@ export default function App() {
                             onClick={handleRefreshDiagnostics}
                             disabled={!reviewedRunId || isRefreshingDiagnostics}
                           >
-                            {isRefreshingDiagnostics ? 'Refreshing...' : 'Refresh'}
+                            {isRefreshingDiagnostics ? (summary?.diagnostics_stale ? 'Regenerating...' : 'Refreshing...') : (summary?.diagnostics_stale ? 'Regenerate' : 'Refresh')}
                           </button>
                         </div>
                         {summary?.diagnostics_summary_line ? (
@@ -1730,6 +1755,11 @@ export default function App() {
                             : 'Heuristic run diagnostics are showing for this run.'}
                           {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
                         </div>
+                        {summary?.diagnostics_stale ? (
+                          <div className="error-box">
+                            {summary.diagnostics_stale_reason || 'Stored AI diagnostics are outdated for the current backend prompt.'} Use `Regenerate` to rebuild them.
+                          </div>
+                        ) : null}
                         <div className="overview-facts-grid">
                           {reviewQuickFacts.map(([label, value]) => (
                             <div key={label} className="overview-fact">

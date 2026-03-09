@@ -60,6 +60,7 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - AI diagnostics are a real post-run path now. Do not revert to heuristic-only diagnostics unless explicitly requested.
 - Keep diagnostics provider/model/source fields aligned between backend summary output and frontend display.
 - Keep all user-visible status in job logs and `summary.json`; the frontend depends on that.
+- Warn-level AI diagnostics should identify the exact function / condition / fallback most likely responsible and propose a concrete code change, not just tell the user to inspect an area.
 - When tracking changes, keep `raw_*` and stitched identity metrics both available in `summary.json` so regression review can compare them.
 - If you change the exported summary shape, update the frontend in the same turn.
 
@@ -81,6 +82,7 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Do not make the user re-enter paths that are predictably the same every session.
 - Overlay playback is the primary artifact. In run review, the video must be visually dominant.
 - Diagnostics and overlay are compatible views. Do not force them into mutually exclusive tabs unless explicitly asked.
+- Keep the main diagnostic cards readable, but put nitty-gritty code diagnosis and suggested fixes behind collapsible drilldowns instead of hiding them entirely.
 - Passive state cards and interactive controls must look unmistakably different.
 - Do not default the page into stale saved-run review when there is no current input clip loaded.
 - SoccerNet browsing should be reactive and scalable. Avoid giant scroll dumps and avoid unnecessary “fetch” clicks for simple filtering.
