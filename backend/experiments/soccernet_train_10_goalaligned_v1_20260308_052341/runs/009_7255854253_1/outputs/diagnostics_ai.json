@@ -1,0 +1,73 @@
+{
+  "prompt_version": "run-diagnostics-v2",
+  "generated_at": "2026-03-09T05:30:10.634471Z",
+  "status": "completed",
+  "provider": "openai",
+  "model": "gpt-5.4",
+  "summary_line": "Player and field outputs are present across most of the clip, but tracking fragmentation is high, ball coverage is sparse, and the only experiment is not goal-aligned in a clip with 0 goals.",
+  "error": "",
+  "raw_text": "{\"summary_line\":\"Player and field outputs are present across most of the clip, but tracking fragmentation is high, ball coverage is sparse, and the only experiment is not goal-aligned in a clip with 0 goals.\",\"diagnostics\":[{\"level\":\"warn\",\"title\":\"Track fragmentation\",\"message\":\"6120 unique player track IDs were created from 545957 player rows, with an average track length of 88.9412 frames and player_track_churn_ratio of 0.090668. The longest player track reached 1285 frames, but most tracks are much shorter than that.\",\"next_step\":\"Review tracker association settings on this run and inspect ID switches around dense play segments near frames 22000-23500 and 65300-66700 where long tracks appear.\",\"evidence_keys\":[\"unique_player_track_ids\",\"player_rows\",\"average_track_length\",\"longest_track_length\",\"player_track_churn_ratio\"]},{\"level\":\"warn\",\"title\":\"Low ball visibility\",\"message\":\"Ball output appears in 24275 rows across 67499 frames, or 0.3596 detections per frame. There are also 1069 unique ball track IDs, which indicates frequent ball track resets relative to total ball observations.\",\"next_step\":\"Spot-check ball detections in several possessions and rerun with ball-specific threshold or association tuning if the ball is missing through passes or aerial phases.\",\"evidence_keys\":[\"ball_rows\",\"frames_processed\",\"average_ball_detections_per_frame\",\"unique_ball_track_ids\"]},{\"level\":\"warn\",\"title\":\"Calibration is mixed\",\"message\":\"Field registration covered 485688 projected player points with a field_registered_ratio of 0.8896, but calibration refresh succeeded on only 3647 of 6750 attempts, a 0.540296 success rate. Average visible pitch keypoints were 3.8031, which is a thin basis for stable refreshes.\",\"next_step\":\"Inspect frames where calibration refresh failed and test a longer refresh interval or better pitch-line visibility preprocessing before rerunning.\",\"evidence_keys\":[\"field_registered_ratio\",\"field_calibration_refresh_attempts\",\"field_calibration_refresh_successes\",\"field_calibration_success_rate\",\"average_visible_pitch_keypoints\"]},{\"level\":\"good\",\"title\":\"Team assignment coverage\",\"message\":\"All player tracks were assigned to a side: home 3305, away 2755, unassigned 0. Team separation exists but is not wide, with team_cluster_distance at 0.3665.\",\"next_step\":\"Manually verify jersey clustering on a few ambiguous sequences, especially tracks with lower team vote ratios such as 0.6101 and 0.6975 in the top tracks.\",\"evidence_keys\":[\"home_tracks\",\"away_tracks\",\"unassigned_tracks\",\"team_cluster_distance\"]},{\"level\":\"warn\",\"title\":\"Experiment not goal-aligned\",\"message\":\"The run has experiments, but goal_aligned_experiment is false and goal_events_count is 0. The geometric volatility experiment reports 30s pre-goal index 0.0, baseline 0.0, and uplift 0.0, so it cannot be checked against goal windows in this clip.\",\"next_step\":\"Do not use the volatility experiment for goal-related review on this run; compare it on clips with annotated goals or switch to non-goal evaluation criteria.\",\"evidence_keys\":[\"goal_aligned_experiment\",\"goal_events_count\",\"has_experiments\"]}]}",
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "Track fragmentation",
+      "message": "6120 unique player track IDs were created from 545957 player rows, with an average track length of 88.9412 frames and player_track_churn_ratio of 0.090668. The longest player track reached 1285 frames, but most tracks are much shorter than that.",
+      "next_step": "Review tracker association settings on this run and inspect ID switches around dense play segments near frames 22000-23500 and 65300-66700 where long tracks appear.",
+      "evidence_keys": [
+        "unique_player_track_ids",
+        "player_rows",
+        "average_track_length",
+        "longest_track_length",
+        "player_track_churn_ratio"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Low ball visibility",
+      "message": "Ball output appears in 24275 rows across 67499 frames, or 0.3596 detections per frame. There are also 1069 unique ball track IDs, which indicates frequent ball track resets relative to total ball observations.",
+      "next_step": "Spot-check ball detections in several possessions and rerun with ball-specific threshold or association tuning if the ball is missing through passes or aerial phases.",
+      "evidence_keys": [
+        "ball_rows",
+        "frames_processed",
+        "average_ball_detections_per_frame",
+        "unique_ball_track_ids"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Calibration is mixed",
+      "message": "Field registration covered 485688 projected player points with a field_registered_ratio of 0.8896, but calibration refresh succeeded on only 3647 of 6750 attempts, a 0.540296 success rate. Average visible pitch keypoints were 3.8031, which is a thin basis for stable refreshes.",
+      "next_step": "Inspect frames where calibration refresh failed and test a longer refresh interval or better pitch-line visibility preprocessing before rerunning.",
+      "evidence_keys": [
+        "field_registered_ratio",
+        "field_calibration_refresh_attempts",
+        "field_calibration_refresh_successes",
+        "field_calibration_success_rate",
+        "average_visible_pitch_keypoints"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Team assignment coverage",
+      "message": "All player tracks were assigned to a side: home 3305, away 2755, unassigned 0. Team separation exists but is not wide, with team_cluster_distance at 0.3665.",
+      "next_step": "Manually verify jersey clustering on a few ambiguous sequences, especially tracks with lower team vote ratios such as 0.6101 and 0.6975 in the top tracks.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "team_cluster_distance"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Experiment not goal-aligned",
+      "message": "The run has experiments, but goal_aligned_experiment is false and goal_events_count is 0. The geometric volatility experiment reports 30s pre-goal index 0.0, baseline 0.0, and uplift 0.0, so it cannot be checked against goal windows in this clip.",
+      "next_step": "Do not use the volatility experiment for goal-related review on this run; compare it on clips with annotated goals or switch to non-goal evaluation criteria.",
+      "evidence_keys": [
+        "goal_aligned_experiment",
+        "goal_events_count",
+        "has_experiments"
+      ]
+    }
+  ]
+}

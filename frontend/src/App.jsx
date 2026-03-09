@@ -59,6 +59,7 @@ const STORAGE_KEYS = {
   soccerNetFiles: 'fpw.soccerNetFiles',
   folderPath: 'fpw.folderPath',
   localVideoPath: 'fpw.localVideoPath',
+  analysisSidebarWidth: 'fpw.analysisSidebarWidth',
 };
 
 const WORKSPACE_MODES = [
@@ -77,9 +78,18 @@ const REVIEW_PANELS = [
 const BACKEND_ACTIVITY_WINDOW_MS = 20000;
 const BACKEND_FAILURE_WINDOW_MS = 20000;
 const ACTIVE_JOB_STATUSES = new Set(['queued', 'running', 'paused', 'stopping']);
+const DEFAULT_ANALYSIS_SIDEBAR_WIDTH = 356;
+const MIN_ANALYSIS_SIDEBAR_WIDTH = 280;
+const MAX_ANALYSIS_SIDEBAR_WIDTH = 520;
+const ANALYSIS_MAIN_MIN_WIDTH = 620;
+const SIDEBAR_RESIZER_WIDTH = 18;
 
 function isActiveJobStatus(status) {
   return ACTIVE_JOB_STATUSES.has(String(status || ''));
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function readStoredJson(key, fallback) {
@@ -127,13 +137,58 @@ function friendlyProviderName(value) {
   return value || 'provider';
 }
 
-function StatCard({ label, value, hint }) {
+function formatPercent(value, digits = 1) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '0%';
+  return `${(numeric * 100).toFixed(digits)}%`;
+}
+
+function formatCalibrationRejectionSummary(summary) {
+  if (!summary) return 'n/a';
+  const parts = [
+    `no cand ${summary.field_calibration_rejections_no_candidate || 0}`,
+    `vis ${summary.field_calibration_rejections_low_visible_keypoints || 0}`,
+    `inliers ${summary.field_calibration_rejections_low_inliers || 0}`,
+    `reproj ${summary.field_calibration_rejections_high_reprojection_error || 0}`,
+    `drift ${summary.field_calibration_rejections_high_temporal_drift || 0}`,
+  ];
+  if (summary.field_calibration_rejections_invalid_candidate) {
+    parts.push(`invalid ${summary.field_calibration_rejections_invalid_candidate}`);
+  }
+  return parts.join(' · ');
+}
+
+function formatClassIds(classIds) {
+  if (!Array.isArray(classIds) || classIds.length === 0) return 'none';
+  return classIds.join(', ');
+}
+
+function HeadlineDiagnosticCard({ item }) {
   return (
-    <div className="card stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      {hint ? <div className="stat-hint">{hint}</div> : null}
-    </div>
+    <article className={`headline-diagnostic-card ${item.level === 'warn' ? 'warn' : 'good'}`}>
+      <div className="micro-label">{item.level === 'warn' ? 'Needs attention' : 'Holding up'}</div>
+      <div className="headline-diagnostic-title">{item.title}</div>
+      {item.message ? <p>{item.message}</p> : null}
+    </article>
+  );
+}
+
+function MetricGroup({ title, items }) {
+  return (
+    <section className="card metric-group-card">
+      <div className="metric-group-header">
+        <div className="section-title">{title}</div>
+      </div>
+      <div className="metric-group-rows">
+        {items.map((item) => (
+          <div key={item.label} className={`metric-row ${item.wide ? 'wide' : ''}`}>
+            <div className="metric-label">{item.label}</div>
+            <div className="metric-value">{item.value}</div>
+            {item.hint ? <div className="metric-hint">{item.hint}</div> : null}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -313,6 +368,7 @@ function FileLinks({ summary }) {
     ['Detections CSV', summary?.detections_csv],
     ['Track summary CSV', summary?.track_summary_csv],
     ['Projection CSV', summary?.projection_csv],
+    ['Calibration debug CSV', summary?.calibration_debug_csv],
     ['Entropy timeseries CSV', summary?.entropy_timeseries_csv],
     ['Goal events CSV', summary?.goal_events_csv],
     ['AI diagnostics JSON', summary?.diagnostics_json],
@@ -390,9 +446,16 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState('input');
   const [reviewPanel, setReviewPanel] = useState('overview');
+  const [analysisSidebarWidth, setAnalysisSidebarWidth] = useState(() => {
+    const stored = Number(readStoredString(STORAGE_KEYS.analysisSidebarWidth, ''));
+    return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_ANALYSIS_SIDEBAR_WIDTH;
+  });
+  const [layoutWidth, setLayoutWidth] = useState(0);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const pollRef = useRef(null);
   const soccerNetPollRef = useRef(null);
   const sourceVideoRef = useRef(null);
+  const layoutRef = useRef(null);
 
   async function apiFetch(url, options) {
     const startedAt = Date.now();
@@ -498,6 +561,12 @@ export default function App() {
   }, [soccerNetSplit, soccerNetQuery, soccerNetFiles]);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.analysisSidebarWidth, String(Math.round(analysisSidebarWidth)));
+    } catch {}
+  }, [analysisSidebarWidth]);
+
+  useEffect(() => {
     const handle = window.setTimeout(() => {
       loadSoccerNetGames();
     }, 250);
@@ -530,11 +599,79 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!layoutRef.current || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const node = layoutRef.current;
+    const updateWidth = () => setLayoutWidth(node.getBoundingClientRect().width);
+    updateWidth();
+    const observer = new ResizeObserver(() => updateWidth());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (workspaceMode !== 'job' || isActiveJobStatus(job?.status)) {
       return;
     }
     setWorkspaceMode(selectedRun ? 'review' : 'input');
   }, [job?.status, selectedRun?.run_id, workspaceMode]);
+
+  const maxAnalysisSidebarWidth = useMemo(() => {
+    if (!layoutWidth) {
+      return MAX_ANALYSIS_SIDEBAR_WIDTH;
+    }
+    return Math.max(
+      MIN_ANALYSIS_SIDEBAR_WIDTH,
+      Math.min(
+        MAX_ANALYSIS_SIDEBAR_WIDTH,
+        layoutWidth - ANALYSIS_MAIN_MIN_WIDTH - SIDEBAR_RESIZER_WIDTH,
+      ),
+    );
+  }, [layoutWidth]);
+
+  const effectiveAnalysisSidebarWidth = workspaceMode === 'review'
+    ? DEFAULT_ANALYSIS_SIDEBAR_WIDTH
+    : clampNumber(analysisSidebarWidth, MIN_ANALYSIS_SIDEBAR_WIDTH, maxAnalysisSidebarWidth);
+
+  useEffect(() => {
+    if (!isResizingSidebar) {
+      return undefined;
+    }
+
+    function stopResizing() {
+      setIsResizingSidebar(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    }
+
+    function handlePointerMove(event) {
+      if (!layoutRef.current) {
+        return;
+      }
+      const rect = layoutRef.current.getBoundingClientRect();
+      const nextWidth = clampNumber(
+        event.clientX - rect.left,
+        MIN_ANALYSIS_SIDEBAR_WIDTH,
+        maxAnalysisSidebarWidth,
+      );
+      setAnalysisSidebarWidth(nextWidth);
+    }
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResizing);
+    window.addEventListener('pointercancel', stopResizing);
+
+    return () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+      window.removeEventListener('pointercancel', stopResizing);
+    };
+  }, [isResizingSidebar, maxAnalysisSidebarWidth]);
 
   const currentJob = job;
   const hasActiveJob = isActiveJobStatus(currentJob?.status);
@@ -598,11 +735,14 @@ export default function App() {
   const hasExplicitIdentityMetrics = summary && summary.tracklet_merges_applied != null && summary.raw_unique_player_track_ids != null;
   const reviewQuickFacts = useMemo(() => {
     if (!summary) return [];
+    const calibrationAttempts = summary.field_calibration_refresh_attempts || 0;
+    const calibrationSuccesses = summary.field_calibration_refresh_successes || 0;
+    const calibrationRate = summary.field_calibration_success_rate ?? (calibrationAttempts > 0 ? calibrationSuccesses / calibrationAttempts : 0);
     return [
       ['Clip', reviewedClipName || 'Unknown'],
       ['Frames', summary.frames_processed || 0],
       ['Tracker', summary.player_tracker_mode || 'n/a'],
-      ['Calibration', `${summary.field_calibration_refresh_successes || 0}/${summary.field_calibration_refresh_attempts || 0}`],
+      ['Calibration', `${calibrationSuccesses}/${calibrationAttempts} (${formatPercent(calibrationRate)})`],
       ['Player IDs', hasExplicitIdentityMetrics ? `${summary.raw_unique_player_track_ids} -> ${summary.unique_player_track_ids || 0}` : (summary.unique_player_track_ids || 0)],
       ['Teams', `${summary.home_tracks || 0} home / ${summary.away_tracks || 0} away`],
       ['Ball / frame', summary.average_ball_detections_per_frame ?? 'n/a'],
@@ -611,14 +751,26 @@ export default function App() {
 
   const runStats = useMemo(() => {
     if (!summary) return [];
+    const refreshFrames = summary.field_calibration_refresh_frames || 10;
+    const calibrationAttempts = summary.field_calibration_refresh_attempts || 0;
+    const calibrationSuccesses = summary.field_calibration_refresh_successes || 0;
+    const calibrationRate = summary.field_calibration_success_rate ?? (calibrationAttempts > 0 ? calibrationSuccesses / calibrationAttempts : 0);
     const rows = [
       ['Frames', summary.frames_processed || 0, 'Decoded frames pushed through detection and tracking'],
       ['Tracker mode', summary.player_tracker_mode || 'n/a', 'Hybrid ReID adds appearance features and a stitch pass; ByteTrack is the legacy fallback'],
+      ['Detector classes', `P ${formatClassIds(summary.player_detector_class_ids)} · B ${formatClassIds(summary.ball_detector_class_ids)}`, `Resolved from ${summary.detector_class_names_source || 'unknown'}`],
       ['Player track IDs', summary.unique_player_track_ids || 0, hasExplicitIdentityMetrics ? 'Canonical stitched IDs after any tracklet merges' : 'Track IDs from the saved run summary'],
       ['Home tracks', summary.home_tracks || 0, 'Unsupervised jersey-color split, not official metadata'],
       ['Away tracks', summary.away_tracks || 0, 'Should roughly match the second main kit cluster'],
+      ['Raw detector sample', summary.raw_detector_boxes_sampled || 0, `Unfiltered detector boxes across the first ${summary.detector_debug_sample_frames || 0} frames`],
       ['Projected player anchors', summary.projected_player_points || 0, 'Per-frame player anchor samples that landed on the pitch map, not unique players'],
-      ['Avg pitch keypoints', summary.average_visible_pitch_keypoints || 0, 'Visible field keypoints on each 10-frame calibration refresh'],
+      ['Projection stages', `H ${summary.frames_with_field_homography || 0} · Fresh ${summary.frames_with_usable_homography || 0} · Blocked ${summary.frames_projection_blocked_by_stale || 0} · P ${summary.frames_with_projected_points || 0}`, 'Frames with any homography, fresh projection, stale-blocked projection, and projected output'],
+      ['Projected fresh/stale', `P ${summary.projected_player_points_fresh || 0}/${summary.projected_player_points_stale || 0} · B ${summary.projected_ball_points_fresh || 0}/${summary.projected_ball_points_stale || 0}`, 'Projected player and ball points while calibration was fresh vs stale'],
+      ['Rows fresh/stale', `${summary.player_rows_while_calibration_fresh || 0}/${summary.player_rows_while_calibration_stale || 0}`, 'Player detections observed while calibration was fresh vs stale'],
+      ['Avg pitch keypoints', summary.average_visible_pitch_keypoints || 0, `Visible field keypoints on each ${refreshFrames}-frame calibration refresh`],
+      ['Calibration success', formatPercent(calibrationRate), `Accepted refreshes ${calibrationSuccesses}/${calibrationAttempts}`],
+      ['Stale recovery', `${summary.field_calibration_stale_recovery_successes || 0}/${summary.field_calibration_stale_recovery_attempts || 0}`, 'Refresh attempts accepted while calibration had already gone stale'],
+      ['Calib gate rejects', formatCalibrationRejectionSummary(summary), 'Calibration gate-hit counts for rejected refreshes; categories can overlap'],
     ];
     if (hasExplicitIdentityMetrics) {
       rows.splice(2, 0,
@@ -628,6 +780,89 @@ export default function App() {
     }
     return rows;
   }, [summary, hasExplicitIdentityMetrics]);
+
+  const runMetricSections = useMemo(() => {
+    if (!runStats.length) return [];
+    const metricByLabel = new Map(runStats.map(([label, value, hint]) => [label, { label, value, hint }]));
+    const pick = (label, wide = false) => {
+      const item = metricByLabel.get(label);
+      return item ? { ...item, wide } : null;
+    };
+    return [
+      {
+        title: 'Tracking',
+        items: [
+          pick('Tracker mode'),
+          pick('Raw player IDs'),
+          pick('Player track IDs'),
+          pick('Tracklet merges'),
+          pick('Home tracks'),
+          pick('Away tracks'),
+          pick('Rows fresh/stale', true),
+        ].filter(Boolean),
+      },
+      {
+        title: 'Calibration',
+        items: [
+          pick('Avg pitch keypoints'),
+          pick('Calibration success'),
+          pick('Stale recovery'),
+          pick('Calib gate rejects', true),
+        ].filter(Boolean),
+      },
+      {
+        title: 'Projection',
+        items: [
+          pick('Projected player anchors'),
+          pick('Projection stages', true),
+          pick('Projected fresh/stale', true),
+        ].filter(Boolean),
+      },
+      {
+        title: 'Detection',
+        items: [
+          pick('Frames'),
+          pick('Detector classes', true),
+          pick('Raw detector sample'),
+        ].filter(Boolean),
+      },
+    ].filter((section) => section.items.length > 0);
+  }, [runStats]);
+
+  function startSidebarResize(event) {
+    if (workspaceMode === 'review' || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    setIsResizingSidebar(true);
+  }
+
+  function resetSidebarWidth() {
+    setAnalysisSidebarWidth(DEFAULT_ANALYSIS_SIDEBAR_WIDTH);
+  }
+
+  function handleSidebarResizerKeyDown(event) {
+    const step = event.shiftKey ? 32 : 16;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      setAnalysisSidebarWidth((current) => clampNumber(current - step, MIN_ANALYSIS_SIDEBAR_WIDTH, maxAnalysisSidebarWidth));
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      setAnalysisSidebarWidth((current) => clampNumber(current + step, MIN_ANALYSIS_SIDEBAR_WIDTH, maxAnalysisSidebarWidth));
+      return;
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setAnalysisSidebarWidth(MIN_ANALYSIS_SIDEBAR_WIDTH);
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      setAnalysisSidebarWidth(maxAnalysisSidebarWidth);
+    }
+  }
 
   function updateForm(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -1158,7 +1393,11 @@ export default function App() {
           onActiveDetectorChange={handleTrainingActiveDetectorChange}
         />
       ) : (
-      <main className={`layout-grid${workspaceMode === 'review' ? ' sidebar-hidden' : ''}`}>
+      <main
+        ref={layoutRef}
+        className={`layout-grid${workspaceMode === 'review' ? ' sidebar-hidden' : ''}${isResizingSidebar ? ' sidebar-resizing' : ''}`}
+        style={workspaceMode === 'review' ? undefined : { '--analysis-sidebar-width': `${Math.round(effectiveAnalysisSidebarWidth)}px` }}
+      >
         <aside className="left-sidebar">
           <section className="left-column">
             <form className="card form-card" onSubmit={handleSubmit}>
@@ -1475,6 +1714,23 @@ export default function App() {
           </section>
         </aside>
 
+        <div
+          className="sidebar-resizer"
+          role="separator"
+          aria-label="Resize analysis sidebar"
+          aria-orientation="vertical"
+          aria-valuemin={MIN_ANALYSIS_SIDEBAR_WIDTH}
+          aria-valuemax={Math.round(maxAnalysisSidebarWidth)}
+          aria-valuenow={Math.round(effectiveAnalysisSidebarWidth)}
+          tabIndex={workspaceMode === 'review' ? -1 : 0}
+          onPointerDown={startSidebarResize}
+          onDoubleClick={resetSidebarWidth}
+          onKeyDown={handleSidebarResizerKeyDown}
+        >
+          <span className="sidebar-resizer-rail" aria-hidden="true" />
+          <span className="sidebar-resizer-grip" aria-hidden="true" />
+        </div>
+
         <section className="right-column">
           <section className="card workspace-shell">
             <div className="workspace-header">
@@ -1716,27 +1972,35 @@ export default function App() {
 
               {reviewedRun && reviewPanel === 'overview' ? (
                 <>
-                  <section className="review-overview-grid workspace-panel">
-                    <div className="review-main-column">
-                      <section className="card video-card">
-                        <div className="row-between">
-                          <div className="section-title">Overlay Playback</div>
-                          <div className="muted">
-                            {summary?.homography_enabled ? 'Auto-calibrated' : 'Image-space only'}
+                  <section className="review-overview-stack workspace-panel">
+                    <section className="card review-hero-card">
+                      <div className="review-hero-header">
+                        <div className="review-hero-copy">
+                          <div className="eyebrow">Saved overlay</div>
+                          <div className="section-title review-hero-title">Overlay Playback</div>
+                          <div className="review-hero-subtitle">{reviewedClipName || 'Unknown clip'}</div>
+                          <div className="review-hero-meta">
+                            <div className="review-hero-detail">
+                              <div className="micro-label">Run</div>
+                              <div className="review-hero-detail-value">{reviewedRunId || 'Unknown run'}</div>
+                            </div>
+                            <div className="review-hero-detail">
+                              <div className="micro-label">Frames</div>
+                              <div className="review-hero-detail-value">{summary?.frames_processed || 0}</div>
+                            </div>
+                            <div className="review-hero-detail">
+                              <div className="micro-label">Tracker</div>
+                              <div className="review-hero-detail-value">{summary?.player_tracker_mode || 'n/a'}</div>
+                            </div>
                           </div>
                         </div>
-                        {summary?.overlay_video ? (
-                          <video controls src={`${API_BASE}${summary.overlay_video}`} className="video-player" />
-                        ) : (
-                          <div className="empty-card">No overlay output is available for the selected run.</div>
-                        )}
-                      </section>
-                    </div>
-
-                    <div className="review-side-column">
-                      <section className="card overview-brief-card">
-                        <div className="row-between">
-                          <div className="section-title inset-title">Run Brief</div>
+                        <div className="review-hero-actions">
+                          <div className={`review-hero-status-panel ${summary?.homography_enabled ? 'good' : 'warn'}`}>
+                            <div className="micro-label">Calibration state</div>
+                            <div className="review-hero-status-value">
+                              {summary?.homography_enabled ? 'Auto-calibrated' : 'Image-space only'}
+                            </div>
+                          </div>
                           <button
                             className="secondary-button compact-button"
                             type="button"
@@ -1746,51 +2010,66 @@ export default function App() {
                             {isRefreshingDiagnostics ? (summary?.diagnostics_stale ? 'Regenerating...' : 'Refreshing...') : (summary?.diagnostics_stale ? 'Regenerate' : 'Refresh')}
                           </button>
                         </div>
-                        {summary?.diagnostics_summary_line ? (
-                          <div className="workspace-summary-line">{summary.diagnostics_summary_line}</div>
-                        ) : null}
-                        <div className="diagnostics-meta">
-                          {summary.diagnostics_source === 'ai'
-                            ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
-                            : 'Heuristic run diagnostics are showing for this run.'}
-                          {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
+                      </div>
+                      {summary?.overlay_video ? (
+                        <div className="review-video-stage">
+                          <video controls src={`${API_BASE}${summary.overlay_video}`} className="video-player review-video-player" />
                         </div>
-                        {summary?.diagnostics_stale ? (
-                          <div className="error-box">
-                            {summary.diagnostics_stale_reason || 'Stored AI diagnostics are outdated for the current backend prompt.'} Use `Regenerate` to rebuild them.
+                      ) : (
+                        <div className="empty-card">No overlay output is available for the selected run.</div>
+                      )}
+                      <div className="review-summary-strip">
+                        {reviewQuickFacts.map(([label, value]) => (
+                          <div key={label} className={`review-summary-fact ${label === 'Clip' ? 'wide' : ''}`}>
+                            <div className="micro-label">{label}</div>
+                            <div className="review-summary-value">{value}</div>
                           </div>
-                        ) : null}
-                        <div className="overview-facts-grid">
-                          {reviewQuickFacts.map(([label, value]) => (
-                            <div key={label} className="overview-fact">
-                              <div className="micro-label">{label}</div>
-                              <div className="overview-fact-value">{value}</div>
-                            </div>
-                          ))}
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="card review-brief-card">
+                      <div className="section-title">Run Brief</div>
+                      {summary?.diagnostics_summary_line ? (
+                        <div className="workspace-summary-line">{summary.diagnostics_summary_line}</div>
+                      ) : null}
+                      <div className="diagnostics-meta">
+                        {summary.diagnostics_source === 'ai'
+                          ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
+                          : 'Heuristic run diagnostics are showing for this run.'}
+                        {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
+                      </div>
+                      {summary?.diagnostics_stale ? (
+                        <div className="error-box">
+                          {summary.diagnostics_stale_reason || 'Stored AI diagnostics are outdated for the current backend prompt.'} Use `Regenerate` to rebuild them.
                         </div>
-                        <div className="overview-callouts">
-                          {headlineDiagnostics.length > 0 ? headlineDiagnostics.map((item) => (
-                            <div key={item.title} className={`overview-callout ${item.level === 'warn' ? 'warn' : 'good'}`}>
-                              <div className="overview-callout-title">{item.title}</div>
-                            </div>
-                          )) : (
-                            <div className="empty-card">No diagnostics available for the selected run.</div>
-                          )}
-                          {headlineDiagnostics.length > 0 ? (
-                            <div className="muted" style={{ fontSize: '0.8rem', marginTop: 4 }}>Full details in Detailed Diagnostics below</div>
-                          ) : null}
-                        </div>
-                      </section>
-                    </div>
+                      ) : null}
+                      {headlineDiagnostics.length > 0 ? (
+                        <>
+                          <div className="review-brief-note">Top findings stay on the same page as the overlay. The full drilldown remains below.</div>
+                          <div className="headline-diagnostic-grid">
+                            {headlineDiagnostics.map((item) => (
+                              <HeadlineDiagnosticCard key={item.title} item={item} />
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="empty-card">No diagnostics available for the selected run.</div>
+                      )}
+                    </section>
                   </section>
 
-                  <section className="summary-grid workspace-panel">
-                    <div className="section-title inset-title summary-title-span">Run Metrics</div>
-                    {runStats.length === 0 ? (
+                  <section className="workspace-panel">
+                    <div className="section-title inset-title">Run Metrics</div>
+                    {runMetricSections.length === 0 ? (
                       <div className="card empty-card">Select a saved run to populate the tactical summary cards.</div>
-                    ) : runStats.map(([label, value, hint]) => (
-                      <StatCard key={label} label={label} value={value} hint={hint} />
-                    ))}
+                    ) : (
+                      <div className="metric-group-grid">
+                        {runMetricSections.map((section) => (
+                          <MetricGroup key={section.title} title={section.title} items={section.items} />
+                        ))}
+                      </div>
+                    )}
                   </section>
 
                   <section className="workspace-panel">

@@ -14,6 +14,7 @@ from typing import Any
 
 import cv2
 import numpy as np
+import yaml
 from huggingface_hub import hf_hub_download
 from ultralytics import YOLO
 
@@ -21,9 +22,9 @@ from app.ai_diagnostics import generate_run_diagnostics
 from app.reid_tracker import (
     BALL_TRACKER_NAME,
     DEFAULT_PLAYER_TRACKER_MODE,
+    HybridReIDTracker,
     LEGACY_PLAYER_TRACKER_MODE,
     PLAYER_TRACKER_MODE_OPTIONS,
-    SparseAppearanceEmbedder,
     build_stitched_track_map,
     normalize_player_tracker_mode,
     tracker_mode_label,
@@ -36,14 +37,18 @@ BROWSER_VIDEO_FOURCCS = ("avc1", "H264", "h264", "X264")
 
 DETECTOR_MODEL_DEFAULT = "soccana"
 KEYPOINT_MODEL_DEFAULT = "soccana_keypoint"
-CALIBRATION_REFRESH_FRAMES = 1
+CALIBRATION_REFRESH_FRAMES = 10
 CALIBRATION_SMOOTHING_WINDOW = 5
 CALIBRATION_MAX_AGE_FRAMES = 30
 FIELD_KEYPOINT_CONFIDENCE = 0.35
-MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5
+MIN_CALIBRATION_VISIBLE_KEYPOINTS = 4
 MIN_CALIBRATION_INLIERS = 4
 MAX_CALIBRATION_REPROJECTION_ERROR_CM = 250.0
 MAX_CALIBRATION_TEMPORAL_DRIFT_CM = 1800.0
+STALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS = 7
+STALE_RECOVERY_MIN_CALIBRATION_INLIERS = 5
+STALE_RECOVERY_MAX_CALIBRATION_REPROJECTION_ERROR_CM = 350.0
+STALE_RECOVERY_TEMPORAL_DRIFT_CM = 5000.0
 EXPERIMENT_WINDOW_SECONDS = 10.0
 EXPERIMENT_GRID_COLS = 6
 EXPERIMENT_GRID_ROWS = 4
@@ -53,6 +58,7 @@ PROGRESS_RENDER_END = 90.0
 PROGRESS_VIDEO_FINALIZE_END = 94.0
 PROGRESS_DIAGNOSTICS_END = 98.0
 PROGRESS_PACKAGING_END = 99.0
+DETECTOR_DEBUG_SAMPLE_FRAMES = 5
 
 DETECTOR_MODEL_SOURCES = {
     "soccana": {
@@ -156,6 +162,17 @@ TEAM_BOX_COLORS = {
     "unassigned": (170, 170, 170),
     "ball": (0, 215, 255),
 }
+CALIBRATION_REJECTION_REASON_KEYS = (
+    "no_candidate",
+    "low_visible_keypoints",
+    "low_inliers",
+    "high_reprojection_error",
+    "high_temporal_drift",
+)
+CALIBRATION_PRIMARY_REJECTION_REASON_KEYS = CALIBRATION_REJECTION_REASON_KEYS + ("invalid_candidate",)
+PLAYER_CLASS_LABEL_HINTS = ("player", "players", "person", "footballer", "athlete", "goalkeeper", "goalie", "keeper")
+BALL_CLASS_LABEL_HINTS = ("ball", "soccer ball", "sports ball", "football")
+REFEREE_CLASS_LABEL_HINTS = ("referee", "ref", "official", "linesman")
 
 
 def _normalize_four_points(points: Any, label: str) -> list[list[float]]:
@@ -240,25 +257,190 @@ def prewarm_default_models() -> dict[str, str]:
     }
 
 
+def _normalize_class_name(value: Any) -> str:
+    return " ".join(str(value or "").strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def _coerce_class_name_map(raw_names: Any) -> dict[int, str]:
+    if isinstance(raw_names, dict):
+        names: dict[int, str] = {}
+        for key, value in raw_names.items():
+            try:
+                names[int(key)] = str(value)
+            except Exception:
+                continue
+        return dict(sorted(names.items()))
+    if isinstance(raw_names, (list, tuple)):
+        return {index: str(value) for index, value in enumerate(raw_names)}
+    return {}
+
+
+def _resolve_names_from_dataset_yaml(dataset_yaml_path: Path) -> dict[int, str]:
+    if not dataset_yaml_path.exists():
+        return {}
+    with dataset_yaml_path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    return _coerce_class_name_map(data.get("names"))
+
+
+def _candidate_dataset_yaml_paths(weights_path: Path, model: YOLO) -> list[Path]:
+    candidates: list[Path] = []
+    override_data = model.overrides.get("data")
+    if override_data:
+        candidates.append(Path(str(override_data)).expanduser())
+
+    run_dir = weights_path.parent.parent
+    args_yaml_path = run_dir / "yolo_output" / "train" / "args.yaml"
+    if args_yaml_path.exists():
+        try:
+            with args_yaml_path.open("r", encoding="utf-8") as handle:
+                args_yaml = yaml.safe_load(handle) or {}
+            if args_yaml.get("data"):
+                candidates.append(Path(str(args_yaml["data"])).expanduser())
+        except Exception:
+            pass
+
+    config_path = run_dir / "config.json"
+    if config_path.exists():
+        try:
+            config_payload = json.loads(config_path.read_text(encoding="utf-8"))
+            dataset_path = config_payload.get("dataset_path")
+            if dataset_path:
+                candidates.append(Path(str(dataset_path)).expanduser() / "dataset.yaml")
+        except Exception:
+            pass
+
+    candidates.extend(
+        [
+            weights_path.with_suffix(".yaml"),
+            weights_path.parent / "dataset.yaml",
+            weights_path.parent.parent / "dataset.yaml",
+            weights_path.parent.parent / "data.yaml",
+        ]
+    )
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        resolved = str(candidate)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        deduped.append(candidate)
+    return deduped
+
+
+@lru_cache(maxsize=8)
+def resolve_detector_class_names(weights_path: str) -> tuple[dict[int, str], str]:
+    resolved_path = Path(weights_path).expanduser().resolve()
+    model = YOLO(str(resolved_path))
+    names = _coerce_class_name_map(getattr(model, "names", None))
+    if names:
+        return names, "checkpoint metadata"
+
+    for dataset_yaml_path in _candidate_dataset_yaml_paths(resolved_path, model):
+        names = _resolve_names_from_dataset_yaml(dataset_yaml_path)
+        if names:
+            return names, str(dataset_yaml_path)
+
+    return {}, "unresolved"
+
+
+def _matching_class_ids(names: dict[int, str], hints: tuple[str, ...]) -> list[int]:
+    hint_set = {_normalize_class_name(hint) for hint in hints}
+    matched_ids: list[int] = []
+    for class_id, label in names.items():
+        normalized = _normalize_class_name(label)
+        if not normalized:
+            continue
+        tokens = set(normalized.split())
+        if normalized in hint_set or tokens.intersection(hint_set):
+            matched_ids.append(int(class_id))
+    return sorted(set(matched_ids))
+
+
+def format_class_id_list(class_ids: list[int], class_names: dict[int, str]) -> str:
+    if not class_ids:
+        return "none"
+    return ", ".join(f"{class_id}:{class_names.get(class_id, '?')}" for class_id in class_ids)
+
+
+def format_class_histogram(class_histogram: dict[int, int], class_names: dict[int, str]) -> str:
+    if not class_histogram:
+        return "none"
+    return ", ".join(
+        f"{class_id}:{class_names.get(class_id, '?')}={count}"
+        for class_id, count in sorted(class_histogram.items())
+    )
+
+
+def sample_detector_class_histogram(
+    frame: np.ndarray,
+    detector_model: YOLO,
+    detector_device: str,
+    confidence: float,
+    iou: float,
+) -> tuple[int, dict[int, int]]:
+    results = detector_model(
+        source=frame,
+        conf=confidence,
+        iou=iou,
+        device=detector_device,
+        verbose=False,
+    )
+    if not results:
+        return 0, {}
+    boxes = results[0].boxes
+    if boxes is None or len(boxes) == 0 or boxes.cls is None:
+        return 0, {}
+    class_ids = boxes.cls.cpu().numpy().astype(int).tolist()
+    return len(class_ids), {int(class_id): int(count) for class_id, count in Counter(class_ids).items()}
+
+
 def resolve_detector_spec(model_name: str) -> dict[str, Any]:
     model_key = model_name.strip() or DETECTOR_MODEL_DEFAULT
     if model_key in DETECTOR_MODEL_SOURCES:
         model_info = DETECTOR_MODEL_SOURCES[model_key]
+        class_names = {
+            int(model_info["player_class_id"]): "player",
+            int(model_info["ball_class_id"]): "ball",
+            int(model_info["referee_class_id"]): "referee",
+        }
         return {
             "name": model_key,
             "weights_path": resolve_model_path(model_key, "detector"),
+            "class_names": class_names,
+            "class_names_source": "built-in detector spec",
+            "player_class_ids": [int(model_info["player_class_id"])],
+            "ball_class_ids": [int(model_info["ball_class_id"])],
+            "referee_class_ids": [int(model_info["referee_class_id"])],
             "player_class_id": int(model_info["player_class_id"]),
             "ball_class_id": int(model_info["ball_class_id"]),
             "referee_class_id": int(model_info["referee_class_id"]),
         }
 
     candidate = resolve_model_path(model_key, "detector")
+    class_names, class_names_source = resolve_detector_class_names(candidate)
+    player_class_ids = _matching_class_ids(class_names, PLAYER_CLASS_LABEL_HINTS)
+    ball_class_ids = _matching_class_ids(class_names, BALL_CLASS_LABEL_HINTS)
+    referee_class_ids = _matching_class_ids(class_names, REFEREE_CLASS_LABEL_HINTS)
+    if not class_names or not player_class_ids or not ball_class_ids:
+        discovered = format_class_histogram({class_id: 1 for class_id in class_names}, class_names) if class_names else "none"
+        raise RuntimeError(
+            "Could not resolve detector class ids for custom checkpoint "
+            f"{candidate}. Names source: {class_names_source}. Discovered classes: {discovered}. "
+            "Expected to find player/goalkeeper and ball labels in checkpoint metadata or adjacent dataset YAML."
+        )
     return {
         "name": model_key,
         "weights_path": candidate,
-        "player_class_id": 0,
-        "ball_class_id": 1,
-        "referee_class_id": 2,
+        "class_names": class_names,
+        "class_names_source": class_names_source,
+        "player_class_ids": player_class_ids,
+        "ball_class_ids": ball_class_ids,
+        "referee_class_ids": referee_class_ids,
+        "player_class_id": int(player_class_ids[0]),
+        "ball_class_id": int(ball_class_ids[0]),
+        "referee_class_id": int(referee_class_ids[0]) if referee_class_ids else -1,
     }
 
 
@@ -291,7 +473,97 @@ def safe_int(value: object, default: int = -1) -> int:
 
 
 def resolve_player_tracker_mode(config_payload: dict[str, Any]) -> str:
-    return normalize_player_tracker_mode(config_payload.get("tracker_mode"))
+    return normalize_player_tracker_mode(
+        config_payload.get("tracker_mode") or config_payload.get("player_tracker_mode")
+    )
+
+
+def default_tracker_backend() -> dict[str, Any]:
+    return {
+        "embedding_source": "none",
+        "embedding_error": None,
+        "deep_feature_updates": 0,
+        "deep_feature_interval": 0,
+        "assignment_count": 0,
+        "new_track_count": 0,
+        "max_missing_frames": 0,
+        "stitch_gap_frames": 0,
+    }
+
+
+def new_calibration_rejection_counts() -> dict[str, int]:
+    return {key: 0 for key in CALIBRATION_REJECTION_REASON_KEYS}
+
+
+def calibration_visible_keypoint_minimum(stale_recovery_mode: bool) -> int:
+    return STALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS if stale_recovery_mode else MIN_CALIBRATION_VISIBLE_KEYPOINTS
+
+
+def calibration_inlier_minimum(stale_recovery_mode: bool) -> int:
+    return STALE_RECOVERY_MIN_CALIBRATION_INLIERS if stale_recovery_mode else MIN_CALIBRATION_INLIERS
+
+
+def calibration_reprojection_limit_cm(stale_recovery_mode: bool) -> float:
+    return STALE_RECOVERY_MAX_CALIBRATION_REPROJECTION_ERROR_CM if stale_recovery_mode else MAX_CALIBRATION_REPROJECTION_ERROR_CM
+
+
+def calibration_temporal_drift_limit_cm(stale_recovery_mode: bool) -> float:
+    return STALE_RECOVERY_TEMPORAL_DRIFT_CM if stale_recovery_mode else MAX_CALIBRATION_TEMPORAL_DRIFT_CM
+
+
+def calibration_rejection_flags(
+    homography_candidate: np.ndarray | None,
+    visible_count: int,
+    inlier_count: int,
+    reprojection_error: float,
+    temporal_drift: float,
+    min_visible_count: int,
+    min_inlier_count: int,
+    reprojection_limit_cm: float,
+    temporal_drift_limit_cm: float,
+) -> list[str]:
+    flags: list[str] = []
+    if homography_candidate is None:
+        flags.append("no_candidate")
+    if visible_count < min_visible_count:
+        flags.append("low_visible_keypoints")
+    if inlier_count < min_inlier_count:
+        flags.append("low_inliers")
+    if homography_candidate is not None and (
+        not np.isfinite(reprojection_error) or reprojection_error > reprojection_limit_cm
+    ):
+        flags.append("high_reprojection_error")
+    if homography_candidate is not None and (
+        not np.isfinite(temporal_drift) or temporal_drift > temporal_drift_limit_cm
+    ):
+        flags.append("high_temporal_drift")
+    return flags
+
+
+def primary_calibration_rejection_reason(rejection_flags: list[str]) -> str:
+    for reason in CALIBRATION_REJECTION_REASON_KEYS:
+        if reason in rejection_flags:
+            return reason
+    return "invalid_candidate"
+
+
+def calibration_success_rate(successes: int, attempts: int) -> float:
+    if attempts <= 0:
+        return 0.0
+    return float(successes / attempts)
+
+
+def calibration_rejection_summary(rejections: dict[str, int], invalid_candidate_rejections: int = 0) -> str:
+    parts = [
+        f"no cand {int(rejections.get('no_candidate', 0))}",
+        f"low vis {int(rejections.get('low_visible_keypoints', 0))}",
+        f"low inliers {int(rejections.get('low_inliers', 0))}",
+        f"reproj {int(rejections.get('high_reprojection_error', 0))}",
+        f"drift {int(rejections.get('high_temporal_drift', 0))}",
+    ]
+    if invalid_candidate_rejections > 0:
+        parts.append(f"invalid {int(invalid_candidate_rejections)}")
+    return ", ".join(parts)
 
 
 def compute_track_length_stats(rows_by_track: dict[int, list[dict[str, Any]]]) -> tuple[int, float]:
@@ -450,6 +722,36 @@ def draw_label(
     bottom = max(0, y1)
     cv2.rectangle(frame, (x1, top), (right, bottom), (20, 20, 20), -1)
     cv2.putText(frame, text, (x1 + padding_x, bottom - padding_y), font, scale, color, thickness, cv2.LINE_AA)
+
+
+def draw_status_banner(
+    frame: np.ndarray,
+    text: str,
+    style: dict[str, Any],
+    background_color: tuple[int, int, int] = (28, 28, 148),
+    text_color: tuple[int, int, int] = (255, 255, 255),
+) -> None:
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = style["small_status_scale"]
+    thickness = style["text_thickness"]
+    padding_x = style["label_padding_x"] + 2
+    padding_y = style["label_padding_y"] + 1
+    (width, height), baseline = cv2.getTextSize(text, font, scale, thickness)
+    left = style["margin"]
+    top = style["margin"]
+    right = min(frame.shape[1] - 1, left + width + padding_x * 2)
+    bottom = min(frame.shape[0] - 1, top + height + baseline + padding_y * 2)
+    cv2.rectangle(frame, (left, top), (right, bottom), background_color, -1)
+    cv2.putText(
+        frame,
+        text,
+        (left + padding_x, bottom - padding_y - baseline),
+        font,
+        scale,
+        text_color,
+        thickness,
+        cv2.LINE_AA,
+    )
 
 
 def zip_paths(output_zip_path: Path, paths: list[Path]) -> None:
@@ -1304,26 +1606,40 @@ def detect_players_for_frame(
     field_homography: np.ndarray | None,
     frame_index: int,
     tracker_mode: str,
-    appearance_embedder: SparseAppearanceEmbedder | None,
+    player_tracker: HybridReIDTracker | None,
 ) -> list[dict[str, Any]]:
     detections: list[dict[str, Any]] = []
-    player_results = player_model.track(
-        source=frame,
-        persist=True,
-        tracker=DEFAULT_TRACKER,
-        conf=player_conf,
-        iou=iou,
-        device=detector_device,
-        classes=[detector_spec["player_class_id"]],
-        verbose=False,
-    )
+    if tracker_mode == LEGACY_PLAYER_TRACKER_MODE:
+        player_results = player_model.track(
+            source=frame,
+            persist=True,
+            tracker=DEFAULT_TRACKER,
+            conf=player_conf,
+            iou=iou,
+            device=detector_device,
+            classes=detector_spec["player_class_ids"],
+            verbose=False,
+        )
+    else:
+        player_results = player_model(
+            source=frame,
+            conf=player_conf,
+            iou=iou,
+            device=detector_device,
+            classes=detector_spec["player_class_ids"],
+            verbose=False,
+        )
     player_boxes = player_results[0].boxes
     if player_boxes is None or len(player_boxes) == 0:
         return detections
 
     xyxy = player_boxes.xyxy.cpu().numpy()
     confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
-    track_ids = player_boxes.id.cpu().numpy().astype(int) if player_boxes.id is not None else np.full(len(xyxy), -1, dtype=int)
+    track_ids = (
+        player_boxes.id.cpu().numpy().astype(int)
+        if tracker_mode == LEGACY_PLAYER_TRACKER_MODE and player_boxes.id is not None
+        else np.full(len(xyxy), -1, dtype=int)
+    )
     bboxes: list[tuple[int, int, int, int]] = []
     anchors: list[tuple[float, float]] = []
     for index, box in enumerate(xyxy):
@@ -1332,11 +1648,6 @@ def detect_players_for_frame(
         bboxes.append((x1, y1, x2, y2))
         anchors.append(anchor)
 
-    identity_features = (
-        appearance_embedder.encode(frame, bboxes, frame_index)
-        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE and appearance_embedder is not None
-        else [None] * len(bboxes)
-    )
     for index, bbox in enumerate(bboxes):
         detections.append(
             {
@@ -1345,9 +1656,13 @@ def detect_players_for_frame(
                 "bbox": bbox,
                 "anchor": anchors[index],
                 "field_point": project_point(anchors[index], field_homography),
-                "identity_feature": identity_features[index],
+                "identity_feature": None,
             }
         )
+    if tracker_mode != LEGACY_PLAYER_TRACKER_MODE and player_tracker is not None:
+        assigned_track_ids = player_tracker.update(frame, detections, frame_index)
+        for detection, track_id in zip(detections, assigned_track_ids):
+            detection["track_id"] = int(track_id)
     return detections
 
 
@@ -1377,8 +1692,17 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     style = build_overlay_style(frame_width, frame_height)
     minimap_width = style["minimap_width"]
     minimap_height = style["minimap_height"]
-    appearance_embedder = SparseAppearanceEmbedder(device=detector_device) if tracker_mode != LEGACY_PLAYER_TRACKER_MODE else None
-    tracker_runtime = appearance_embedder.describe() if appearance_embedder is not None else {}
+    player_tracker = (
+        HybridReIDTracker(
+            fps=fps,
+            frame_size=(frame_width, frame_height),
+            detection_confidence_floor=player_conf,
+            device=detector_device,
+        )
+        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        else None
+    )
+    tracker_runtime = player_tracker.describe_backend() if player_tracker is not None else default_tracker_backend()
     tracker_status_label = tracker_mode_label(tracker_mode)
     field_homography: np.ndarray | None = None
     accepted_homographies: deque[np.ndarray] = deque(maxlen=CALIBRATION_SMOOTHING_WINDOW)
@@ -1402,27 +1726,38 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
 
             if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:
                 homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
+                calibration_was_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)
+                stale_recovery_mode = calibration_was_stale and field_homography is not None
+                min_visible_count = calibration_visible_keypoint_minimum(stale_recovery_mode)
+                min_inlier_count = calibration_inlier_minimum(stale_recovery_mode)
+                reprojection_limit_cm = calibration_reprojection_limit_cm(stale_recovery_mode)
+                temporal_drift_limit_cm = calibration_temporal_drift_limit_cm(stale_recovery_mode)
                 temporal_drift = homography_temporal_drift_cm(field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float("inf")
                 candidate_is_usable = (
                     homography_candidate is not None
-                    and visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS
-                    and inlier_count >= MIN_CALIBRATION_INLIERS
-                    and reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM
-                    and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
+                    and visible_count >= min_visible_count
+                    and inlier_count >= min_inlier_count
+                    and reprojection_error <= reprojection_limit_cm
+                    and temporal_drift <= temporal_drift_limit_cm
                 )
                 if candidate_is_usable:
                     normalized_candidate = normalize_homography_matrix(homography_candidate)
                     if normalized_candidate is not None:
-                        accepted_homographies.append(normalized_candidate)
-                        smoothed_homography = smooth_homography_history(accepted_homographies)
-                        field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
+                        if stale_recovery_mode:
+                            accepted_homographies.clear()
+                            accepted_homographies.append(normalized_candidate)
+                            field_homography = normalized_candidate
+                        else:
+                            accepted_homographies.append(normalized_candidate)
+                            smoothed_homography = smooth_homography_history(accepted_homographies)
+                            field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
                     last_calibration_frame = frame_index
                     latest_reprojection_error_cm = reprojection_error
                 latest_field_keypoints = detected_keypoints
                 latest_visible_keypoints = visible_count
                 latest_inlier_count = inlier_count
             calibration_is_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)
-            projection_homography = field_homography
+            projection_homography = None if calibration_is_stale else field_homography
 
             current_players: list[dict[str, Any]] = []
             current_ball: dict[str, Any] | None = None
@@ -1439,7 +1774,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 field_homography=projection_homography,
                 frame_index=frame_index,
                 tracker_mode=tracker_mode,
-                appearance_embedder=appearance_embedder,
+                player_tracker=player_tracker,
             )
             for detection in player_detections:
                 x1, y1, x2, y2 = detection["bbox"]
@@ -1469,7 +1804,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     conf=ball_conf,
                     iou=iou,
                     device=detector_device,
-                    classes=[detector_spec["ball_class_id"]],
+                    classes=detector_spec["ball_class_ids"],
                     verbose=False,
                 )
                 ball_boxes = ball_results[0].boxes
@@ -1549,7 +1884,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 f"field calib {latest_visible_keypoints} kp / {latest_inlier_count} inliers"
                 if field_homography is not None and not calibration_is_stale
                 else (
-                    f"field calib stale ({latest_visible_keypoints} kp / {latest_inlier_count} inliers)"
+                    f"field calib stale ({latest_visible_keypoints} kp / {latest_inlier_count} inliers) · minimap paused"
                     if field_homography is not None
                     else f"field calib waiting ({latest_visible_keypoints} kp)"
                 )
@@ -1566,7 +1901,15 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             )
             cv2.putText(
                 annotated,
-                f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'} · reproj {latest_reprojection_error_cm:.0f}cm" if np.isfinite(latest_reprojection_error_cm) else f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}",
+                (
+                    f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · stale since {last_calibration_frame if last_calibration_frame >= 0 else 'none'}"
+                    if calibration_is_stale
+                    else (
+                        f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'} · reproj {latest_reprojection_error_cm:.0f}cm"
+                        if np.isfinite(latest_reprojection_error_cm)
+                        else f"tracker {tracker_status_label} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {last_calibration_frame if last_calibration_frame >= 0 else 'none'}"
+                    )
+                ),
                 (text_x, first_line_y + style["line_gap"] * 2),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 style["small_status_scale"],
@@ -1574,7 +1917,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                 style["text_thickness"],
                 cv2.LINE_AA,
             )
-            if appearance_embedder is not None:
+            if player_tracker is not None:
                 cv2.putText(
                     annotated,
                     f"id source {tracker_runtime.get('embedding_source', 'hsv_hist_only')}",
@@ -1585,8 +1928,10 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     style["text_thickness"],
                     cv2.LINE_AA,
                 )
+            if calibration_is_stale and field_homography is not None:
+                draw_status_banner(annotated, "STALE CALIBRATION - MINIMAP PAUSED", style)
 
-            if field_homography is not None:
+            if projection_homography is not None:
                 minimap = create_pitch_map(minimap_width, minimap_height)
                 for player_row in current_players:
                     if player_row["pitch_point"] is None:
@@ -1637,6 +1982,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     detections_csv_path = outputs_dir / "detections.csv"
     track_summary_csv_path = outputs_dir / "track_summary.csv"
     projection_csv_path = outputs_dir / "projections.csv"
+    calibration_debug_csv_path = outputs_dir / "calibration_debug.csv"
     entropy_timeseries_csv_path = outputs_dir / "entropy_timeseries.csv"
     goal_events_csv_path = outputs_dir / "goal_events.csv"
     summary_json_path = outputs_dir / "summary.json"
@@ -1670,15 +2016,27 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     job_manager.log(job_id, f"Loading field calibration weights: {KEYPOINT_MODEL_DEFAULT}")
     keypoint_model = YOLO(keypoint_model_path)
     player_model = YOLO(detector_path)
-    appearance_embedder = SparseAppearanceEmbedder(device=detector_device) if tracker_mode != LEGACY_PLAYER_TRACKER_MODE else None
-    tracker_backend = appearance_embedder.describe() if appearance_embedder is not None else {
-        "embedding_source": "none",
-        "embedding_error": None,
-        "deep_feature_updates": 0,
-        "deep_feature_interval": 0,
-    }
+    player_tracker = (
+        HybridReIDTracker(
+            fps=fps,
+            frame_size=(frame_width, frame_height),
+            detection_confidence_floor=player_conf,
+            device=detector_device,
+        )
+        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        else None
+    )
+    tracker_backend = player_tracker.describe_backend() if player_tracker is not None else default_tracker_backend()
     job_manager.log(job_id, f"Player tracker mode: {tracker_mode_label(tracker_mode)}")
-    if appearance_embedder is not None:
+    job_manager.log(
+        job_id,
+        "Detector class ids: "
+        f"players [{format_class_id_list(detector_spec['player_class_ids'], detector_spec['class_names'])}] · "
+        f"ball [{format_class_id_list(detector_spec['ball_class_ids'], detector_spec['class_names'])}] · "
+        f"referee [{format_class_id_list(detector_spec['referee_class_ids'], detector_spec['class_names'])}] "
+        f"from {detector_spec['class_names_source']}",
+    )
+    if player_tracker is not None:
         job_manager.log(job_id, f"Identity embedding source: {tracker_backend['embedding_source']}")
         if tracker_backend.get("embedding_error"):
             job_manager.log(job_id, f"Identity embedding fallback active: {tracker_backend['embedding_error']}")
@@ -1702,6 +2060,30 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     calibration_refresh_attempts = 0
     calibration_refresh_successes = 0
     calibration_refresh_rejections = 0
+    calibration_rejections_by_reason = new_calibration_rejection_counts()
+    calibration_primary_rejections_by_reason = {key: 0 for key in CALIBRATION_PRIMARY_REJECTION_REASON_KEYS}
+    calibration_invalid_candidate_rejections = 0
+    calibration_stale_recovery_attempts = 0
+    calibration_stale_recovery_successes = 0
+    calibration_debug_rows: list[dict[str, Any]] = []
+    frames_with_field_homography = 0
+    frames_with_usable_homography = 0
+    frames_with_nonstale_homography = 0
+    frames_with_stale_homography = 0
+    frames_projection_blocked_by_stale = 0
+    frames_projected_with_last_known_homography = 0
+    frames_with_player_anchors = 0
+    frames_with_projected_points = 0
+    frames_with_homography_but_no_player_anchors = 0
+    player_rows_while_calibration_fresh = 0
+    player_rows_while_calibration_stale = 0
+    projected_player_points_fresh = 0
+    projected_player_points_stale = 0
+    projected_ball_points_fresh = 0
+    projected_ball_points_stale = 0
+    raw_detector_debug_sample_frames = 0
+    raw_detector_boxes_sampled = 0
+    raw_detector_class_histogram_sample: Counter[int] = Counter()
     field_registered_frames = 0
     last_good_calibration_frame = -1
     active_field_homography = manual_homography_matrix
@@ -1718,35 +2100,157 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         if not ok:
             break
 
+        if raw_detector_debug_sample_frames < DETECTOR_DEBUG_SAMPLE_FRAMES:
+            raw_box_count, raw_class_histogram = sample_detector_class_histogram(
+                frame=frame,
+                detector_model=player_model,
+                detector_device=detector_device,
+                confidence=player_conf,
+                iou=iou,
+            )
+            raw_detector_debug_sample_frames += 1
+            raw_detector_boxes_sampled += raw_box_count
+            raw_detector_class_histogram_sample.update(raw_class_histogram)
+            job_manager.log(
+                job_id,
+                f"Detector raw frame {frame_index}: boxes {raw_box_count} · "
+                f"{format_class_histogram(raw_class_histogram, detector_spec['class_names'])}",
+            )
+
+        calibration_refresh_debug: dict[str, Any] | None = None
         if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or active_field_homography is None:
             calibration_refresh_attempts += 1
             homography_candidate, _detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
             calibration_visible_counts.append(visible_count)
             calibration_inlier_counts.append(inlier_count)
+            calibration_was_stale = calibration_stale_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
+            stale_recovery_mode = calibration_was_stale and active_field_homography is not None
+            if stale_recovery_mode:
+                calibration_stale_recovery_attempts += 1
+            min_visible_count = calibration_visible_keypoint_minimum(stale_recovery_mode)
+            min_inlier_count = calibration_inlier_minimum(stale_recovery_mode)
+            reprojection_limit_cm = calibration_reprojection_limit_cm(stale_recovery_mode)
+            temporal_drift_limit_cm = calibration_temporal_drift_limit_cm(stale_recovery_mode)
             temporal_drift = homography_temporal_drift_cm(active_field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float("inf")
+            rejection_flags = calibration_rejection_flags(
+                homography_candidate=homography_candidate,
+                visible_count=visible_count,
+                inlier_count=inlier_count,
+                reprojection_error=reprojection_error,
+                temporal_drift=temporal_drift,
+                min_visible_count=min_visible_count,
+                min_inlier_count=min_inlier_count,
+                reprojection_limit_cm=reprojection_limit_cm,
+                temporal_drift_limit_cm=temporal_drift_limit_cm,
+            )
             candidate_is_usable = (
                 homography_candidate is not None
-                and visible_count >= MIN_CALIBRATION_VISIBLE_KEYPOINTS
-                and inlier_count >= MIN_CALIBRATION_INLIERS
-                and reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM
-                and temporal_drift <= MAX_CALIBRATION_TEMPORAL_DRIFT_CM
+                and visible_count >= min_visible_count
+                and inlier_count >= min_inlier_count
+                and reprojection_error <= reprojection_limit_cm
+                and temporal_drift <= temporal_drift_limit_cm
             )
+            candidate_accepted = False
             if candidate_is_usable:
                 normalized_candidate = normalize_homography_matrix(homography_candidate)
                 if normalized_candidate is not None:
-                    accepted_homographies.append(normalized_candidate)
-                    smoothed_homography = smooth_homography_history(accepted_homographies)
-                    active_field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
+                    if stale_recovery_mode:
+                        accepted_homographies.clear()
+                        accepted_homographies.append(normalized_candidate)
+                        active_field_homography = normalized_candidate
+                    else:
+                        accepted_homographies.append(normalized_candidate)
+                        smoothed_homography = smooth_homography_history(accepted_homographies)
+                        active_field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate
                     calibration_refresh_successes += 1
+                    if stale_recovery_mode:
+                        calibration_stale_recovery_successes += 1
                     last_good_calibration_frame = frame_index
                     latest_calibration_reprojection_error_cm = reprojection_error
+                    candidate_accepted = True
                 else:
                     calibration_refresh_rejections += 1
+                    calibration_primary_rejections_by_reason["invalid_candidate"] += 1
+                    calibration_invalid_candidate_rejections += 1
             else:
                 calibration_refresh_rejections += 1
+                for rejection_flag in rejection_flags:
+                    calibration_rejections_by_reason[rejection_flag] += 1
+                calibration_primary_rejections_by_reason[primary_calibration_rejection_reason(rejection_flags)] += 1
+            calibration_refresh_debug = {
+                "frame_index": frame_index,
+                "candidate_exists": homography_candidate is not None,
+                "visible_count": visible_count,
+                "inlier_count": inlier_count,
+                "reprojection_error": reprojection_error,
+                "temporal_drift": temporal_drift,
+                "min_visible_count": min_visible_count,
+                "min_inlier_count": min_inlier_count,
+                "reprojection_limit_cm": reprojection_limit_cm,
+                "temporal_drift_limit_cm": temporal_drift_limit_cm,
+                "candidate_is_usable": candidate_is_usable,
+                "candidate_accepted": candidate_accepted,
+                "stale_recovery_mode": stale_recovery_mode,
+            }
 
         calibration_is_stale = calibration_stale_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
-        projection_homography = active_field_homography
+        projection_homography = None if calibration_is_stale else active_field_homography
+        if active_field_homography is not None:
+            frames_with_field_homography += 1
+            if calibration_is_stale:
+                frames_with_stale_homography += 1
+                frames_projection_blocked_by_stale += 1
+            else:
+                frames_with_usable_homography += 1
+                frames_with_nonstale_homography += 1
+        if calibration_refresh_debug is not None:
+            primary_rejection_reason = (
+                "accepted"
+                if calibration_refresh_debug["candidate_accepted"]
+                else primary_calibration_rejection_reason(rejection_flags)
+            )
+            reprojection_text = (
+                f"{calibration_refresh_debug['reprojection_error']:.0f}cm"
+                if np.isfinite(calibration_refresh_debug["reprojection_error"])
+                else "inf"
+            )
+            drift_text = (
+                f"{calibration_refresh_debug['temporal_drift']:.0f}cm"
+                if np.isfinite(calibration_refresh_debug["temporal_drift"])
+                else "inf"
+            )
+            job_manager.log(
+                job_id,
+                f"Calib refresh frame {calibration_refresh_debug['frame_index']}: "
+                f"kp {calibration_refresh_debug['visible_count']} · "
+                f"inliers {calibration_refresh_debug['inlier_count']} · "
+                f"reproj {reprojection_text}/{calibration_refresh_debug['reprojection_limit_cm']:.0f}cm · "
+                f"drift {drift_text}/{calibration_refresh_debug['temporal_drift_limit_cm']:.0f}cm · "
+                f"recovery {int(calibration_refresh_debug['stale_recovery_mode'])} · "
+                f"reason {primary_rejection_reason} · "
+                f"usable {int(calibration_refresh_debug['candidate_is_usable'])} · "
+                f"stale {int(calibration_is_stale)}",
+            )
+            calibration_debug_rows.append(
+                {
+                    "frame_index": int(calibration_refresh_debug["frame_index"]),
+                    "candidate_exists": int(calibration_refresh_debug["candidate_exists"]),
+                    "visible_count": int(calibration_refresh_debug["visible_count"]),
+                    "visible_threshold": int(calibration_refresh_debug["min_visible_count"]),
+                    "inlier_count": int(calibration_refresh_debug["inlier_count"]),
+                    "inlier_threshold": int(calibration_refresh_debug["min_inlier_count"]),
+                    "reprojection_error_cm": float(calibration_refresh_debug["reprojection_error"]),
+                    "reprojection_threshold_cm": float(calibration_refresh_debug["reprojection_limit_cm"]),
+                    "temporal_drift_cm": float(calibration_refresh_debug["temporal_drift"]),
+                    "temporal_drift_threshold_cm": float(calibration_refresh_debug["temporal_drift_limit_cm"]),
+                    "stale_recovery_mode": int(calibration_refresh_debug["stale_recovery_mode"]),
+                    "candidate_usable": int(calibration_refresh_debug["candidate_is_usable"]),
+                    "candidate_accepted": int(calibration_refresh_debug["candidate_accepted"]),
+                    "rejection_reason_primary": primary_rejection_reason,
+                    "calibration_stale_after_refresh": int(calibration_is_stale),
+                    "last_good_calibration_frame_after_refresh": int(last_good_calibration_frame),
+                }
+            )
 
         player_detection_count = 0
         ball_detection_count = 0
@@ -1754,6 +2258,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         frame_ball: dict[str, Any] | None = None
         current_visible_keypoints = calibration_visible_counts[-1] if calibration_visible_counts else 0
         current_inlier_count = calibration_inlier_counts[-1] if calibration_inlier_counts else 0
+        projected_player_in_frame = False
 
         player_detections = detect_players_for_frame(
             frame=frame,
@@ -1767,12 +2272,20 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             field_homography=projection_homography,
             frame_index=frame_index,
             tracker_mode=tracker_mode,
-            appearance_embedder=appearance_embedder,
+            player_tracker=player_tracker,
         )
+        if player_detections:
+            frames_with_player_anchors += 1
+        elif projection_homography is not None:
+            frames_with_homography_but_no_player_anchors += 1
         for detection in player_detections:
             x1, y1, x2, y2 = detection["bbox"]
             confidence = float(detection["confidence"])
             track_id = int(detection["track_id"])
+            if calibration_is_stale:
+                player_rows_while_calibration_stale += 1
+            else:
+                player_rows_while_calibration_fresh += 1
             color_feature = extract_jersey_feature(frame, (x1, y1, x2, y2))
             if color_feature is not None and track_id >= 0:
                 jersey_samples.append(color_feature)
@@ -1800,8 +2313,15 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 raw_player_track_ids_seen.add(track_id)
             if detection["field_point"] is not None:
                 field_registered_frames += 1
+                projected_player_in_frame = True
+                if calibration_is_stale:
+                    projected_player_points_stale += 1
+                else:
+                    projected_player_points_fresh += 1
             player_detection_count += 1
             player_row_count += 1
+        if projected_player_in_frame:
+            frames_with_projected_points += 1
 
         if include_ball and ball_model is not None:
             ball_results = ball_model.track(
@@ -1811,7 +2331,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 conf=ball_conf,
                 iou=iou,
                 device=detector_device,
-                classes=[detector_spec["ball_class_id"]],
+                classes=detector_spec["ball_class_ids"],
                 verbose=False,
             )
             ball_boxes = ball_results[0].boxes
@@ -1842,6 +2362,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 }
                 if track_id >= 0:
                     ball_track_ids_seen.add(track_id)
+                if field_point is not None:
+                    if calibration_is_stale:
+                        projected_ball_points_stale += 1
+                    else:
+                        projected_ball_points_fresh += 1
                 ball_detection_count = 1
                 ball_row_count += 1
 
@@ -1851,6 +2376,17 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "ball": frame_ball,
                 "field_calibration_active": active_field_homography is not None,
                 "field_calibration_stale": calibration_is_stale,
+                "field_projection_active": projection_homography is not None,
+                "calibration_state": (
+                    "waiting"
+                    if active_field_homography is None
+                    else ("stale" if calibration_is_stale else "fresh")
+                ),
+                "projection_state": (
+                    "active"
+                    if projection_homography is not None
+                    else ("blocked_by_stale" if calibration_is_stale and active_field_homography is not None else "unavailable")
+                ),
                 "visible_pitch_keypoints": current_visible_keypoints,
                 "homography_inliers": current_inlier_count,
                 "last_good_calibration_frame": last_good_calibration_frame,
@@ -1867,7 +2403,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         if frame_index % 25 == 0:
             elapsed = datetime.utcnow().timestamp() - start_time
             fps_effective = frame_index / elapsed if elapsed > 0 else 0.0
-            if np.isfinite(latest_calibration_reprojection_error_cm):
+            if active_field_homography is not None and calibration_is_stale:
+                job_manager.log(
+                    job_id,
+                    f"Tracked {frame_index} frames at {fps_effective:.2f} fps · calib stale since {last_good_calibration_frame}",
+                )
+            elif np.isfinite(latest_calibration_reprojection_error_cm):
                 job_manager.log(job_id, f"Tracked {frame_index} frames at {fps_effective:.2f} fps · calib reproj {latest_calibration_reprojection_error_cm:.0f}cm")
             else:
                 job_manager.log(job_id, f"Tracked {frame_index} frames at {fps_effective:.2f} fps")
@@ -1886,8 +2427,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "stitched_track_count": raw_unique_player_track_ids,
         "max_gap_frames": 0,
     }
-    if appearance_embedder is not None:
-        stitched_track_map, stitch_stats = build_stitched_track_map(export_player_tracklets_from_rows(raw_player_rows_by_track), fps=fps)
+    if player_tracker is not None:
+        raw_tracklets = player_tracker.export_tracklets()
+        if not raw_tracklets:
+            raw_tracklets = export_player_tracklets_from_rows(raw_player_rows_by_track)
+        stitched_track_map, stitch_stats = build_stitched_track_map(raw_tracklets, fps=fps)
         if stitch_stats["merge_count"] > 0:
             job_manager.log(
                 job_id,
@@ -1895,16 +2439,16 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             )
         else:
             job_manager.log(job_id, "No player tracklet merges passed the stitcher gates")
-        tracker_backend = appearance_embedder.describe()
-    canonical_player_rows_by_track = group_rows_by_canonical_track(raw_player_rows_by_track, stitched_track_map)
-    player_track_ids_seen = set(canonical_player_rows_by_track.keys())
+        tracker_backend = player_tracker.describe_backend()
+    apply_player_track_id_map(frame_records, jersey_sample_track_ids, stitched_track_map)
+    canonical_player_rows_by_track, player_track_ids_seen = rebuild_player_rows_by_track(frame_records)
     longest_track_length, average_track_length = compute_track_length_stats(canonical_player_rows_by_track)
 
     track_team_info, team_cluster_distance = _compute_online_track_team_info(jersey_samples, jersey_sample_track_ids)
     if track_team_info:
         job_manager.log(job_id, f"Built two team color clusters from {len(jersey_samples)} jersey crops")
     else:
-        for track_id in raw_player_rows_by_track:
+        for track_id in canonical_player_rows_by_track:
             track_team_info[track_id] = default_team_info()
         job_manager.log(job_id, "Not enough jersey crops for reliable team clustering; leaving tracks unassigned")
 
@@ -1982,6 +2526,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "field_y_cm",
         "map_x",
         "map_y",
+        "calibration_state",
+        "projection_state",
         "calibration_visible_keypoints",
         "calibration_inliers",
         "color_r",
@@ -2016,6 +2562,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                         round(float(field_point[1]), 4) if field_point is not None else "",
                         round(float(pitch_point[0]), 4) if pitch_point is not None else "",
                         round(float(pitch_point[1]), 4) if pitch_point is not None else "",
+                        record["calibration_state"],
+                        record["projection_state"],
                         record["visible_pitch_keypoints"],
                         record["homography_inliers"],
                         round(float(feature[0]), 5) if feature is not None else "",
@@ -2048,6 +2596,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                         round(float(field_point[1]), 4) if field_point is not None else "",
                         round(float(pitch_point[0]), 4) if pitch_point is not None else "",
                         round(float(pitch_point[1]), 4) if pitch_point is not None else "",
+                        record["calibration_state"],
+                        record["projection_state"],
                         record["visible_pitch_keypoints"],
                         record["homography_inliers"],
                         "",
@@ -2078,6 +2628,54 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                     ]
                 )
         projection_csv_key = f"/runs/{run_dir.name}/outputs/projections.csv"
+
+    calibration_debug_csv_key: str | None = None
+    if calibration_debug_rows:
+        with calibration_debug_csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(
+                [
+                    "frame_index",
+                    "candidate_exists",
+                    "visible_count",
+                    "visible_threshold",
+                    "inlier_count",
+                    "inlier_threshold",
+                    "reprojection_error_cm",
+                    "reprojection_threshold_cm",
+                    "temporal_drift_cm",
+                    "temporal_drift_threshold_cm",
+                    "stale_recovery_mode",
+                    "candidate_usable",
+                    "candidate_accepted",
+                    "rejection_reason_primary",
+                    "calibration_stale_after_refresh",
+                    "last_good_calibration_frame_after_refresh",
+                ]
+            )
+            for row in calibration_debug_rows:
+                checkpoint_job_control(job_control, job_id, job_manager)
+                csv_writer.writerow(
+                    [
+                        row["frame_index"],
+                        row["candidate_exists"],
+                        row["visible_count"],
+                        row["visible_threshold"],
+                        row["inlier_count"],
+                        row["inlier_threshold"],
+                        round(float(row["reprojection_error_cm"]), 4) if np.isfinite(row["reprojection_error_cm"]) else "",
+                        round(float(row["reprojection_threshold_cm"]), 4),
+                        round(float(row["temporal_drift_cm"]), 4) if np.isfinite(row["temporal_drift_cm"]) else "",
+                        round(float(row["temporal_drift_threshold_cm"]), 4),
+                        row["stale_recovery_mode"],
+                        row["candidate_usable"],
+                        row["candidate_accepted"],
+                        row["rejection_reason_primary"],
+                        row["calibration_stale_after_refresh"],
+                        row["last_good_calibration_frame_after_refresh"],
+                    ]
+                )
+        calibration_debug_csv_key = f"/runs/{run_dir.name}/outputs/calibration_debug.csv"
 
     entropy_timeseries_rows, experiment_card = build_geometric_volatility_experiment(frame_records, fps if fps > 0 else 25.0)
     goal_events, goal_label_source = load_soccernet_goal_events(source_video_path, label_path)
@@ -2213,7 +2811,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             ]
         )
 
-        for track_id, rows in sorted(raw_player_rows_by_track.items(), key=lambda item: len(item[1]), reverse=True):
+        for track_id, rows in sorted(canonical_player_rows_by_track.items(), key=lambda item: len(item[1]), reverse=True):
             checkpoint_job_control(job_control, job_id, job_manager)
             track_length = len(rows)
             track_lengths.append(track_length)
@@ -2343,9 +2941,9 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
         field_status = (
             f"field calib {record['visible_pitch_keypoints']} kp / {record['homography_inliers']} inliers"
-            if record["field_calibration_active"] and not record.get("field_calibration_stale")
+            if record.get("field_projection_active")
             else (
-                f"field calib stale ({record['visible_pitch_keypoints']} kp / {record['homography_inliers']} inliers)"
+                f"field calib stale ({record['visible_pitch_keypoints']} kp / {record['homography_inliers']} inliers) · minimap paused"
                 if record["field_calibration_active"]
                 else f"field calib waiting ({record['visible_pitch_keypoints']} kp)"
             )
@@ -2362,7 +2960,15 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         )
         cv2.putText(
             annotated,
-            f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'} · reproj {record['calibration_reprojection_error_cm']:.0f}cm" if np.isfinite(record['calibration_reprojection_error_cm']) else f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}",
+            (
+                f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · stale since {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}"
+                if record.get("field_calibration_stale")
+                else (
+                    f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'} · reproj {record['calibration_reprojection_error_cm']:.0f}cm"
+                    if np.isfinite(record['calibration_reprojection_error_cm'])
+                    else f"tracker {tracker_mode_label(tracker_mode)} · refresh every {CALIBRATION_REFRESH_FRAMES} · last good {record['last_good_calibration_frame'] if record['last_good_calibration_frame'] >= 0 else 'none'}"
+                )
+            ),
             (text_x, first_line_y + style["line_gap"] * 3),
             cv2.FONT_HERSHEY_SIMPLEX,
             style["small_status_scale"],
@@ -2370,7 +2976,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             style["text_thickness"],
             cv2.LINE_AA,
         )
-        if appearance_embedder is not None:
+        if player_tracker is not None:
             cv2.putText(
                 annotated,
                 f"id source {tracker_backend.get('embedding_source', 'hsv_hist_only')} · merges {stitch_stats['merge_count']}",
@@ -2381,8 +2987,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 style["text_thickness"],
                 cv2.LINE_AA,
             )
+        if record.get("field_calibration_stale") and record["field_calibration_active"]:
+            draw_status_banner(annotated, "STALE CALIBRATION - MINIMAP PAUSED", style)
 
-        if record["field_calibration_active"]:
+        if record.get("field_projection_active"):
             minimap = create_pitch_map(minimap_width, minimap_height)
             for player_row in record["players"]:
                 if player_row["pitch_point"] is None:
@@ -2423,6 +3031,18 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     avg_ball = float(np.mean(ball_detections_per_frame)) if ball_detections_per_frame else 0.0
     avg_visible_pitch_keypoints = float(np.mean(calibration_visible_counts)) if calibration_visible_counts else 0.0
     registered_frame_ratio = field_registered_frames / max(player_row_count, 1)
+    calibration_gate_summary = calibration_rejection_summary(
+        calibration_rejections_by_reason,
+        calibration_invalid_candidate_rejections,
+    )
+    field_calibration_success = calibration_success_rate(
+        calibration_refresh_successes,
+        calibration_refresh_attempts,
+    )
+    sampled_detector_histogram = format_class_histogram(
+        {int(class_id): int(count) for class_id, count in raw_detector_class_histogram_sample.items()},
+        detector_spec["class_names"],
+    )
     assigned_vote_ratios = [
         float(team_info["team_vote_ratio"])
         for team_info in track_team_info.values()
@@ -2437,7 +3057,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "title": "Detector produced no players",
                 "message": (
                     f"Across {frame_index} frames, the run emitted 0 player rows and average player detections per frame stayed {avg_players:.2f}. "
-                    "That means the pipeline never reached usable tracking, team assignment, or player-space projection."
+                    f"Raw detector sampling saw {raw_detector_boxes_sampled} boxes across the first {raw_detector_debug_sample_frames} frames "
+                    f"({sampled_detector_histogram}). That means the pipeline never reached usable tracking, team assignment, or player-space projection."
                 ),
                 "next_step": (
                     "Inspect the detector checkpoint, class mapping, and confidence thresholds first. "
@@ -2470,7 +3091,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             }
         )
 
-    if appearance_embedder is not None:
+    if player_tracker is not None:
         diagnostics.append(
             {
                 "level": "good" if stitch_stats["merge_count"] > 0 else "warn",
@@ -2543,7 +3164,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "title": "Field calibration has no player projection",
                 "message": (
                     f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded with mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}, "
-                    f"but projected player points stayed {projected_player_points} and registered ratio is {registered_frame_ratio * 100:.1f}%."
+                    f"but projected player points stayed {projected_player_points} and registered ratio is {registered_frame_ratio * 100:.1f}%. "
+                    f"Frames with fresh homography {frames_with_usable_homography}, stale homography {frames_with_stale_homography}, anchors {frames_with_player_anchors}, projected {frames_with_projected_points}. "
+                    f"Stale recovery {calibration_stale_recovery_successes}/{calibration_stale_recovery_attempts}. "
+                    f"Gate rejects: {calibration_gate_summary}."
                 ),
                 "next_step": "Do not treat calibration as healthy until players are actually being projected onto the pitch. Fix detector output or anchor projection before trusting the minimap.",
             }
@@ -2556,7 +3180,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "message": (
                     f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded; "
                     f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}; "
-                    f"{registered_frame_ratio * 100:.1f}% of player detections projected."
+                    f"{registered_frame_ratio * 100:.1f}% of player detections projected. "
+                    f"Frames with fresh homography {frames_with_usable_homography}, stale homography {frames_with_stale_homography}, anchors {frames_with_player_anchors}, projected {frames_with_projected_points}. "
+                    f"Stale recovery {calibration_stale_recovery_successes}/{calibration_stale_recovery_attempts}. "
+                    f"Gate rejects: {calibration_gate_summary}."
                 ),
                 "next_step": "If the minimap drifts, inspect live preview frames for missing pitch keypoints before changing tracking settings.",
             }
@@ -2569,7 +3196,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "message": (
                     f"{calibration_refresh_successes}/{calibration_refresh_attempts} refreshes succeeded; "
                     f"mean visible pitch keypoints {avg_visible_pitch_keypoints:.1f}; "
-                    f"{registered_frame_ratio * 100:.1f}% of player detections projected."
+                    f"{registered_frame_ratio * 100:.1f}% of player detections projected. "
+                    f"Frames with fresh homography {frames_with_usable_homography}, stale homography {frames_with_stale_homography}, anchors {frames_with_player_anchors}, projected {frames_with_projected_points}. "
+                    f"Stale recovery {calibration_stale_recovery_successes}/{calibration_stale_recovery_attempts}. "
+                    f"Gate rejects: {calibration_gate_summary}."
                 ),
                 "next_step": "Use a wider camera phase with clearer pitch markings if you need reliable minimap projection.",
             }
@@ -2603,6 +3233,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "detections_csv": f"/runs/{run_dir.name}/outputs/detections.csv",
         "track_summary_csv": f"/runs/{run_dir.name}/outputs/track_summary.csv",
         "projection_csv": projection_csv_key,
+        "calibration_debug_csv": calibration_debug_csv_key,
         "entropy_timeseries_csv": entropy_timeseries_csv_key,
         "goal_events_csv": goal_events_csv_key,
         "summary_json": f"/runs/{run_dir.name}/outputs/summary.json",
@@ -2613,6 +3244,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "player_tracker_mode": tracker_mode_label(tracker_mode),
         "player_tracker_backend": tracker_backend.get("embedding_source"),
         "player_tracker_embedding_error": tracker_backend.get("embedding_error"),
+        "detector_class_names_source": detector_spec["class_names_source"],
+        "player_detector_class_ids": list(detector_spec["player_class_ids"]),
+        "ball_detector_class_ids": list(detector_spec["ball_class_ids"]),
+        "referee_detector_class_ids": list(detector_spec["referee_class_ids"]),
         "ball_model": detector_spec["name"] if include_ball else "off",
         "ball_tracker_mode": DEFAULT_TRACKER,
         "field_calibration_model": KEYPOINT_MODEL_DEFAULT,
@@ -2649,15 +3284,51 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "identity_embedding_interval_frames": int(tracker_backend.get("deep_feature_interval") or 0),
         "projected_player_points": projected_player_points,
         "projected_ball_points": projected_ball_points,
+        "projected_player_points_fresh": projected_player_points_fresh,
+        "projected_player_points_stale": projected_player_points_stale,
+        "projected_ball_points_fresh": projected_ball_points_fresh,
+        "projected_ball_points_stale": projected_ball_points_stale,
+        "player_rows_while_calibration_fresh": player_rows_while_calibration_fresh,
+        "player_rows_while_calibration_stale": player_rows_while_calibration_stale,
         "field_registered_frames": field_registered_frames,
         "field_registered_ratio": round(float(registered_frame_ratio), 4),
+        "frames_with_field_homography": frames_with_field_homography,
+        "frames_with_usable_homography": frames_with_usable_homography,
+        "frames_with_nonstale_homography": frames_with_nonstale_homography,
+        "frames_with_stale_homography": frames_with_stale_homography,
+        "frames_projection_blocked_by_stale": frames_projection_blocked_by_stale,
+        "frames_projected_with_last_known_homography": frames_projected_with_last_known_homography,
+        "frames_with_player_anchors": frames_with_player_anchors,
+        "frames_with_projected_points": frames_with_projected_points,
+        "frames_with_homography_but_no_player_anchors": frames_with_homography_but_no_player_anchors,
         "homography_enabled": calibration_refresh_successes > 0,
         "field_calibration_refresh_frames": CALIBRATION_REFRESH_FRAMES,
         "field_calibration_refresh_attempts": calibration_refresh_attempts,
         "field_calibration_refresh_successes": calibration_refresh_successes,
+        "field_calibration_success_rate": round(field_calibration_success, 6),
         "field_calibration_refresh_rejections": calibration_refresh_rejections,
+        "field_calibration_stale_recovery_attempts": calibration_stale_recovery_attempts,
+        "field_calibration_stale_recovery_successes": calibration_stale_recovery_successes,
+        "field_calibration_rejections_no_candidate": int(calibration_rejections_by_reason["no_candidate"]),
+        "field_calibration_rejections_low_visible_keypoints": int(calibration_rejections_by_reason["low_visible_keypoints"]),
+        "field_calibration_rejections_low_inliers": int(calibration_rejections_by_reason["low_inliers"]),
+        "field_calibration_rejections_high_reprojection_error": int(calibration_rejections_by_reason["high_reprojection_error"]),
+        "field_calibration_rejections_high_temporal_drift": int(calibration_rejections_by_reason["high_temporal_drift"]),
+        "field_calibration_rejections_invalid_candidate": int(calibration_invalid_candidate_rejections),
+        "field_calibration_primary_rejections_no_candidate": int(calibration_primary_rejections_by_reason["no_candidate"]),
+        "field_calibration_primary_rejections_low_visible_keypoints": int(calibration_primary_rejections_by_reason["low_visible_keypoints"]),
+        "field_calibration_primary_rejections_low_inliers": int(calibration_primary_rejections_by_reason["low_inliers"]),
+        "field_calibration_primary_rejections_high_reprojection_error": int(calibration_primary_rejections_by_reason["high_reprojection_error"]),
+        "field_calibration_primary_rejections_high_temporal_drift": int(calibration_primary_rejections_by_reason["high_temporal_drift"]),
+        "field_calibration_primary_rejections_invalid_candidate": int(calibration_primary_rejections_by_reason["invalid_candidate"]),
         "average_visible_pitch_keypoints": round(float(avg_visible_pitch_keypoints), 4),
         "last_good_calibration_frame": last_good_calibration_frame,
+        "detector_debug_sample_frames": raw_detector_debug_sample_frames,
+        "raw_detector_boxes_sampled": raw_detector_boxes_sampled,
+        "raw_detector_class_histogram_sample": {
+            str(class_id): int(count)
+            for class_id, count in sorted(raw_detector_class_histogram_sample.items())
+        },
         "goal_events_count": len(goal_events),
         "goal_label_source": goal_label_source,
         "team_cluster_distance": round(float(team_cluster_distance), 4),
@@ -2695,6 +3366,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     zip_inputs = [overlay_video_path, detections_csv_path, track_summary_csv_path, summary_json_path]
     if projection_csv_key is not None and projection_csv_path.exists():
         zip_inputs.append(projection_csv_path)
+    if calibration_debug_csv_key is not None and calibration_debug_csv_path.exists():
+        zip_inputs.append(calibration_debug_csv_path)
     if entropy_timeseries_csv_path.exists():
         zip_inputs.append(entropy_timeseries_csv_path)
     if goal_events_csv_path.exists():

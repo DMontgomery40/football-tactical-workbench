@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.wide_angle import resolve_model_path
+from app.wide_angle import resolve_detector_spec, resolve_model_path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
@@ -15,7 +15,25 @@ DEFAULT_CLASS_IDS = {
     "player_class_id": 0,
     "ball_class_id": 1,
     "referee_class_id": 2,
+    "player_class_ids": [0],
+    "ball_class_ids": [1],
+    "referee_class_ids": [2],
 }
+
+
+def resolve_registered_class_ids(checkpoint_path: str) -> dict[str, Any]:
+    try:
+        detector_spec = resolve_detector_spec(str(checkpoint_path))
+        return {
+            "player_class_id": int(detector_spec["player_class_id"]),
+            "ball_class_id": int(detector_spec["ball_class_id"]),
+            "referee_class_id": int(detector_spec["referee_class_id"]),
+            "player_class_ids": list(detector_spec.get("player_class_ids") or [int(detector_spec["player_class_id"])]),
+            "ball_class_ids": list(detector_spec.get("ball_class_ids") or [int(detector_spec["ball_class_id"])]),
+            "referee_class_ids": list(detector_spec.get("referee_class_ids") or ([] if int(detector_spec["referee_class_id"]) < 0 else [int(detector_spec["referee_class_id"])])),
+        }
+    except Exception:
+        return dict(DEFAULT_CLASS_IDS)
 
 
 class TrainingRegistry:
@@ -92,7 +110,7 @@ class TrainingRegistry:
                 "created_at": created_at or datetime.utcnow().isoformat() + "Z",
                 "metrics": metrics or None,
                 "training_run_id": run_id,
-                "class_ids": dict(DEFAULT_CLASS_IDS),
+                "class_ids": resolve_registered_class_ids(checkpoint_path),
             }
             index = next((idx for idx, item in enumerate(detectors) if str(item.get("id")) == detector_id), None)
             if index is None:
@@ -156,7 +174,7 @@ class TrainingRegistry:
             "created_at": payload.get("created_at") or datetime.utcnow().isoformat() + "Z",
             "metrics": None,
             "training_run_id": None,
-            "class_ids": dict(DEFAULT_CLASS_IDS),
+            "class_ids": resolve_registered_class_ids(resolve_model_path("soccana", "detector")),
         }
 
         detectors: list[dict[str, Any]] = []
@@ -176,10 +194,12 @@ class TrainingRegistry:
                     detector.setdefault("training_run_id", detector.get("training_run_id"))
                     detector.setdefault("base_weights", detector.get("base_weights") or "soccana")
                     detector.setdefault("created_at", datetime.utcnow().isoformat() + "Z")
-                    detector["class_ids"] = dict(detector.get("class_ids") or DEFAULT_CLASS_IDS)
                     path_value = detector.get("path")
                     if path_value:
                         detector["path"] = str(Path(str(path_value)).expanduser().resolve())
+                        detector["class_ids"] = resolve_registered_class_ids(detector["path"])
+                    else:
+                        detector["class_ids"] = dict(detector.get("class_ids") or DEFAULT_CLASS_IDS)
                 detectors.append(detector)
 
         if not any(str(item.get("id")) == "soccana" for item in detectors):

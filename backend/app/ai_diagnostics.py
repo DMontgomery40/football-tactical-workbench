@@ -10,7 +10,7 @@ from typing import Any
 from urllib import error, request
 
 
-PROMPT_VERSION = "run-diagnostics-v5"
+PROMPT_VERSION = "run-diagnostics-v6"
 DEFAULT_TIMEOUT_SECONDS = 75.0
 DEFAULT_MAX_OUTPUT_TOKENS = 3000
 
@@ -27,28 +27,28 @@ MAX_CONTEXT_JSON_CHARS = 70000
 def _build_good_output_example() -> str:
     return json.dumps(
         {
-            "summary_line": "300-frame run where a custom detector likely collapsed because the runtime hardcoded the wrong class ids, leaving calibration alive but player, ball, team, and projection outputs empty.",
+            "summary_line": "300-frame run where detector filtering likely collapsed upstream of tracking, leaving calibration alive but player, ball, team, and projection outputs empty.",
             "diagnostics": [
                 {
                     "level": "warn",
-                    "title": "Custom detector class ids are likely wrong",
+                    "title": "Detector filtering is likely removing valid classes",
                     "message": (
                         "The run produced 0 player rows and 0 ball rows even though the detector checkpoint loaded and the pipeline continued through overlay rendering. "
-                        "The most likely code-level cause is `backend/app/wide_angle.py::resolve_detector_spec`: for any custom checkpoint that is not in `DETECTOR_MODEL_SOURCES`, "
-                        "it hardcodes `player_class_id=0`, `ball_class_id=1`, and `referee_class_id=2`. `detect_players_for_frame` then passes `classes=[detector_spec[\"player_class_id\"]]` "
-                        "into `player_model.track`, and the ball branch does the same for `ball_class_id`. If the checkpoint label order differs, both streams go to zero while the model still appears to 'work'."
+                        "The most likely code-level cause is the detector class-resolution layer in `backend/app/wide_angle.py::resolve_detector_spec`: "
+                        "if the resolved `player_detector_class_ids` or `ball_detector_class_ids` do not match the checkpoint's emitted labels, "
+                        "the `classes=[...]` filter can zero both streams before tracking starts."
                     ),
                     "next_step": (
-                        "Change `resolve_detector_spec` so custom checkpoints derive class ids from model or dataset metadata instead of silently defaulting to `0/1/2`. "
-                        "If metadata cannot be resolved, fail fast with a hard error that prints the discovered class names rather than returning a spec that can zero the whole pipeline."
+                        "Compare `player_detector_class_ids`, `ball_detector_class_ids`, `raw_detector_boxes_sampled`, and `raw_detector_class_histogram_sample`. "
+                        "If sampled raw classes show detector output outside the resolved ids, fix the metadata mapping or dataset YAML before touching tracker settings."
                     ),
                     "implementation_diagnosis": (
-                        "Broken logic: `resolve_detector_spec` assumes custom checkpoints always use player=0, ball=1, referee=2. "
-                        "That assumption is consumed directly by `detect_players_for_frame` and the ball detection branch through the `classes=[...]` filter, so a label-order mismatch can erase all detections upstream of tracking."
+                        "Detection emptiness occurs upstream of tracking. The class-resolution result from `resolve_detector_spec` is consumed directly by `detect_players_for_frame` "
+                        "and the ball branch through the `classes=[...]` filter, so any mismatch between resolved ids and actual checkpoint labels erases detections before ByteTrack or ReID can help."
                     ),
                     "suggested_fix": (
-                        "Replace the fallback `0/1/2` mapping with metadata-driven class resolution. If the checkpoint or adjacent dataset YAML exposes class names, map them to player/ball/referee ids there. "
-                        "If not, raise a configuration error instead of returning a guessed mapping."
+                        "Resolve player/ball/referee ids from checkpoint metadata or adjacent dataset YAML, log the resolved ids at startup, and sample raw class histograms on the first few frames. "
+                        "If metadata is missing, fail fast instead of guessing."
                     ),
                     "code_refs": [
                         "backend/app/wide_angle.py::resolve_detector_spec",
