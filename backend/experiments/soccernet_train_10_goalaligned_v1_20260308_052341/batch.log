@@ -53802,3 +53802,6 @@
 [2026-03-09 07:31:21] [game-010-1] Tracked 75050 frames at 22.96 fps
 [2026-03-09 07:31:23] [game-010-1] Tracked 75075 frames at 22.96 fps
 [2026-03-09 07:31:24] [game-010-1] Built two team color clusters from 705795 jersey crops
+[2026-03-09 07:31:43] [game-010-1] Rendering tactical overlay
+[2026-03-09 07:31:43] [game-010-1] Writing overlay with mp4v then transcoding to H.264
+[2026-03-09 07:32:22] [game-010-1] progress=70.00

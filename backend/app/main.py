@@ -1842,7 +1842,12 @@ def _launch_training_job_async(job_id: str, run_dir: Path, config_payload: dict[
     try:
         training_manager.launch(job_id, run_dir, config_payload)
     except Exception as exc:
-        training_manager.update(job_id, status="failed", error=str(exc))
+        training_manager.update(
+            job_id,
+            status="failed",
+            error=str(exc),
+            finished_at=datetime.utcnow().isoformat() + "Z",
+        )
         training_manager.append_log(job_id, f"Training failed to launch: {exc}")
 
 def choose_device() -> str:
