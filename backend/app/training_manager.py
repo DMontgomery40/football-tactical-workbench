@@ -37,7 +37,7 @@ class TrainingJobState:
     pid: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "job_id": self.job_id,
             "run_id": self.run_id,
             "status": self.status,
@@ -51,6 +51,11 @@ class TrainingJobState:
             "best_checkpoint": self.best_checkpoint,
             "error": self.error,
         }
+        for key in ("dataset_scan", "generated_dataset_yaml", "generated_split_lists", "validation_strategy", "backend", "backend_version", "artifacts"):
+            value = getattr(self, key, None)
+            if value is not None:
+                payload[key] = value
+        return payload
 
     def persistence_dict(self) -> dict[str, Any]:
         payload = self.as_dict()
@@ -147,6 +152,7 @@ class TrainingManager:
             job = self._jobs.get(job_id)
             if job is None or job.status == "stopped":
                 return
+        self._write_config(run_dir, config)
         progress_path = run_dir / "progress.json"
         progress_path.unlink(missing_ok=True)
         (run_dir / "weights" / "best.pt").unlink(missing_ok=True)
@@ -256,6 +262,10 @@ class TrainingManager:
             )
             if not job.job_id:
                 continue
+
+            for key in ("dataset_scan", "generated_dataset_yaml", "generated_split_lists", "validation_strategy", "backend", "backend_version", "artifacts"):
+                if key in payload:
+                    setattr(job, key, payload.get(key))
 
             if job.status in {"queued", "running", "stopping"} and job.config:
                 job.status = "queued"

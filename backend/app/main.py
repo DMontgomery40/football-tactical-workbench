@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import mimetypes
+import platform as platform_module
 import re
 import ssl
 import shutil
@@ -30,20 +31,22 @@ from pydantic import BaseModel
 
 from app.ai_diagnostics import PROMPT_VERSION as CURRENT_DIAGNOSTICS_PROMPT_VERSION, generate_run_diagnostics, resolve_provider_config
 from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
+from app.training import (
+    build_training_backend_config,
+    inspect_training_dataset,
+    prepare_training_run_inputs,
+    scan_training_dataset_path,
+)
 from app.wide_angle import (
     AnalysisStoppedError,
     CALIBRATION_REFRESH_FRAMES,
     PLAYER_MODEL_OPTIONS,
+    TACTICAL_HELP_CATALOG,
     TACTICAL_LEARN_CARDS,
     analyze_video as analyze_wide_angle_video,
     generate_live_preview_stream,
     prewarm_default_models,
 )
-
-try:
-    import yaml  # type: ignore
-except Exception:
-    yaml = None
 
 TRAINING_IMPORT_ERROR: str | None = None
 try:
@@ -67,12 +70,6 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 SOCCERNET_DIR.mkdir(parents=True, exist_ok=True)
 EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
 ACTIVE_EXPERIMENT_FRESHNESS_SECONDS = 300
-
-TRAINING_BASE_WEIGHT_OPTIONS = [
-    {"id": "soccana", "label": "soccana (football-pretrained)"},
-]
-TRAINING_EXPECTED_CLASSES = {"player", "goalkeeper", "referee", "ball"}
-TRAINING_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 PERSON_CLASS_ID = 0
 BALL_CLASS_ID = 32
@@ -594,10 +591,111 @@ def health() -> dict[str, Any]:
     }
 
 
+def available_runtime_devices() -> list[str]:
+    devices: list[str] = []
+    try:
+        import torch
+
+        if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            devices.append("mps")
+        if torch.cuda.is_available():
+            devices.append("cuda")
+    except Exception:
+        pass
+    devices.append("cpu")
+    ordered: list[str] = []
+    for device in devices:
+        if device not in ordered:
+            ordered.append(device)
+    return ordered
+
+
+def host_platform_name() -> str:
+    system_name = platform_module.system().lower()
+    if system_name == "darwin":
+        return "macos"
+    if system_name == "windows":
+        return "windows"
+    if system_name == "linux":
+        return "linux"
+    return system_name or "unknown"
+
+
+def build_runtime_profile() -> dict[str, Any]:
+    backend_config = build_training_backend_config()
+    available_devices = available_runtime_devices()
+    preferred_device = available_devices[0] if available_devices else "cpu"
+    runtime_notes = [
+        "Detector inference currently uses the Ultralytics/PyTorch stack already present in this repo.",
+        "The planned future inference runway is ONNX Runtime with CoreML on Apple Silicon and ONNX Runtime with CUDA on GPU hosts.",
+    ]
+    if "mps" in available_devices:
+        runtime_notes.insert(
+            1,
+            "Apple Silicon is the primary local target. Detector inference prefers MPS, while field calibration currently falls back to CPU when detector inference uses MPS.",
+        )
+    elif "cuda" in available_devices:
+        runtime_notes.insert(
+            1,
+            "CUDA is available on this host for detector workloads. ONNX Runtime CUDA remains planned for future inference, not the active default today.",
+        )
+    else:
+        runtime_notes.insert(
+            1,
+            "This host is currently CPU-first. ONNX Runtime remains the planned future path for CoreML and CUDA targets.",
+        )
+    return {
+        "backend": "ultralytics_torch",
+        "backend_label": "Ultralytics YOLO / PyTorch",
+        "backend_version": backend_config.get("backend_version"),
+        "host_platform": host_platform_name(),
+        "host_arch": platform_module.machine().lower() or "unknown",
+        "preferred_device": preferred_device,
+        "available_devices": available_devices,
+        "field_calibration_device_policy": "cpu_when_detector_uses_mps" if "mps" in available_devices else "same_as_detector",
+        "detector_export_formats": ["onnx", "coreml"],
+        "planned_backends": [
+            {"id": "onnxruntime_coreml", "label": "ONNX Runtime + CoreML EP"},
+            {"id": "onnxruntime_cuda", "label": "ONNX Runtime + CUDA EP"},
+        ],
+        "runtime_notes": runtime_notes,
+        "license_notes": [backend_config.get("license_note")] if backend_config.get("license_note") else [],
+    }
+
+
+def build_training_device_options(runtime_profile: dict[str, Any]) -> list[dict[str, str]]:
+    preferred_device = str(runtime_profile.get("preferred_device") or "cpu").upper()
+    labels = {
+        "auto": f"Auto ({preferred_device} recommended)" if preferred_device != "CPU" else "Auto (recommended)",
+        "mps": "Apple Silicon MPS",
+        "cuda": "CUDA GPU",
+        "cpu": "CPU only",
+    }
+    option_ids = ["auto", *(runtime_profile.get("available_devices") or ["cpu"])]
+    ordered: list[str] = []
+    for option_id in option_ids:
+        if option_id not in ordered:
+            ordered.append(option_id)
+    return [{"id": option_id, "label": labels.get(option_id, option_id.upper())} for option_id in ordered]
+
+
+def build_training_device_guidance(runtime_profile: dict[str, Any]) -> str:
+    available_devices = set(runtime_profile.get("available_devices") or [])
+    if "mps" in available_devices:
+        return (
+            "Mac-first default: use Auto or Apple Silicon MPS for detector fine-tuning. "
+            "Live analysis still keeps field calibration on CPU when detector inference uses MPS."
+        )
+    if "cuda" in available_devices:
+        return "Use Auto or CUDA for detector fine-tuning on GPU hosts. ONNX Runtime CUDA is planned for future inference, not active yet."
+    return "Use Auto unless you have a specific reason to pin CPU. ONNX Runtime CoreML/CUDA remains a planned future inference path."
+
+
 @app.get("/api/config")
 def config() -> dict[str, Any]:
     diagnostics_config = resolve_provider_config()
     active_detector_entry = training_registry.get_active_entry() if training_available() else {"id": "soccana", "label": "soccana (football-pretrained)"}
+    runtime_profile = build_runtime_profile()
     return {
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
@@ -605,6 +703,7 @@ def config() -> dict[str, Any]:
         "player_tracker_modes": PLAYER_TRACKER_MODE_OPTIONS,
         "default_player_tracker_mode": DEFAULT_PLAYER_TRACKER_MODE,
         "learn_cards": TACTICAL_LEARN_CARDS,
+        "help_catalog": TACTICAL_HELP_CATALOG,
         "field_calibration_refresh_frames": CALIBRATION_REFRESH_FRAMES,
         "field_calibration_mode": "automatic_keypoints",
         "soccernet_dataset_dir": str(SOCCERNET_DIR),
@@ -617,18 +716,23 @@ def config() -> dict[str, Any]:
         "active_detector": active_detector_entry.get("id", "soccana"),
         "active_detector_label": active_detector_entry.get("label", "soccana (football-pretrained)"),
         "active_detector_is_custom": str(active_detector_entry.get("id", "soccana")) != "soccana",
+        "runtime_profile": runtime_profile,
     }
 
 
 @app.get("/api/train/config")
 def training_config() -> dict[str, Any]:
     _training_manager, registry = require_training_available()
+    backend_config = build_training_backend_config()
+    runtime_profile = build_runtime_profile()
     return {
         "training_families": ["detector"],
         "enabled_families": ["detector"],
-        "default_base_weights": "soccana",
-        "available_base_weights": TRAINING_BASE_WEIGHT_OPTIONS,
+        **backend_config,
         "active_detector": registry.get_active_detector_id(),
+        "device_options": build_training_device_options(runtime_profile),
+        "device_guidance": build_training_device_guidance(runtime_profile),
+        "runtime_profile": runtime_profile,
     }
 
 
@@ -642,14 +746,16 @@ def scan_training_dataset(request: TrainDatasetScanRequest) -> dict[str, Any]:
 def start_training_job(request: TrainingDetectJobRequest) -> dict[str, Any]:
     manager, _registry = require_training_available()
     dataset_path = Path(request.dataset_path).expanduser().resolve()
-    scan = scan_training_dataset_path(dataset_path)
-    if scan["tier"] == "invalid":
-        raise HTTPException(status_code=400, detail="Dataset is invalid for YOLO training")
+    inspection = inspect_training_dataset(dataset_path)
+    scan = inspection.to_dict()
+    if not inspection.can_start:
+        raise HTTPException(status_code=400, detail=scan["errors"][0] if scan["errors"] else "Dataset is invalid for YOLO training")
     base_weights = request.base_weights.strip() or "soccana"
     if base_weights != "soccana":
         raise HTTPException(status_code=400, detail="Only soccana is currently available as a training base weight")
 
     run_name = request.run_name.strip()
+    backend_config = build_training_backend_config()
     config_payload = {
         "base_weights": base_weights,
         "dataset_path": str(dataset_path),
@@ -662,15 +768,44 @@ def start_training_job(request: TrainingDetectJobRequest) -> dict[str, Any]:
         "patience": max(int(request.patience), 0),
         "freeze": request.freeze,
         "cache": bool(request.cache),
+        "backend": backend_config["backend"],
+        "backend_version": backend_config["backend_version"],
     }
 
     job = manager.create(config_payload)
     run_dir = Path(job.run_dir)
     config_payload["run_name"] = str(job.config.get("run_name") or job.run_id)
+    try:
+        runtime_inputs = prepare_training_run_inputs(dataset_path, run_dir)
+    except Exception as exc:
+        manager.update(
+            job.job_id,
+            status="failed",
+            error=str(exc),
+            finished_at=datetime.utcnow().isoformat() + "Z",
+        )
+        raise
+    config_payload["dataset_scan"] = runtime_inputs["scan"]
+    config_payload["generated_dataset_yaml"] = runtime_inputs["generated_dataset_yaml"]
+    config_payload["generated_split_lists"] = runtime_inputs["generated_split_lists"]
+    config_payload["validation_strategy"] = runtime_inputs["validation_strategy"]
 
     manager.append_log(job.job_id, f"Dataset scan tier: {scan['tier']}.")
     for warning in scan["warnings"]:
         manager.append_log(job.job_id, warning)
+    manager.append_log(job.job_id, f"Validation strategy: {runtime_inputs['validation_strategy']}.")
+    manager.append_log(job.job_id, f"Runtime dataset manifest: {runtime_inputs['generated_dataset_yaml']}")
+    manager.update(
+        job.job_id,
+        config=config_payload,
+        dataset_scan=runtime_inputs["scan"],
+        generated_dataset_yaml=runtime_inputs["generated_dataset_yaml"],
+        generated_split_lists=runtime_inputs["generated_split_lists"],
+        validation_strategy=runtime_inputs["validation_strategy"],
+        backend=backend_config["backend"],
+        backend_version=backend_config["backend_version"],
+        artifacts={"dataset_scan": runtime_inputs["dataset_scan_path"], "generated_dataset_yaml": runtime_inputs["generated_dataset_yaml"]},
+    )
 
     threading.Thread(
         target=_launch_training_job_async,
@@ -739,6 +874,11 @@ def activate_training_run(run_id: str) -> dict[str, Any]:
         base_weights=str(job.config.get("base_weights") or "soccana"),
         metrics=job.metrics,
         created_at=job.created_at,
+        resolved_device=job.resolved_device,
+        backend=job.backend,
+        backend_version=job.backend_version,
+        summary_path=job.summary_path,
+        artifacts=job.artifacts,
     )
     manager.append_log(job.job_id, f"Activated detector {entry['id']}.")
     return {"success": True, "active_detector": entry["id"]}
@@ -1042,9 +1182,8 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         and diagnostics_prompt_version != CURRENT_DIAGNOSTICS_PROMPT_VERSION
     )
     if normalized["diagnostics_stale"]:
-        shown_version = diagnostics_prompt_version or "unknown"
         normalized["diagnostics_stale_reason"] = (
-            f"Stored AI diagnostics were generated with {shown_version}; current backend prompt version is {CURRENT_DIAGNOSTICS_PROMPT_VERSION}."
+            "Stored AI diagnostics are from an older analysis build and may no longer match the current runtime behavior."
         )
     else:
         normalized["diagnostics_stale_reason"] = ""
@@ -1186,7 +1325,7 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
                     "level": "warn",
                     "title": stale_title,
                     "message": normalized["diagnostics_stale_reason"],
-                    "next_step": "Click Regenerate in Run Review to rebuild this run's AI diagnostics with the current code-aware prompt and contract.",
+                    "next_step": "Click Regenerate in Run Review to rebuild this run's AI diagnostics for the current analysis build.",
                 },
             )
             normalized["diagnostics"] = existing
@@ -1421,140 +1560,6 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
     }
 
 
-def _normalize_yaml_class_names(raw_names: Any) -> list[str]:
-    if isinstance(raw_names, list):
-        return [str(item).strip() for item in raw_names if str(item).strip()]
-    if isinstance(raw_names, dict):
-        normalized: list[tuple[int, str]] = []
-        for key, value in raw_names.items():
-            try:
-                sort_key = int(key)
-            except Exception:
-                sort_key = len(normalized)
-            label = str(value).strip()
-            if label:
-                normalized.append((sort_key, label))
-        return [label for _index, label in sorted(normalized, key=lambda item: item[0])]
-    return []
-
-
-def _find_dataset_yaml_candidate(dataset_path: Path) -> Path | None:
-    candidates: list[Path] = [
-        dataset_path / "dataset.yaml",
-        dataset_path / "data.yaml",
-    ]
-    candidates.extend(sorted(dataset_path.glob("*.yaml")))
-    candidates.extend(sorted(dataset_path.glob("*.yml")))
-
-    seen: set[Path] = set()
-    for candidate in candidates:
-        resolved = candidate.expanduser().resolve()
-        if resolved in seen or not resolved.exists() or not resolved.is_file():
-            continue
-        seen.add(resolved)
-        try:
-            text = resolved.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        lowered = text.lower()
-        if any(token in lowered for token in ("train:", "val:", "names:")):
-            return resolved
-    return None
-
-
-def _parse_dataset_yaml(dataset_path: Path) -> tuple[bool, str | None, list[str]]:
-    yaml_path = _find_dataset_yaml_candidate(dataset_path)
-    if yaml_path is None:
-        return False, None, []
-    if yaml is None:
-        return True, str(yaml_path), []
-
-    try:
-        payload = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
-    except Exception:
-        return True, str(yaml_path), []
-    return True, str(yaml_path), _normalize_yaml_class_names(payload.get("names"))
-
-
-def _count_split_files(path: Path, suffixes: set[str]) -> int:
-    if not path.exists() or not path.is_dir():
-        return 0
-    return sum(1 for item in path.rglob("*") if item.is_file() and item.suffix.lower() in suffixes)
-
-
-def scan_training_dataset_path(dataset_path: Path) -> dict[str, Any]:
-    folder = dataset_path.expanduser().resolve()
-    if not folder.exists() or not folder.is_dir():
-        raise HTTPException(status_code=400, detail="Dataset folder does not exist")
-
-    warnings: list[str] = []
-    errors: list[str] = []
-    has_yaml, yaml_path, classes = _parse_dataset_yaml(folder)
-    if not has_yaml:
-        warnings.append("No dataset YAML was found; training will rely on the folder structure directly.")
-    elif yaml is None:
-        warnings.append("A dataset YAML was found but PyYAML is unavailable, so class names could not be parsed at scan time.")
-    elif not classes:
-        warnings.append("A dataset YAML was found but class names could not be parsed.")
-
-    splits: dict[str, dict[str, int]] = {}
-    images_root = folder / "images"
-    labels_root = folder / "labels"
-    for split_name in ("train", "val", "test"):
-        image_count = _count_split_files(images_root / split_name, TRAINING_IMAGE_SUFFIXES)
-        label_count = _count_split_files(labels_root / split_name, {".txt"})
-        splits[split_name] = {"images": image_count, "labels": label_count}
-
-    if not any(item["images"] for item in splits.values()):
-        fallback_images_path = images_root if images_root.exists() else folder
-        fallback_labels_path = labels_root if labels_root.exists() else folder
-        splits["train"] = {
-            "images": _count_split_files(fallback_images_path, TRAINING_IMAGE_SUFFIXES),
-            "labels": _count_split_files(fallback_labels_path, {".txt"}),
-        }
-
-    train_images = splits["train"]["images"]
-    val_images = splits["val"]["images"]
-    all_images = sum(item["images"] for item in splits.values())
-    if all_images == 0:
-        errors.append("No images found in a recognizable YOLO dataset structure.")
-    if train_images == 0:
-        errors.append("No training images found.")
-
-    if train_images > 0 and val_images == 0:
-        warnings.append("Validation split missing; the training worker will generate a 20% validation split from train images.")
-
-    for split_name, counts in splits.items():
-        images_count = counts["images"]
-        labels_count = counts["labels"]
-        if images_count > 0 and labels_count != images_count:
-            diff = abs(images_count - labels_count)
-            if labels_count < images_count:
-                warnings.append(
-                    f"{split_name} label count {labels_count} vs image count {images_count} - {diff} images have no labels."
-                )
-            else:
-                warnings.append(
-                    f"{split_name} label count {labels_count} vs image count {images_count} - {diff} extra label files were found."
-                )
-
-    unknown_classes = sorted({label for label in classes if label.lower() not in TRAINING_EXPECTED_CLASSES})
-    if unknown_classes:
-        warnings.append(f"Unknown classes in dataset.yaml: {', '.join(unknown_classes)}.")
-
-    tier = "invalid" if errors else ("valid" if not warnings else "usable_with_warnings")
-    return {
-        "path": str(folder),
-        "tier": tier,
-        "has_yaml": has_yaml,
-        "yaml_path": yaml_path,
-        "classes": classes,
-        "splits": splits,
-        "warnings": warnings,
-        "errors": errors,
-    }
-
-
 def resolve_analysis_detector_model(detector_model: str, player_model: str = "") -> str:
     requested = detector_model.strip() or player_model.strip()
     if requested and requested != "soccana":
@@ -1582,6 +1587,11 @@ def build_training_registry_snapshot() -> dict[str, Any]:
             base_weights=str(job.config.get("base_weights") or "soccana"),
             metrics=job.metrics,
             created_at=job.created_at,
+            resolved_device=job.resolved_device,
+            backend=job.backend,
+            backend_version=job.backend_version,
+            summary_path=job.summary_path,
+            artifacts=job.artifacts,
             activate=registry.get_active_detector_id() == f"custom_{job.run_id}",
         )
     return registry.snapshot()

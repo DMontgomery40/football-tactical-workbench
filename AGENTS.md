@@ -90,6 +90,26 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Avoid stale or duplicate controls. If a workflow is removed backend-side, remove its UI.
 - If the UI starts getting worse from incremental patches, prefer a coherent refactor over more local fixes.
 
+## Tooltip rules
+
+- The central source of truth for educational tooltip content is [backend/app/help_catalog.json](backend/app/help_catalog.json).
+- If you add, remove, rename, or substantially change a technical control, metric, or review concept, update that JSON in the same turn.
+- For anything materially technical, tooltips are required going forward. That includes model choices, tracker modes, calibration concepts, projection concepts, and non-obvious review metrics.
+- Do not rely on inline prose alone for technical explanation. Use an explicit info-button tooltip/popover driven from the central catalog.
+- Not all on-screen hints need to go away. Keep inline text for live state, warnings, errors, confirmations, progress, and operator-critical status that must remain visible without hover/click.
+- Tooltip quality bar:
+  - The title must be specific, not generic.
+  - The summary must explain why the concept matters in this product.
+  - The body must be verbose enough to teach the operator what the stage does, how it fails, and how to interpret it in review.
+  - Use links only when they add real value. Many entries should have none.
+  - When links are appropriate, use current primary sources and allow up to roughly 4 strong links.
+- Research-link recency rule:
+  - Prefer March 2026 sources whenever realistically available.
+  - 2025 is acceptable fallback.
+  - Pre-2025 is banned for models or fast-moving technical topics unless the user explicitly approves an exception in private chat.
+  - Never surface exception/override language in the UI.
+- Do not use native browser `title` tooltips as the primary help mechanism for technical guidance.
+
 ## Validation expectations
 
 After backend changes:

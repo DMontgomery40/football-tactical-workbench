@@ -6,7 +6,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ultralytics import YOLO
+from ultralytics import YOLO, __version__ as ULTRALYTICS_VERSION
+
+from app.training import TRAINING_BACKEND
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -55,6 +57,11 @@ def main() -> None:
     weights_dir.mkdir(parents=True, exist_ok=True)
 
     weights_path = resolve_weights(str(config.get("base_weights") or "soccana"))
+    resolved_device = choose_training_device(str(config.get("device") or "auto"))
+    data_arg = str(config.get("generated_dataset_yaml") or "")
+    if not data_arg:
+        raise RuntimeError("Training config is missing generated_dataset_yaml.")
+
     model = YOLO(weights_path)
 
     def write_progress(epoch: int, total_epochs: int, metrics: dict[str, float], done: bool) -> None:
@@ -63,6 +70,10 @@ def main() -> None:
             "total_epochs": int(total_epochs),
             "metrics": metrics,
             "done": bool(done),
+            "resolved_device": resolved_device,
+            "backend": TRAINING_BACKEND,
+            "backend_version": ULTRALYTICS_VERSION,
+            "generated_dataset_yaml": data_arg,
             "best_checkpoint": str((weights_dir / "best.pt").resolve()),
         }
         progress_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -77,24 +88,15 @@ def main() -> None:
         }
         write_progress(epoch, total_epochs, metrics, done=False)
 
+    write_progress(0, int(config.get("epochs", 50)), {}, done=False)
     model.add_callback("on_train_epoch_end", on_epoch_end)
-
-    dataset_root = Path(str(config.get("dataset_path") or "")).expanduser()
-    yaml_candidates = [
-        dataset_root / "dataset.yaml",
-        dataset_root / "data.yaml",
-    ]
-    yaml_candidates.extend(sorted(dataset_root.glob("*.yaml")))
-    yaml_candidates.extend(sorted(dataset_root.glob("*.yml")))
-    yaml_path = next((candidate for candidate in yaml_candidates if candidate.exists()), None)
-    data_arg = str(yaml_path) if yaml_path is not None else str(dataset_root)
 
     train_kwargs: dict[str, Any] = {
         "data": data_arg,
         "epochs": int(config.get("epochs", 50)),
         "imgsz": int(config.get("imgsz", 640)),
         "batch": int(config.get("batch", 16)),
-        "device": choose_training_device(str(config.get("device") or "auto")),
+        "device": resolved_device,
         "workers": int(config.get("workers", 4)),
         "patience": int(config.get("patience", 20)),
         "project": str(run_dir / "yolo_output"),
@@ -116,6 +118,8 @@ def main() -> None:
     final_metrics = {
         "mAP50": safe_float(results_dict.get("metrics/mAP50(B)")),
         "mAP50_95": safe_float(results_dict.get("metrics/mAP50-95(B)")),
+        "precision": safe_float(results_dict.get("metrics/precision(B)")),
+        "recall": safe_float(results_dict.get("metrics/recall(B)")),
     }
     write_progress(
         int(config.get("epochs", 50)),

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import TrainingStudio from './TrainingStudio';
 
@@ -75,6 +76,18 @@ const REVIEW_PANELS = [
   { id: 'files', label: 'Files' },
 ];
 
+const REVIEW_METRIC_HELP_IDS = {
+  'Tracker mode': 'review.metric.tracker_mode',
+  'Raw player IDs': 'review.metric.raw_player_ids',
+  'Player track IDs': 'review.metric.player_track_ids',
+  'Tracklet merges': 'review.metric.tracklet_merges',
+  'Calibration success': 'review.metric.calibration_success',
+  'Stale recovery': 'review.metric.stale_recovery',
+  'Calib gate rejects': 'review.metric.calib_gate_rejects',
+  'Projection stages': 'review.metric.projection_stages',
+  'Projected fresh/stale': 'review.metric.projected_fresh_stale',
+};
+
 const BACKEND_ACTIVITY_WINDOW_MS = 20000;
 const BACKEND_FAILURE_WINDOW_MS = 20000;
 const ACTIVE_JOB_STATUSES = new Set(['queued', 'running', 'paused', 'stopping']);
@@ -83,6 +96,12 @@ const MIN_ANALYSIS_SIDEBAR_WIDTH = 280;
 const MAX_ANALYSIS_SIDEBAR_WIDTH = 520;
 const ANALYSIS_MAIN_MIN_WIDTH = 620;
 const SIDEBAR_RESIZER_WIDTH = 18;
+const PITCH_LENGTH_CM = 10500;
+const PITCH_WIDTH_CM = 6800;
+const DEFAULT_TRAJECTORY_TRACK_COUNT = 4;
+const TRAJECTORY_TRACK_DISPLAY_LIMIT = 12;
+const TRAJECTORY_TRACK_COLORS = ['#1f5f92', '#c55a11', '#2f6f4f', '#8b1e3f', '#0f766e', '#8b5e34'];
+const TRAJECTORY_WINDOW_SECONDS = 8;
 
 function isActiveJobStatus(status) {
   return ACTIVE_JOB_STATUSES.has(String(status || ''));
@@ -163,6 +182,300 @@ function formatClassIds(classIds) {
   return classIds.join(', ');
 }
 
+function parseProjectionCsv(text) {
+  const lines = String(text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const headers = lines[0].split(',').map((header) => header.trim());
+  return lines.slice(1)
+    .map((line) => {
+      const values = line.split(',');
+      const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
+      const frameIndex = Number(row.frame_index);
+      const trackId = Number(row.track_id);
+      const fieldX = Number(row.field_x_cm);
+      const fieldY = Number(row.field_y_cm);
+      if (!Number.isFinite(frameIndex) || !Number.isFinite(trackId) || !Number.isFinite(fieldX) || !Number.isFinite(fieldY)) {
+        return null;
+      }
+      return {
+        frameIndex,
+        rowType: String(row.row_type || ''),
+        trackId,
+        teamLabel: String(row.team_label || ''),
+        fieldX,
+        fieldY,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.frameIndex - b.frameIndex);
+}
+
+function fieldPointToSvgPoint(fieldX, fieldY) {
+  const x = (fieldX / PITCH_LENGTH_CM) * 100;
+  const y = (fieldY / PITCH_WIDTH_CM) * 64;
+  return {
+    x: Number.isFinite(x) ? Math.max(0, Math.min(100, x)) : 0,
+    y: Number.isFinite(y) ? Math.max(0, Math.min(64, y)) : 0,
+  };
+}
+
+function buildTrajectoryPath(points) {
+  if (!points.length) return '';
+  return points
+    .map((point, index) => {
+      const svgPoint = fieldPointToSvgPoint(point.fieldX, point.fieldY);
+      return `${index === 0 ? 'M' : 'L'} ${svgPoint.x.toFixed(2)} ${svgPoint.y.toFixed(2)}`;
+    })
+    .join(' ');
+}
+
+function formatTeamLabel(value) {
+  const label = String(value || '').trim();
+  return label ? label : 'unassigned';
+}
+
+function formatSecondsLabel(value) {
+  const totalSeconds = Math.max(0, Math.floor(Number(value) || 0));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function buildHelpIndex(helpCatalog) {
+  const index = new Map();
+  for (const entry of helpCatalog || []) {
+    for (const target of entry?.targets || []) {
+      if (target && !index.has(target)) {
+        index.set(target, entry);
+      }
+    }
+  }
+  return index;
+}
+
+function formatHelpLinkMeta(link) {
+  const bits = [link.kind, link.published_at].filter(Boolean);
+  return bits.join(' · ');
+}
+
+function HelpPopover({ entry }) {
+  const [isPinned, setIsPinned] = useState(false);
+  const [isMouseOverPopover, setIsMouseOverPopover] = useState(false);
+  const [hasKeyboardFocus, setHasKeyboardFocus] = useState(false);
+  const [panelStyle, setPanelStyle] = useState(null);
+  const tooltipId = useId();
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  const isOpen = Boolean(entry) && (isPinned || isMouseOverPopover || hasKeyboardFocus);
+
+  function clearCloseTimer() {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }
+
+  function openForPointer() {
+    clearCloseTimer();
+    setIsMouseOverPopover(true);
+  }
+
+  function closeForPointerWithDelay() {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsMouseOverPopover(false);
+      closeTimerRef.current = null;
+    }, 180);
+  }
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current || !panelRef.current || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    function updatePosition() {
+      if (!triggerRef.current || !panelRef.current) {
+        return;
+      }
+
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const panelRect = panelRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const gutter = 16;
+      const gap = 8;
+      const width = Math.min(420, Math.max(280, viewportWidth - gutter * 2));
+
+      let left = triggerRect.right + gap;
+      if (left + width > viewportWidth - gutter) {
+        left = triggerRect.left - gap - width;
+      }
+      if (left < gutter) {
+        left = Math.max(gutter, Math.min(triggerRect.left, viewportWidth - gutter - width));
+      }
+
+      let top = triggerRect.bottom + gap;
+      if (top + panelRect.height > viewportHeight - gutter) {
+        top = triggerRect.top - gap - panelRect.height;
+      }
+      if (top < gutter) {
+        top = Math.max(gutter, viewportHeight - gutter - panelRect.height);
+      }
+
+      setPanelStyle({
+        left: `${Math.round(left)}px`,
+        top: `${Math.round(top)}px`,
+        width: `${Math.round(width)}px`,
+        visibility: 'visible',
+      });
+    }
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isPinned) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      const target = event.target;
+      const insideTrigger = rootRef.current && rootRef.current.contains(target);
+      const insidePanel = panelRef.current && panelRef.current.contains(target);
+      if (!insideTrigger && !insidePanel) {
+        setIsPinned(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setIsPinned(false);
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPinned]);
+
+  useEffect(() => (
+    () => {
+      clearCloseTimer();
+    }
+  ), []);
+
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <span
+      ref={rootRef}
+      className={`help-popover ${isOpen ? 'open' : ''}`}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className="help-trigger"
+        aria-label={`More about ${entry.title}`}
+        aria-describedby={isOpen ? tooltipId : undefined}
+        aria-expanded={isOpen}
+        onMouseEnter={openForPointer}
+        onMouseLeave={closeForPointerWithDelay}
+        onFocus={() => setHasKeyboardFocus(true)}
+        onBlur={(event) => {
+          if (!panelRef.current?.contains(event.relatedTarget)) {
+            setHasKeyboardFocus(false);
+          }
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          setIsPinned((current) => !current);
+        }}
+      >
+        i
+      </button>
+      {isOpen ? createPortal(
+        <div
+          ref={panelRef}
+          id={tooltipId}
+          role="tooltip"
+          className="help-panel"
+          style={panelStyle || { visibility: 'hidden' }}
+          onMouseEnter={openForPointer}
+          onMouseLeave={closeForPointerWithDelay}
+          onFocus={() => setHasKeyboardFocus(true)}
+          onBlur={(event) => {
+            if (!panelRef.current?.contains(event.relatedTarget) && !rootRef.current?.contains(event.relatedTarget)) {
+              setHasKeyboardFocus(false);
+            }
+          }}
+        >
+          <div className="help-panel-title">{entry.title}</div>
+          {entry.summary ? <div className="help-panel-summary">{entry.summary}</div> : null}
+          {(entry.body || []).length ? (
+            <div className="help-panel-body">
+              {entry.body.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          ) : null}
+          {(entry.links || []).length ? (
+            <div className="help-panel-links">
+              <div className="micro-label">References</div>
+              {(entry.links || []).map((link) => (
+                <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="help-link">
+                  <span>{link.label}</span>
+                  {formatHelpLinkMeta(link) ? <span className="help-link-meta">{formatHelpLinkMeta(link)}</span> : null}
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>,
+        document.body,
+      ) : null}
+    </span>
+  );
+}
+
+function FieldLabel({ label, entry }) {
+  return (
+    <span className="field-label-row">
+      <span>{label}</span>
+      <HelpPopover entry={entry} />
+    </span>
+  );
+}
+
+function SectionTitleWithHelp({ title, entry, className = '' }) {
+  return (
+    <div className={`section-title ${className}`.trim()}>
+      <span className="label-with-help">
+        <span>{title}</span>
+        <HelpPopover entry={entry} />
+      </span>
+    </div>
+  );
+}
+
 function HeadlineDiagnosticCard({ item }) {
   return (
     <article className={`headline-diagnostic-card ${item.level === 'warn' ? 'warn' : 'good'}`}>
@@ -173,20 +486,26 @@ function HeadlineDiagnosticCard({ item }) {
   );
 }
 
-function MetricGroup({ title, items }) {
+function MetricGroup({ title, items, helpIndex }) {
   return (
     <section className="card metric-group-card">
       <div className="metric-group-header">
         <div className="section-title">{title}</div>
       </div>
       <div className="metric-group-rows">
-        {items.map((item) => (
-          <div key={item.label} className={`metric-row ${item.wide ? 'wide' : ''}`}>
-            <div className="metric-label">{item.label}</div>
-            <div className="metric-value">{item.value}</div>
-            {item.hint ? <div className="metric-hint">{item.hint}</div> : null}
-          </div>
-        ))}
+        {items.map((item) => {
+          const helpEntry = item.helpId ? helpIndex.get(item.helpId) : null;
+          return (
+            <div key={item.label} className={`metric-row ${item.wide ? 'wide' : ''}`}>
+              <div className="metric-label-row">
+                <div className="metric-label">{item.label}</div>
+                <HelpPopover entry={helpEntry} />
+              </div>
+              <div className="metric-value">{item.value}</div>
+              {!helpEntry && item.hint ? <div className="metric-hint">{item.hint}</div> : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -344,15 +663,15 @@ function TrackTable({ tracks }) {
           </thead>
           <tbody>
             {tracks.map((track) => (
-              <tr key={track.track_id}>
-                <td>{track.track_id}</td>
-                <td>{track.team_label || 'unassigned'}</td>
+              <tr key={track.track_id ?? track.trackId}>
+                <td>{track.track_id ?? track.trackId}</td>
+                <td>{track.team_label || track.teamLabel || 'unassigned'}</td>
                 <td>{track.team_vote_ratio ?? '0.0'}</td>
-                <td>{track.frames}</td>
+                <td>{track.frames ?? track.projectedPoints ?? 0}</td>
                 <td>{track.first_frame}</td>
                 <td>{track.last_frame}</td>
-                <td>{track.average_confidence ?? 'n/a'}</td>
-                <td>{track.projected_points ?? 'n/a'}</td>
+                <td>{track.average_confidence ?? track.averageConfidence ?? 'n/a'}</td>
+                <td>{track.projected_points ?? track.projectedPoints ?? 'n/a'}</td>
               </tr>
             ))}
           </tbody>
@@ -394,13 +713,174 @@ function FileLinks({ summary }) {
   );
 }
 
+function TrajectoryPanel({
+  projectionState,
+  selectedTrackIds,
+  rankedTracks,
+  currentFrame,
+  fps,
+  onToggleTrack,
+  onResetSelection,
+}) {
+  const trackById = useMemo(
+    () => new Map(rankedTracks.map((track) => [track.trackId, track])),
+    [rankedTracks],
+  );
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : 25;
+  const windowFrames = Math.max(Math.round(safeFps * TRAJECTORY_WINDOW_SECONDS), 90);
+  const firstProjectedFrame = projectionState.rows.length ? projectionState.rows[0].frameIndex : 0;
+  const focusFrame = Number.isFinite(currentFrame) && currentFrame > 0 ? currentFrame : firstProjectedFrame;
+  const windowStartFrame = Math.max(0, focusFrame - windowFrames);
+  const windowEndFrame = Math.max(focusFrame, firstProjectedFrame);
+
+  const ballPoints = useMemo(
+    () => projectionState.rows.filter((row) => row.rowType === 'ball' && row.frameIndex >= windowStartFrame && row.frameIndex <= windowEndFrame),
+    [projectionState.rows, windowEndFrame, windowStartFrame],
+  );
+  const selectedTracks = selectedTrackIds
+    .map((trackId) => trackById.get(trackId))
+    .filter(Boolean)
+    .map((track) => ({
+      ...track,
+      windowPoints: track.points.filter((point) => point.frameIndex >= windowStartFrame && point.frameIndex <= windowEndFrame),
+    }))
+    .filter((track) => track.windowPoints.length > 0);
+  const candidateTracks = rankedTracks.slice(0, TRAJECTORY_TRACK_DISPLAY_LIMIT);
+  const ballPath = buildTrajectoryPath(ballPoints);
+
+  return (
+    <section className="card trajectory-card">
+      <div className="trajectory-header">
+        <div>
+          <div className="eyebrow">Projected movement</div>
+          <div className="section-title trajectory-title">Ball Trajectory and Player Paths</div>
+          <div className="trajectory-subtitle">
+            Synced to the saved overlay. The pitch map shows the last {TRAJECTORY_WINDOW_SECONDS} seconds up to the current playback frame instead of the whole run at once.
+          </div>
+        </div>
+        <button type="button" className="secondary-button compact-button" onClick={onResetSelection} disabled={!rankedTracks.length}>
+          Reset to best 4
+        </button>
+      </div>
+
+      {projectionState.loading ? <div className="empty-card">Loading projected trajectories…</div> : null}
+      {!projectionState.loading && projectionState.error ? <div className="error-box">{projectionState.error}</div> : null}
+      {!projectionState.loading && !projectionState.error && projectionState.rows.length === 0 ? (
+        <div className="empty-card">No projected points were exported for this run, so there is no ball trajectory or player path to draw.</div>
+      ) : null}
+
+      {!projectionState.loading && !projectionState.error && projectionState.rows.length > 0 ? (
+        <div className="trajectory-layout">
+          <div className="trajectory-stage">
+            <div className="trajectory-stage-meta">
+              <div><span className="micro-label">Overlay focus</span><div>{formatSecondsLabel(focusFrame / safeFps)} · frame {focusFrame}</div></div>
+              <div><span className="micro-label">Visible window</span><div>{formatSecondsLabel(windowStartFrame / safeFps)} to {formatSecondsLabel(windowEndFrame / safeFps)}</div></div>
+            </div>
+            <svg className="trajectory-pitch" viewBox="0 0 100 64" role="img" aria-label="Projected pitch trajectories">
+              <rect x="0" y="0" width="100" height="64" rx="3" className="trajectory-pitch-bg" />
+              <rect x="2.5" y="2.5" width="95" height="59" className="trajectory-pitch-line" />
+              <line x1="50" y1="2.5" x2="50" y2="61.5" className="trajectory-pitch-line" />
+              <circle cx="50" cy="32" r="9.15" className="trajectory-pitch-line" />
+              <circle cx="50" cy="32" r="0.9" className="trajectory-pitch-fill" />
+              <rect x="2.5" y="18.5" width="16.5" height="27" className="trajectory-pitch-line" />
+              <rect x="2.5" y="25" width="5.5" height="14" className="trajectory-pitch-line" />
+              <rect x="81" y="18.5" width="16.5" height="27" className="trajectory-pitch-line" />
+              <rect x="92" y="25" width="5.5" height="14" className="trajectory-pitch-line" />
+              <circle cx="13.5" cy="32" r="0.7" className="trajectory-pitch-fill" />
+              <circle cx="86.5" cy="32" r="0.7" className="trajectory-pitch-fill" />
+
+              {selectedTracks.map((track, index) => {
+                const path = buildTrajectoryPath(track.windowPoints);
+                const lastPoint = track.windowPoints[track.windowPoints.length - 1];
+                const endPoint = lastPoint ? fieldPointToSvgPoint(lastPoint.fieldX, lastPoint.fieldY) : null;
+                const color = TRAJECTORY_TRACK_COLORS[index % TRAJECTORY_TRACK_COLORS.length];
+                if (!path || !endPoint) {
+                  return null;
+                }
+                return (
+                  <g key={track.trackId}>
+                    <path d={path} className="trajectory-path" style={{ '--trajectory-color': color }} />
+                    <circle cx={endPoint.x} cy={endPoint.y} r="1.2" className="trajectory-point" style={{ '--trajectory-color': color }} />
+                    <text x={Math.min(96, endPoint.x + 1.4)} y={Math.max(4, endPoint.y - 1.4)} className="trajectory-label" style={{ '--trajectory-color': color }}>
+                      #{track.trackId}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {ballPath ? (
+                <g>
+                  <path d={ballPath} className="trajectory-path ball" />
+                  {ballPoints.length ? (() => {
+                    const lastBallPoint = fieldPointToSvgPoint(
+                      ballPoints[ballPoints.length - 1].fieldX,
+                      ballPoints[ballPoints.length - 1].fieldY,
+                    );
+                    return (
+                      <>
+                        <circle cx={lastBallPoint.x} cy={lastBallPoint.y} r="1.15" className="trajectory-point ball" />
+                        <text x={Math.min(95, lastBallPoint.x + 1.2)} y={Math.max(5, lastBallPoint.y - 1.2)} className="trajectory-label ball">
+                          ball
+                        </text>
+                      </>
+                    );
+                  })() : null}
+                </g>
+              ) : null}
+            </svg>
+          </div>
+
+          <div className="trajectory-sidebar">
+            <div className="trajectory-summary-grid">
+              <div className="trajectory-summary-card">
+                <div className="micro-label">Ball samples in window</div>
+                <div className="trajectory-summary-value">{ballPoints.length}</div>
+              </div>
+              <div className="trajectory-summary-card">
+                <div className="micro-label">Selected players visible</div>
+                <div className="trajectory-summary-value">{selectedTracks.length}</div>
+              </div>
+              <div className="trajectory-summary-card">
+                <div className="micro-label">Projected tracks</div>
+                <div className="trajectory-summary-value">{rankedTracks.length}</div>
+              </div>
+            </div>
+
+            <div className="trajectory-chip-panel">
+              <div className="micro-label">Toggle player paths</div>
+              <div className="trajectory-chip-grid">
+                {candidateTracks.map((track) => {
+                  const isActive = selectedTrackIds.includes(track.trackId);
+                  return (
+                    <button
+                      key={track.trackId}
+                      type="button"
+                      className={`trajectory-chip ${isActive ? 'active-trajectory-chip' : ''}`}
+                      onClick={() => onToggleTrack(track.trackId)}
+                    >
+                      <span className="trajectory-chip-title">#{track.trackId} · {formatTeamLabel(track.teamLabel)}</span>
+                      <span className="trajectory-chip-meta">
+                        {track.projectedPoints} projected · {track.frames} frames
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function App() {
   const [appSpace, setAppSpace] = useState(() => {
     const stored = readStoredString(STORAGE_KEYS.appSpace, 'analysis');
     return stored === 'training' ? 'training' : 'analysis';
   });
   const [themeMode, setThemeMode] = useState(() => readStoredString(STORAGE_KEYS.themeMode, 'light'));
-  const [config, setConfig] = useState({ player_models: [], ball_models: [], learn_cards: [] });
+  const [config, setConfig] = useState({ player_models: [], ball_models: [], learn_cards: [], help_catalog: [] });
   const [soccerNetConfig, setSoccerNetConfig] = useState({ dataset_dir: '', splits: [], split_counts: {}, video_files: [], label_files: [], notes: [] });
   const [soccerNetSplit, setSoccerNetSplit] = useState(() => readStoredString(STORAGE_KEYS.soccerNetSplit, 'train'));
   const [soccerNetQuery, setSoccerNetQuery] = useState(() => readStoredString(STORAGE_KEYS.soccerNetQuery, ''));
@@ -432,6 +912,9 @@ export default function App() {
   const [selectedRun, setSelectedRun] = useState(null);
   const [reviewError, setReviewError] = useState('');
   const [isRefreshingDiagnostics, setIsRefreshingDiagnostics] = useState(false);
+  const [projectionState, setProjectionState] = useState({ loading: false, error: '', rows: [] });
+  const [selectedTrajectoryTrackIds, setSelectedTrajectoryTrackIds] = useState([]);
+  const [reviewPlaybackTime, setReviewPlaybackTime] = useState(0);
   const [job, setJob] = useState(null);
   const [activeExperiment, setActiveExperiment] = useState(null);
   const [backendActivity, setBackendActivity] = useState({
@@ -454,7 +937,9 @@ export default function App() {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const pollRef = useRef(null);
   const soccerNetPollRef = useRef(null);
+  const trajectorySelectionRunRef = useRef('');
   const sourceVideoRef = useRef(null);
+  const reviewVideoRef = useRef(null);
   const layoutRef = useRef(null);
 
   async function apiFetch(url, options) {
@@ -617,6 +1102,40 @@ export default function App() {
     setWorkspaceMode(selectedRun ? 'review' : 'input');
   }, [job?.status, selectedRun?.run_id, workspaceMode]);
 
+  useEffect(() => {
+    const projectionCsvPath = selectedRun?.summary?.projection_csv;
+    if (!projectionCsvPath) {
+      setProjectionState({ loading: false, error: '', rows: [] });
+      setSelectedTrajectoryTrackIds([]);
+      trajectorySelectionRunRef.current = '';
+      return;
+    }
+
+    let cancelled = false;
+    setProjectionState((current) => ({ ...current, loading: true, error: '' }));
+
+    apiFetch(`${API_BASE}${projectionCsvPath}`)
+      .then(async (response) => {
+        const text = await response.text();
+        if (!response.ok) {
+          throw new Error(text || 'Could not load projection CSV');
+        }
+        return text;
+      })
+      .then((text) => {
+        if (cancelled) return;
+        setProjectionState({ loading: false, error: '', rows: parseProjectionCsv(text) });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setProjectionState({ loading: false, error: error.message || 'Could not load projection CSV', rows: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRun?.summary?.projection_csv]);
+
   const maxAnalysisSidebarWidth = useMemo(() => {
     if (!layoutWidth) {
       return MAX_ANALYSIS_SIDEBAR_WIDTH;
@@ -724,6 +1243,10 @@ export default function App() {
   const playerTrackerModes = config.player_tracker_modes?.length ? config.player_tracker_modes : ['hybrid_reid', 'bytetrack'];
   const activeDetectorLabel = config.active_detector_label || config.active_detector || 'soccana';
   const activeDetectorIsCustom = Boolean(config.active_detector_is_custom && config.active_detector !== 'soccana');
+  const helpIndex = useMemo(
+    () => buildHelpIndex(config.help_catalog),
+    [config.help_catalog],
+  );
   const visibleSoccerNetGames = useMemo(
     () => soccerNetGames.slice(0, soccerNetResultLimit),
     [soccerNetGames, soccerNetResultLimit],
@@ -786,7 +1309,7 @@ export default function App() {
     const metricByLabel = new Map(runStats.map(([label, value, hint]) => [label, { label, value, hint }]));
     const pick = (label, wide = false) => {
       const item = metricByLabel.get(label);
-      return item ? { ...item, wide } : null;
+      return item ? { ...item, wide, helpId: REVIEW_METRIC_HELP_IDS[label] } : null;
     };
     return [
       {
@@ -829,6 +1352,81 @@ export default function App() {
     ].filter((section) => section.items.length > 0);
   }, [runStats]);
 
+  const rankedTrajectoryTracks = useMemo(() => {
+    const rows = projectionState.rows.filter((row) => row.rowType === 'player');
+    if (!rows.length) {
+      return [];
+    }
+
+    const trackSummaryById = new Map(
+      (summary?.top_tracks || []).map((track) => [Number(track.track_id), track]),
+    );
+    const groupedTracks = new Map();
+
+    rows.forEach((row) => {
+      if (!groupedTracks.has(row.trackId)) {
+        groupedTracks.set(row.trackId, {
+          trackId: row.trackId,
+          teamLabel: row.teamLabel,
+          points: [],
+        });
+      }
+      groupedTracks.get(row.trackId).points.push(row);
+    });
+
+    return Array.from(groupedTracks.values())
+      .map((track) => {
+        const summaryTrack = trackSummaryById.get(track.trackId);
+        return {
+          ...track,
+          teamLabel: track.teamLabel || summaryTrack?.team_label || '',
+          projectedPoints: track.points.length,
+          frames: Number(summaryTrack?.frames || track.points.length),
+          averageConfidence: Number(summaryTrack?.average_confidence || 0),
+        };
+      })
+      .sort((a, b) => (
+        b.projectedPoints - a.projectedPoints
+        || b.frames - a.frames
+        || b.averageConfidence - a.averageConfidence
+        || a.trackId - b.trackId
+      ));
+  }, [projectionState.rows, summary?.top_tracks]);
+
+  useEffect(() => {
+    if (!reviewedRunId) {
+      setSelectedTrajectoryTrackIds([]);
+      trajectorySelectionRunRef.current = '';
+      return;
+    }
+    if (!rankedTrajectoryTracks.length || trajectorySelectionRunRef.current === reviewedRunId) {
+      return;
+    }
+    trajectorySelectionRunRef.current = reviewedRunId;
+    setSelectedTrajectoryTrackIds(
+      rankedTrajectoryTracks
+        .slice(0, DEFAULT_TRAJECTORY_TRACK_COUNT)
+        .map((track) => track.trackId),
+    );
+  }, [reviewedRunId, rankedTrajectoryTracks]);
+
+  useEffect(() => {
+    setReviewPlaybackTime(0);
+    if (reviewVideoRef.current) {
+      reviewVideoRef.current.currentTime = 0;
+    }
+  }, [reviewedRunId]);
+
+  const reviewTrackRows = useMemo(
+    () => (rankedTrajectoryTracks.length ? rankedTrajectoryTracks : summary?.top_tracks || []),
+    [rankedTrajectoryTracks, summary?.top_tracks],
+  );
+  const reviewPlaybackFrame = useMemo(() => {
+    const fps = Number(summary?.fps);
+    const safeFps = Number.isFinite(fps) && fps > 0 ? fps : 25;
+    return Math.max(0, Math.round(reviewPlaybackTime * safeFps));
+  }, [reviewPlaybackTime, summary?.fps]);
+
   function startSidebarResize(event) {
     if (workspaceMode === 'review' || event.button !== 0) {
       return;
@@ -839,6 +1437,22 @@ export default function App() {
 
   function resetSidebarWidth() {
     setAnalysisSidebarWidth(DEFAULT_ANALYSIS_SIDEBAR_WIDTH);
+  }
+
+  function resetTrajectorySelection() {
+    setSelectedTrajectoryTrackIds(
+      rankedTrajectoryTracks
+        .slice(0, DEFAULT_TRAJECTORY_TRACK_COUNT)
+        .map((track) => track.trackId),
+    );
+  }
+
+  function toggleTrajectoryTrack(trackId) {
+    setSelectedTrajectoryTrackIds((current) => (
+      current.includes(trackId)
+        ? current.filter((value) => value !== trackId)
+        : [...current, trackId]
+    ));
   }
 
   function handleSidebarResizerKeyDown(event) {
@@ -1401,7 +2015,7 @@ export default function App() {
         <aside className="left-sidebar">
           <section className="left-column">
             <form className="card form-card" onSubmit={handleSubmit}>
-            <div className="section-title">Prepare an input clip</div>
+            <SectionTitleWithHelp title="Prepare an input clip" entry={helpIndex.get('analysis.prepare_input')} />
             <label>
               <span>Upload a video file</span>
               <input
@@ -1440,7 +2054,7 @@ export default function App() {
             </label>
 
             <label>
-              <span>Detector weights</span>
+              <FieldLabel label="Detector weights" entry={helpIndex.get('analysis.detector_weights')} />
               <input
                 list="detector-models"
                 type="text"
@@ -1448,9 +2062,6 @@ export default function App() {
                 onChange={(event) => updateForm('detectorModel', event.target.value)}
               />
             </label>
-            <div className="field-note">
-              `soccana` is the default detector for players, ball, and referees.
-            </div>
             {activeDetectorIsCustom ? (
               <div className="active-detector-banner">
                 <div className="micro-label">Active detector override</div>
@@ -1462,7 +2073,7 @@ export default function App() {
             ) : null}
 
             <label>
-              <span>Player tracker</span>
+              <FieldLabel label="Player tracker" entry={helpIndex.get('analysis.player_tracker')} />
               <select value={form.trackerMode} onChange={(event) => updateForm('trackerMode', event.target.value)}>
                 {playerTrackerModes.map((item) => (
                   <option key={item} value={item}>
@@ -1471,9 +2082,6 @@ export default function App() {
                 ))}
               </select>
             </label>
-            <div className="field-note">
-              `hybrid_reid` uses sparse appearance embeddings plus a stitch pass. `bytetrack` is the legacy baseline for comparison.
-            </div>
 
             <datalist id="detector-models">
               {detectorModelOptions.map((item) => <option key={item} value={item} />)}
@@ -1486,28 +2094,32 @@ export default function App() {
                   checked={form.includeBall}
                   onChange={(event) => updateForm('includeBall', event.target.checked)}
                 />
-                <span>Include ball tracking</span>
+                <span className="checkbox-label-row">
+                  <span>Include ball tracking</span>
+                  <HelpPopover entry={helpIndex.get('analysis.include_ball')} />
+                </span>
               </label>
             </div>
 
             <div className="three-col">
               <label>
-                <span>Player confidence</span>
+                <FieldLabel label="Player confidence" entry={helpIndex.get('analysis.player_conf')} />
                 <input type="number" step="0.01" value={form.playerConf} onChange={(event) => updateForm('playerConf', event.target.value)} />
               </label>
               <label>
-                <span>Ball confidence</span>
+                <FieldLabel label="Ball confidence" entry={helpIndex.get('analysis.ball_conf')} />
                 <input type="number" step="0.01" value={form.ballConf} onChange={(event) => updateForm('ballConf', event.target.value)} />
               </label>
               <label>
-                <span>IOU</span>
+                <FieldLabel label="IOU" entry={helpIndex.get('analysis.iou')} />
                 <input type="number" step="0.01" value={form.iou} onChange={(event) => updateForm('iou', event.target.value)} />
               </label>
             </div>
 
-          <div className="field-note">
-            Field calibration is automatic now. The backend refreshes the pitch transform every frame from pitch keypoints and smooths recent homographies, so there is no manual homography step in the UI.
-          </div>
+            <div className="inline-help-row">
+              <span className="micro-label">Automatic field calibration</span>
+              <HelpPopover entry={helpIndex.get('analysis.field_registration')} />
+            </div>
 
             <button className="secondary-button" onClick={() => handleLoadSource()} type="button">
               {isLoadingSource ? 'Loading input clip...' : source ? 'Reload input clip' : 'Load input clip'}
@@ -1521,10 +2133,7 @@ export default function App() {
             </form>
 
             <section className="card form-card">
-              <div className="section-title">SoccerNet</div>
-              <div className="field-note">
-                Browse official SoccerNet games, download the files you want into the local dataset folder, then scan that folder in the same UI.
-              </div>
+              <SectionTitleWithHelp title="SoccerNet" entry={helpIndex.get('analysis.soccernet')} />
 
               <div className="two-col">
                 <label>
@@ -1659,7 +2268,7 @@ export default function App() {
             </section>
 
             <section className="card form-card">
-              <div className="section-title">Scan a local dataset folder</div>
+              <SectionTitleWithHelp title="Scan a local dataset folder" entry={helpIndex.get('analysis.dataset_scan')} />
               <label>
                 <span>Folder path</span>
                 <input
@@ -1756,7 +2365,7 @@ export default function App() {
           {workspaceMode === 'input' ? (
             <section className="card video-card workspace-panel">
               <div className="row-between">
-                <div className="section-title">Input Clip</div>
+                <SectionTitleWithHelp title="Input Clip" entry={helpIndex.get('analysis.input_clip')} />
                 <div className="muted">{source ? `${source.display_name} · ${source.width || 0}x${source.height || 0}` : 'No input clip loaded'}</div>
               </div>
               {source ? (
@@ -1780,9 +2389,6 @@ export default function App() {
                       {hasActiveJob ? 'Go to active job' : 'No active job'}
                     </button>
                   </div>
-                  <div className="field-note">
-                    This panel shows the raw input clip. Completed analysis runs appear in Run Review as saved overlays with per-run diagnostics.
-                  </div>
                 </>
               ) : (
                 <div className="empty-card">Upload or paste a local path in the sidebar to load a clip.</div>
@@ -1793,7 +2399,7 @@ export default function App() {
           {workspaceMode === 'live' ? (
             <section className="card video-card workspace-panel">
               <div className="row-between">
-                <div className="section-title">Live Inference Preview</div>
+                <SectionTitleWithHelp title="Live Inference Preview" entry={helpIndex.get('analysis.live_preview')} />
                 <div className="muted">{livePreviewUrl ? 'Streaming from backend' : 'Idle'}</div>
               </div>
               <div className="field-note">
@@ -1912,7 +2518,7 @@ export default function App() {
             <>
               <section className="card workspace-panel">
                 <div className="row-between">
-                  <div className="section-title">Saved Run Review</div>
+                  <SectionTitleWithHelp title="Saved Run Review" entry={helpIndex.get('analysis.saved_run_review')} />
                   <div className="muted">{recentRuns.length ? `${recentRuns.length} found on disk` : 'None yet'}</div>
                 </div>
                 <div className="field-note">
@@ -2013,7 +2619,15 @@ export default function App() {
                       </div>
                       {summary?.overlay_video ? (
                         <div className="review-video-stage">
-                          <video controls src={`${API_BASE}${summary.overlay_video}`} className="video-player review-video-player" />
+                          <video
+                            ref={reviewVideoRef}
+                            controls
+                            src={`${API_BASE}${summary.overlay_video}`}
+                            className="video-player review-video-player"
+                            onLoadedMetadata={(event) => setReviewPlaybackTime(event.currentTarget.currentTime || 0)}
+                            onTimeUpdate={(event) => setReviewPlaybackTime(event.currentTarget.currentTime || 0)}
+                            onSeeked={(event) => setReviewPlaybackTime(event.currentTarget.currentTime || 0)}
+                          />
                         </div>
                       ) : (
                         <div className="empty-card">No overlay output is available for the selected run.</div>
@@ -2028,7 +2642,7 @@ export default function App() {
                       </div>
                     </section>
 
-                    <section className="card review-brief-card">
+                  <section className="card review-brief-card">
                       <div className="section-title">Run Brief</div>
                       {summary?.diagnostics_summary_line ? (
                         <div className="workspace-summary-line">{summary.diagnostics_summary_line}</div>
@@ -2041,7 +2655,7 @@ export default function App() {
                       </div>
                       {summary?.diagnostics_stale ? (
                         <div className="error-box">
-                          {summary.diagnostics_stale_reason || 'Stored AI diagnostics are outdated for the current backend prompt.'} Use `Regenerate` to rebuild them.
+                          {summary.diagnostics_stale_reason || 'Stored AI diagnostics are outdated.'} Use `Regenerate` to rebuild them.
                         </div>
                       ) : null}
                       {headlineDiagnostics.length > 0 ? (
@@ -2060,13 +2674,25 @@ export default function App() {
                   </section>
 
                   <section className="workspace-panel">
+                    <TrajectoryPanel
+                      projectionState={projectionState}
+                      selectedTrackIds={selectedTrajectoryTrackIds}
+                      rankedTracks={rankedTrajectoryTracks}
+                      currentFrame={reviewPlaybackFrame}
+                      fps={summary?.fps}
+                      onToggleTrack={toggleTrajectoryTrack}
+                      onResetSelection={resetTrajectorySelection}
+                    />
+                  </section>
+
+                  <section className="workspace-panel">
                     <div className="section-title inset-title">Run Metrics</div>
                     {runMetricSections.length === 0 ? (
                       <div className="card empty-card">Select a saved run to populate the tactical summary cards.</div>
                     ) : (
                       <div className="metric-group-grid">
                         {runMetricSections.map((section) => (
-                          <MetricGroup key={section.title} title={section.title} items={section.items} />
+                          <MetricGroup key={section.title} title={section.title} items={section.items} helpIndex={helpIndex} />
                         ))}
                       </div>
                     )}
@@ -2096,7 +2722,7 @@ export default function App() {
 
               {reviewedRun && reviewPanel === 'tracks' ? (
                 <section className="workspace-panel">
-                  <TrackTable tracks={summary?.top_tracks || []} />
+                  <TrackTable tracks={reviewTrackRows} />
                 </section>
               ) : null}
 

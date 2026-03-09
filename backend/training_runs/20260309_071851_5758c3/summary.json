@@ -1,0 +1,237 @@
+{
+  "job_id": "aca1df088493",
+  "run_id": "20260309_071851_5758c3",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3",
+  "status": "failed",
+  "progress": 1.0,
+  "current_epoch": 0,
+  "total_epochs": 1,
+  "logs": [
+    "[07:18:51] Queued detector training run studio-v1-smoke",
+    "[07:18:51] Dataset scan tier: valid.",
+    "[07:18:51] Validation strategy: existing_split.",
+    "[07:18:51] Runtime dataset manifest: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_runtime.yaml",
+    "[07:18:51] Training failed to launch: unhashable type: 'list'"
+  ],
+  "created_at": "2026-03-09T07:18:51.745956Z",
+  "started_at": "2026-03-09T07:18:51.768013Z",
+  "finished_at": null,
+  "config": {
+    "base_weights": "soccana",
+    "dataset_path": "/private/tmp/fpw_train_valid_v1",
+    "run_name": "studio-v1-smoke",
+    "epochs": 1,
+    "imgsz": 320,
+    "batch": 1,
+    "device": "cpu",
+    "workers": 0,
+    "patience": 1,
+    "freeze": 0,
+    "cache": false,
+    "backend": "ultralytics",
+    "backend_version": "8.3.81",
+    "dataset_scan": {
+      "path": "/private/tmp/fpw_train_valid_v1",
+      "tier": "valid",
+      "has_yaml": true,
+      "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "classes": [
+        "player",
+        "goalkeeper",
+        "referee",
+        "ball"
+      ],
+      "class_count": 4,
+      "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "player_class_id": 0,
+        "ball_class_id": 3,
+        "referee_class_id": 2
+      },
+      "split_paths": {
+        "train": "/private/tmp/fpw_train_valid_v1/images/train",
+        "val": "/private/tmp/fpw_train_valid_v1/images/val",
+        "test": null
+      },
+      "splits": {
+        "train": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/train",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/train"
+          ],
+          "images": 4,
+          "label_files": 4,
+          "labeled_images": 4,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 8,
+          "warnings": [],
+          "errors": []
+        },
+        "val": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/val",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/val"
+          ],
+          "images": 2,
+          "label_files": 2,
+          "labeled_images": 2,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 4,
+          "warnings": [],
+          "errors": []
+        },
+        "test": {
+          "source": "missing",
+          "path": null,
+          "refs": [],
+          "images": 0,
+          "label_files": 0,
+          "labeled_images": 0,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 0,
+          "warnings": [],
+          "errors": []
+        }
+      },
+      "warnings": [],
+      "errors": [],
+      "can_start": true,
+      "suggested_validation_strategy": "existing_split",
+      "detected_format": "yolo_detection"
+    },
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_runtime.yaml",
+    "generated_split_lists": {
+      "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/splits/train.txt",
+      "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/splits/val.txt"
+    },
+    "validation_strategy": "existing_split"
+  },
+  "dataset_scan": {
+    "path": "/private/tmp/fpw_train_valid_v1",
+    "tier": "valid",
+    "has_yaml": true,
+    "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "classes": [
+      "player",
+      "goalkeeper",
+      "referee",
+      "ball"
+    ],
+    "class_count": 4,
+    "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "class_mapping": {
+      "player_class_ids": [
+        0,
+        1
+      ],
+      "ball_class_ids": [
+        3
+      ],
+      "referee_class_ids": [
+        2
+      ],
+      "player_class_id": 0,
+      "ball_class_id": 3,
+      "referee_class_id": 2
+    },
+    "split_paths": {
+      "train": "/private/tmp/fpw_train_valid_v1/images/train",
+      "val": "/private/tmp/fpw_train_valid_v1/images/val",
+      "test": null
+    },
+    "splits": {
+      "train": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/train",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/train"
+        ],
+        "images": 4,
+        "label_files": 4,
+        "labeled_images": 4,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 8,
+        "warnings": [],
+        "errors": []
+      },
+      "val": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/val",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/val"
+        ],
+        "images": 2,
+        "label_files": 2,
+        "labeled_images": 2,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 4,
+        "warnings": [],
+        "errors": []
+      },
+      "test": {
+        "source": "missing",
+        "path": null,
+        "refs": [],
+        "images": 0,
+        "label_files": 0,
+        "labeled_images": 0,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 0,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    "warnings": [],
+    "errors": [],
+    "can_start": true,
+    "suggested_validation_strategy": "existing_split",
+    "detected_format": "yolo_detection"
+  },
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_runtime.yaml",
+  "generated_split_lists": {
+    "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/splits/train.txt",
+    "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/splits/val.txt"
+  },
+  "resolved_device": null,
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "validation_strategy": "existing_split",
+  "metrics": {},
+  "artifacts": {
+    "dataset_scan": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_scan.json",
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/dataset_runtime.yaml"
+  },
+  "best_checkpoint": null,
+  "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/summary.json",
+  "error": "unhashable type: 'list'"
+}

@@ -1,0 +1,250 @@
+[
+  {
+    "id": "analysis.prepare_input",
+    "title": "Prepare an input clip",
+    "summary": "Use this rail to set the stages that feed the full detector -> tracking -> calibration -> overlay path.",
+    "body": [
+      "This workspace is for short, iterative setup on one broadcast clip at a time. The goal is to make the pipeline legible before you trust longer runs or downstream summaries.",
+      "A bad choice here usually fails downstream in a recognizable order: weak detection poisons tracking, weak tracking makes team separation noisy, and poor field registration makes the minimap or projection unreliable even if the boxes look reasonable."
+    ],
+    "targets": [
+      "analysis.prepare_input"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.detector_weights",
+    "title": "Detector weights",
+    "summary": "The detector decides which players, referees, and ball candidates exist at all. Every downstream stage depends on it.",
+    "body": [
+      "In this repo, `soccana` is the football-specific detector path. It is preferred because the app is tuned around football broadcast footage rather than generic COCO-style scenes.",
+      "If the detector misses small distant players, confuses referees, or hallucinates crowd and board boxes, the tracker, team clustering, and ball coverage all inherit that damage. Detector swaps are useful only when they improve the overlay, not because they sound more advanced."
+    ],
+    "targets": [
+      "analysis.detector_weights"
+    ],
+    "links": [
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      }
+    ]
+  },
+  {
+    "id": "analysis.player_tracking",
+    "title": "Player tracker",
+    "summary": "The tracker turns frame-local detections into identities that survive motion, occlusion, and re-entry.",
+    "body": [
+      "`bytetrack` is the fast baseline. It follows detections frame to frame, but it does not try to reconnect long identity gaps once a player disappears or the scene changes too aggressively.",
+      "`hybrid_reid` adds sparse appearance embeddings and a stitch pass. That gives you two identity layers: raw online IDs from the live tracker and canonical stitched IDs after the merge pass. Raw-vs-stitched counts are useful because they tell you whether the post-pass is cleaning up tracker churn or inventing over-confident merges.",
+      "Use the overlay and the raw-vs-stitched metrics together. A lower stitched ID count is only good if the video still looks coherent when players cross, crowd, or leave and re-enter the frame."
+    ],
+    "targets": [
+      "analysis.player_tracker",
+      "review.metric.tracker_mode",
+      "review.metric.raw_player_ids",
+      "review.metric.player_track_ids",
+      "review.metric.tracklet_merges"
+    ],
+    "links": [
+      {
+        "label": "Long-term player tracking with graph hierarchies",
+        "url": "https://arxiv.org/abs/2502.21242",
+        "kind": "paper",
+        "published_at": "2025-02"
+      },
+      {
+        "label": "sports-SUSHI repository",
+        "url": "https://github.com/mkoshkina/sports-SUSHI",
+        "kind": "repo",
+        "published_at": "2025-03"
+      },
+      {
+        "label": "Broadcast to Minimap game-state reconstruction",
+        "url": "https://arxiv.org/abs/2504.06357",
+        "kind": "paper",
+        "published_at": "2025-04"
+      },
+      {
+        "label": "Team-Aware Football Player Tracking with SAM",
+        "url": "https://arxiv.org/abs/2512.08467",
+        "kind": "paper",
+        "published_at": "2025-12"
+      }
+    ]
+  },
+  {
+    "id": "analysis.ball_tracking",
+    "title": "Include ball tracking",
+    "summary": "Ball tracking is a supporting signal for match context, not the primary success condition for the pipeline.",
+    "body": [
+      "The ball is small, fast, heavily occluded, and often ambiguous against socks, feet, or ad boards. Good player coverage can coexist with weak ball continuity.",
+      "Use ball output to judge whether a clip reads like real play and to sanity-check events, but do not let a weak ball trace distract you from fixing detection, tracking, or calibration first."
+    ],
+    "targets": [
+      "analysis.include_ball"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.thresholds",
+    "title": "Confidence and IOU thresholds",
+    "summary": "These values control how aggressively the runtime accepts detections and how permissive box matching is.",
+    "body": [
+      "Higher confidence usually removes more false positives but can also erase small distant players and the ball. Lower confidence recovers recall, but it can flood the tracker with garbage detections that create churn.",
+      "IOU settings affect how readily overlapping boxes are treated as the same object. Threshold tuning is meaningful only after you inspect the overlay; the right values depend on the clip scale, crowding, and camera motion."
+    ],
+    "targets": [
+      "analysis.player_conf",
+      "analysis.ball_conf",
+      "analysis.iou"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.field_registration",
+    "title": "Automatic field registration",
+    "summary": "Field calibration refreshes from pitch keypoints and quality gates. It can fail even when player boxes look healthy.",
+    "body": [
+      "This pipeline refreshes pitch geometry from field keypoints, then accepts or rejects each candidate homography based on visibility and geometric quality. A run can have good detections and still lose minimap quality if calibration refreshes keep failing.",
+      "The review metrics around calibration success, stale recovery, gate rejects, and projection stages are there to show whether the minimap is using fresh geometry, coasting on stale state, or being blocked entirely.",
+      "Treat field registration as a live runtime component, not a cosmetic post-process. If calibration is weak, projected player positions and ball locations should be considered suspect even when image-space boxes look stable."
+    ],
+    "targets": [
+      "analysis.field_registration",
+      "review.metric.calibration_success",
+      "review.metric.stale_recovery",
+      "review.metric.calib_gate_rejects",
+      "review.metric.projection_stages",
+      "review.metric.projected_fresh_stale"
+    ],
+    "links": [
+      {
+        "label": "Soccana Keypoint model card",
+        "url": "https://huggingface.co/Adit-jain/Soccana_Keypoint",
+        "kind": "model",
+        "published_at": "2025-09"
+      },
+      {
+        "label": "PnLCalib repository",
+        "url": "https://github.com/mguti97/PnLCalib",
+        "kind": "repo",
+        "published_at": "2026-01"
+      },
+      {
+        "label": "SoccerSynth Field",
+        "url": "https://arxiv.org/abs/2503.13969",
+        "kind": "paper",
+        "published_at": "2025-03"
+      },
+      {
+        "label": "SoccerNet-v3D",
+        "url": "https://arxiv.org/abs/2504.10106",
+        "kind": "paper",
+        "published_at": "2025-04"
+      }
+    ]
+  },
+  {
+    "id": "analysis.soccernet",
+    "title": "SoccerNet browsing and download",
+    "summary": "SoccerNet is the benchmark and dataset surface behind much of the football CV ecosystem this app borrows from.",
+    "body": [
+      "This section is not just a file picker. It is the bridge between the local app and current football-specific benchmark tasks such as action spotting, calibration, tracking, and game-state reconstruction.",
+      "Use it when you want current benchmark footage and labels without manually copying paths every session. `Labels-v2.json` remains important because several higher-level experiments and event-aligned analyses expect that structure."
+    ],
+    "targets": [
+      "analysis.soccernet"
+    ],
+    "links": [
+      {
+        "label": "SoccerNet data portal",
+        "url": "https://www.soccer-net.org/data",
+        "kind": "docs"
+      },
+      {
+        "label": "SoccerNet challenges 2026",
+        "url": "https://www.soccer-net.org/challenges/2026",
+        "kind": "benchmark",
+        "published_at": "2026"
+      },
+      {
+        "label": "SoccerNet challenges overview",
+        "url": "https://www.soccer-net.org/challenges",
+        "kind": "docs"
+      },
+      {
+        "label": "SoccerNet Game State Reconstruction DevKit",
+        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "kind": "repo",
+        "published_at": "2025-05"
+      }
+    ]
+  },
+  {
+    "id": "analysis.dataset_scan",
+    "title": "Scan a local dataset folder",
+    "summary": "Folder scan is a convenience layer for turning a local dataset tree into clickable clip and label choices.",
+    "body": [
+      "Use this when your footage already lives on disk and you want the app to surface candidate videos and annotation files without manually retyping full paths.",
+      "This is operational help, not a model or benchmark concept, so there are no external references here."
+    ],
+    "targets": [
+      "analysis.dataset_scan"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.input_clip",
+    "title": "Input Clip",
+    "summary": "This panel is the raw source video. It is where you verify what the model is seeing before trusting any overlay.",
+    "body": [
+      "Use the raw clip to compare against live preview and saved overlay outputs. If the source itself is confusing or cropped badly, every downstream artifact will be harder to interpret.",
+      "When something looks wrong in review, come back here first and confirm that the failure is not caused by the clip segment, framing, or source mismatch."
+    ],
+    "targets": [
+      "analysis.input_clip"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.live_preview",
+    "title": "Live Inference Preview",
+    "summary": "Live preview is the fast visual debugging surface for runtime behavior before you commit to a full saved run.",
+    "body": [
+      "Use this mode to catch detector misses, ID churn, and calibration dropouts quickly. It is deliberately lighter than a full analysis run so you can iterate before waiting for saved outputs.",
+      "If the preview already looks weak, do not expect the saved review to rescue it. Fix the earliest broken stage first, then rerun."
+    ],
+    "targets": [
+      "analysis.live_preview"
+    ],
+    "links": []
+  },
+  {
+    "id": "analysis.saved_run_review",
+    "title": "Saved Run Review",
+    "summary": "Review mode is where you judge the saved overlay, diagnostics, and exported metrics for one completed run.",
+    "body": [
+      "The review surface should answer two questions quickly: did this run actually work, and which pipeline stage needs attention first if it did not.",
+      "Use the overlay as the primary artifact. Metrics and diagnostics are there to explain what the video is already showing, not to replace it with abstract counters."
+    ],
+    "targets": [
+      "analysis.saved_run_review"
+    ],
+    "links": []
+  }
+]

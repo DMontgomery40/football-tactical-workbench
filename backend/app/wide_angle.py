@@ -156,6 +156,9 @@ TACTICAL_LEARN_CARDS = [
     },
 ]
 
+HELP_CATALOG_PATH = Path(__file__).with_name("help_catalog.json")
+TACTICAL_HELP_CATALOG = json.loads(HELP_CATALOG_PATH.read_text(encoding="utf-8"))
+
 TEAM_BOX_COLORS = {
     "home": (255, 110, 80),
     "away": (80, 110, 255),

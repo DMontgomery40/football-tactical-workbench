@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const STUDIO_TABS = [
   { id: 'datasets', label: 'Datasets' },
@@ -34,6 +34,18 @@ function formatMetric(value) {
   return numeric.toFixed(3);
 }
 
+function formatPathTail(value) {
+  if (!value) return 'n/a';
+  const parts = String(value).split(/[\\/]+/).filter(Boolean);
+  if (parts.length <= 3) return String(value);
+  return `.../${parts.slice(-3).join('/')}`;
+}
+
+function formatClassIds(value) {
+  if (!Array.isArray(value) || value.length === 0) return 'none';
+  return value.join(', ');
+}
+
 function ActiveDetectorSummary({ registry, activeDetector }) {
   const activeId = registry?.active_detector || activeDetector || 'soccana';
   const activeEntry = (registry?.detectors || []).find((item) => item.id === activeId);
@@ -43,10 +55,41 @@ function ActiveDetectorSummary({ registry, activeDetector }) {
       <div>
         <div className="micro-label">Active detector</div>
         <div className="studio-active-detector-name">{activeEntry?.label || activeId}</div>
+        <div className="muted">{formatPathTail(activeEntry?.path || '')}</div>
       </div>
       <div className={`active-badge ${activeId === 'soccana' ? 'default-active-badge' : ''}`}>
         {activeId === 'soccana' ? 'pretrained active' : 'custom checkpoint active'}
       </div>
+    </div>
+  );
+}
+
+function ArtifactList({ artifacts }) {
+  const entries = Object.entries(artifacts || {}).filter(([, value]) => {
+    if (Array.isArray(value)) return value.length > 0;
+    return Boolean(value);
+  });
+
+  if (entries.length === 0) {
+    return <div className="muted">No artifacts written yet.</div>;
+  }
+
+  return (
+    <div className="studio-artifact-list">
+      {entries.map(([key, value]) => (
+        <div key={key} className="studio-artifact-row">
+          <div className="micro-label">{key.replace(/_/g, ' ')}</div>
+          {Array.isArray(value) ? (
+            <div className="studio-artifact-values">
+              {value.map((item) => (
+                <div key={item} className="studio-meta-value">{item}</div>
+              ))}
+            </div>
+          ) : (
+            <div className="studio-meta-value">{value}</div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -95,6 +138,14 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     setForm((current) => ({
       ...current,
       baseWeights: current.baseWeights || data.default_base_weights || 'soccana',
+      epochs: current.epochs || String(data.default_hyperparameters?.epochs || 50),
+      imgsz: current.imgsz || String(data.default_hyperparameters?.imgsz || 640),
+      batch: current.batch || String(data.default_hyperparameters?.batch || 16),
+      device: current.device || data.default_hyperparameters?.device || 'auto',
+      workers: current.workers || String(data.default_hyperparameters?.workers || 4),
+      patience: current.patience || String(data.default_hyperparameters?.patience || 20),
+      freeze: current.freeze ?? '',
+      cache: current.cache ?? Boolean(data.default_hyperparameters?.cache),
     }));
     return data;
   }
@@ -112,8 +163,9 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
   async function loadJobs() {
     const data = await requestJson('/api/train/jobs');
-    setJobs(Array.isArray(data) ? data : []);
-    return data;
+    const normalized = Array.isArray(data) ? data : [];
+    setJobs(normalized);
+    return normalized;
   }
 
   useEffect(() => {
@@ -155,7 +207,10 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     async function pollJobs() {
       try {
         setJobsError('');
-        await loadJobs();
+        const latestJobs = await loadJobs();
+        if (!latestJobs.some((job) => ACTIVE_JOB_STATUSES.has(String(job?.status || '')))) {
+          await loadRegistry();
+        }
       } catch (error) {
         setJobsError(error.message || 'Could not refresh training jobs.');
       }
@@ -184,7 +239,6 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
     setIsScanning(true);
     setScanError('');
-    setDatasetScan(null);
     try {
       const data = await requestJson('/api/train/datasets/scan', {
         method: 'POST',
@@ -193,6 +247,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       });
       setDatasetScan(data);
     } catch (error) {
+      setDatasetScan(null);
       setScanError(error.message || 'Could not scan dataset.');
     } finally {
       setIsScanning(false);
@@ -204,6 +259,11 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     setTrainError('');
     if (!datasetPath.trim()) {
       setTrainError('Choose a dataset path first.');
+      setStudioTab('datasets');
+      return;
+    }
+    if (!datasetScan?.can_start) {
+      setTrainError('Run a clean dataset scan first, then fix any blocking issues before starting detector fine-tuning.');
       setStudioTab('datasets');
       return;
     }
@@ -229,6 +289,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
         body: JSON.stringify(payload),
       });
       await loadJobs();
+      await loadRegistry();
       setStudioTab('jobs');
     } catch (error) {
       setTrainError(error.message || 'Could not start detector fine-tuning.');
@@ -261,6 +322,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
         id: nextRegistry.active_detector,
         label: activeEntry?.label || nextRegistry.active_detector,
       });
+      setStudioTab('registry');
     } catch (error) {
       setRegistryError(error.message || 'Could not activate detector.');
     } finally {
@@ -269,19 +331,47 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
   }
 
   const enabledBaseWeights = trainingConfig?.available_base_weights || [{ id: 'soccana', label: 'soccana (football-pretrained)' }];
+  const deviceOptions = trainingConfig?.device_options || ['auto', 'mps', 'cpu', 'cuda'];
   const activeRegistryId = registry?.active_detector || activeDetector || 'soccana';
+  const scanTierClass = datasetScan?.tier === 'valid' ? 'completed' : datasetScan?.tier === 'invalid' ? 'failed' : 'stopping';
+  const trainDisabledReason = !datasetPath.trim()
+    ? 'Choose a dataset path first.'
+    : !datasetScan
+      ? 'Run a dataset scan before starting training.'
+      : !datasetScan.can_start
+        ? 'Fix the blocking dataset issues before starting a run.'
+        : '';
+  const completedJobs = useMemo(
+    () => jobs.filter((job) => job.status === 'completed'),
+    [jobs],
+  );
 
   return (
     <section className="studio-shell">
-      <section className="card studio-header">
+      <section className="card studio-header training-studio-hero">
         <div className="studio-header-copy">
           <div className="eyebrow">training studio</div>
-          <div className="section-title">Fine-tune the football detector without leaving the workbench.</div>
+          <div className="section-title">Fine-tune the football detector in its own workspace.</div>
           <p className="studio-intro">
-            Jobs run in isolated Python subprocesses, keep their own logs on disk, and can promote a finished checkpoint into the analysis workspace with one activation click.
+            This V1 stays focused: start from the football-pretrained `soccana` checkpoint, adapt it to your camera domain locally,
+            and then promote the best checkpoint straight back into analysis.
           </p>
+          <div className="studio-status-ribbon">
+            <span>{trainingConfig?.backend_label || 'Training backend'}</span>
+            {trainingConfig?.backend_version ? <span>v{trainingConfig.backend_version}</span> : null}
+            <span>mac-first via MPS</span>
+            <span>CUDA-ready path preserved</span>
+          </div>
         </div>
-        <ActiveDetectorSummary registry={registry} activeDetector={activeDetector} />
+        <div className="studio-header-side">
+          <ActiveDetectorSummary registry={registry} activeDetector={activeDetector} />
+          {trainingConfig?.license_note ? (
+            <div className="studio-license-note">
+              <div className="micro-label">Licensing caveat</div>
+              <div>{trainingConfig.license_note}</div>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <section className="card studio-nav">
@@ -302,9 +392,9 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       {studioTab === 'datasets' ? (
         <section className="studio-panel-grid">
           <section className="card studio-panel">
-            <div className="section-title">YOLO dataset scan</div>
+            <div className="section-title">Dataset intake</div>
             <div className="field-note">
-              Point this at a YOLO dataset root. The scanner looks for `dataset.yaml`, split folders, image counts, and label coverage before you spend time on a training run.
+              Point this at a YOLO detector dataset root. The scanner checks split structure, label integrity, class mapping, and whether the trained checkpoint can safely come back into analysis.
             </div>
             <label>
               <span>Dataset path</span>
@@ -331,13 +421,17 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
           <section className={`card studio-panel scan-result-card ${datasetScan?.tier || 'neutral'}`}>
             <div className="row-between">
-              <div className="section-title">Scan result</div>
-              <div className={`status-pill ${datasetScan?.tier === 'valid' ? 'completed' : datasetScan?.tier === 'invalid' ? 'failed' : 'stopping'}`}>
-                {datasetScan?.tier || 'waiting'}
+              <div>
+                <div className="section-title">Scan result</div>
+                <div className="muted">
+                  {datasetScan ? (datasetScan.can_start ? 'Ready for detector fine-tuning.' : 'Needs fixes before a run can start.') : 'Run a scan to inspect readiness.'}
+                </div>
               </div>
+              <div className={`status-pill ${scanTierClass}`}>{datasetScan?.tier || 'waiting'}</div>
             </div>
+
             {!datasetScan ? (
-              <div className="empty-card">Run a dataset scan to inspect splits, classes, and warnings before training.</div>
+              <div className="empty-card">Run a dataset scan to inspect splits, classes, and blocking issues before training.</div>
             ) : (
               <>
                 <div className="studio-meta-grid">
@@ -346,8 +440,16 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                     <div className="studio-meta-value">{datasetScan.path}</div>
                   </div>
                   <div>
-                    <div className="micro-label">YAML</div>
-                    <div className="studio-meta-value">{datasetScan.has_yaml ? datasetScan.yaml_path : 'Generated at runtime'}</div>
+                    <div className="micro-label">Dataset YAML</div>
+                    <div className="studio-meta-value">{datasetScan.has_yaml ? datasetScan.yaml_path : 'Missing'}</div>
+                  </div>
+                  <div>
+                    <div className="micro-label">Validation strategy</div>
+                    <div className="studio-meta-value">{datasetScan.suggested_validation_strategy || 'existing_split'}</div>
+                  </div>
+                  <div>
+                    <div className="micro-label">Class source</div>
+                    <div className="studio-meta-value">{datasetScan.classes_source || 'missing'}</div>
                   </div>
                 </div>
 
@@ -362,12 +464,30 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   )}
                 </div>
 
+                <div className="studio-class-map">
+                  <div className="studio-class-map-card">
+                    <div className="micro-label">Player / keeper ids</div>
+                    <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.player_class_ids)}</div>
+                  </div>
+                  <div className="studio-class-map-card">
+                    <div className="micro-label">Ball ids</div>
+                    <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.ball_class_ids)}</div>
+                  </div>
+                  <div className="studio-class-map-card">
+                    <div className="micro-label">Referee ids</div>
+                    <div className="studio-meta-value">{formatClassIds(datasetScan.class_mapping?.referee_class_ids)}</div>
+                  </div>
+                </div>
+
                 <div className="studio-split-grid">
-                  {Object.entries(datasetScan.splits || {}).map(([splitName, counts]) => (
-                    <div key={splitName} className="studio-split-card">
+                  {Object.entries(datasetScan.splits || {}).map(([splitName, split]) => (
+                    <div key={splitName} className="studio-split-card detailed-split-card">
                       <div className="micro-label">{splitName}</div>
-                      <div className="studio-split-count">{counts.images || 0} images</div>
-                      <div className="muted">{counts.labels || 0} labels</div>
+                      <div className="studio-split-count">{split.images || 0} images</div>
+                      <div className="muted">{split.label_files || 0} label files</div>
+                      <div className="muted">{split.labeled_images || 0} labeled images</div>
+                      <div className="muted">{split.instances || 0} instances</div>
+                      <div className="muted">path: {split.path || 'missing'}</div>
                     </div>
                   ))}
                 </div>
@@ -381,7 +501,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
                 {(datasetScan.errors || []).length ? (
                   <div className="studio-list-block error-list">
-                    <div className="micro-label">Errors</div>
+                    <div className="micro-label">Blocking issues</div>
                     {(datasetScan.errors || []).map((item) => <div key={item}>{item}</div>)}
                   </div>
                 ) : null}
@@ -399,12 +519,24 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
               <div className="studio-family-card active-family-card">
                 <div className="micro-label">Enabled now</div>
                 <div className="studio-family-title">Detector fine-tuning</div>
-                <div className="muted">Starts from `soccana` and writes a new custom checkpoint into the registry flow.</div>
+                <div className="muted">Starts from `soccana`, keeps training local, and writes a detector registry entry when the run finishes.</div>
               </div>
               <div className="studio-family-card">
-                <div className="micro-label">Coming soon</div>
+                <div className="micro-label">Reserved next</div>
                 <div className="studio-family-title">Field calibration</div>
-                <div className="muted">Reserved for future keypoint or calibration training workflows.</div>
+                <div className="muted">Future keypoint or calibration-family training slots in here without polluting the detector flow.</div>
+              </div>
+            </div>
+
+            <div className={`studio-readiness-card ${datasetScan?.can_start ? 'ready' : ''}`}>
+              <div className="micro-label">Dataset readiness</div>
+              <div className="studio-readiness-title">
+                {datasetScan?.can_start ? 'Ready to fine-tune' : 'Dataset scan still required'}
+              </div>
+              <div className="muted">
+                {datasetScan
+                  ? (datasetScan.can_start ? 'The worker will generate a run-local manifest and leave your source dataset untouched.' : 'Fix the blocking dataset issues from the Datasets tab before starting a run.')
+                  : 'Run a dataset scan first so the training form can verify class mapping and split integrity.'}
               </div>
             </div>
           </section>
@@ -429,7 +561,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   type="text"
                   value={form.runName}
                   onChange={(event) => updateForm('runName', event.target.value)}
-                  placeholder="my-domain-tune"
+                  placeholder="broadcast-side-cam-tune"
                 />
               </label>
               <label>
@@ -446,7 +578,11 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
               </label>
               <label>
                 <span>Device</span>
-                <input type="text" value={form.device} onChange={(event) => updateForm('device', event.target.value)} placeholder="auto / cpu / cuda / mps" />
+                <select value={form.device} onChange={(event) => updateForm('device', event.target.value)}>
+                  {deviceOptions.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
               </label>
               <label>
                 <span>Workers</span>
@@ -465,17 +601,24 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 <input type="checkbox" checked={form.cache} onChange={(event) => updateForm('cache', event.target.checked)} />
               </label>
             </div>
-            <div className="field-note">
-              Training uses a separate worker process so the API stays responsive. If your dataset scan still shows warnings, those will be carried into the job log before the worker starts.
+
+            <div className="studio-runtime-note">
+              <div className="micro-label">Runtime behavior</div>
+              <div>
+                The worker gets a run-local <code>dataset_runtime.yaml</code>, writes <code>summary.json</code>, <code>train.log</code>,
+                plot artifacts, and the best checkpoint under <code>backend/training_runs/&lt;run_id&gt;/</code>.
+              </div>
             </div>
+
             <div className="source-toolbar">
               <button className="secondary-button compact-button" type="button" onClick={() => setStudioTab('datasets')}>
                 Back to dataset scan
               </button>
-              <button className="primary-button compact-button" type="submit" disabled={isStarting}>
+              <button className="primary-button compact-button" type="submit" disabled={isStarting || Boolean(trainDisabledReason)}>
                 {isStarting ? 'Starting fine-tuning...' : 'Start fine-tuning'}
               </button>
             </div>
+            {trainDisabledReason ? <div className="field-note">{trainDisabledReason}</div> : null}
             {trainError ? <div className="error-box">{trainError}</div> : null}
           </form>
         </section>
@@ -496,35 +639,52 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                   </div>
                   <div className={`status-pill ${job.status || 'idle'}`}>{job.status || 'idle'}</div>
                 </div>
+
                 <div className="studio-meta-grid">
                   <div>
                     <div className="micro-label">Base weights</div>
                     <div className="studio-meta-value">{job.config?.base_weights || 'soccana'}</div>
                   </div>
                   <div>
-                    <div className="micro-label">Created</div>
-                    <div className="studio-meta-value">{formatTimestamp(job.created_at)}</div>
+                    <div className="micro-label">Backend</div>
+                    <div className="studio-meta-value">
+                      {[job.backend, job.backend_version ? `v${job.backend_version}` : null].filter(Boolean).join(' ')}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="micro-label">Resolved device</div>
+                    <div className="studio-meta-value">{job.resolved_device || job.config?.device || 'pending'}</div>
                   </div>
                   <div>
                     <div className="micro-label">Epoch</div>
                     <div className="studio-meta-value">{job.current_epoch || 0} / {job.total_epochs || 0}</div>
                   </div>
                   <div>
-                    <div className="micro-label">Best checkpoint</div>
-                    <div className="studio-meta-value">{job.best_checkpoint || 'Not available yet'}</div>
+                    <div className="micro-label">Started</div>
+                    <div className="studio-meta-value">{formatTimestamp(job.started_at || job.created_at)}</div>
+                  </div>
+                  <div>
+                    <div className="micro-label">Finished</div>
+                    <div className="studio-meta-value">{job.finished_at ? formatTimestamp(job.finished_at) : 'still running'}</div>
                   </div>
                 </div>
+
                 <div className="progress-shell">
                   <div className="progress-bar" style={{ width: `${job.progress || 0}%` }} />
                 </div>
+
                 <div className="row-between">
                   <div className="muted">{job.progress || 0}% complete</div>
                   <div className="studio-metric-inline">
                     <span>mAP50 {formatMetric(job.metrics?.mAP50)}</span>
                     <span>mAP50-95 {formatMetric(job.metrics?.mAP50_95)}</span>
+                    <span>Precision {formatMetric(job.metrics?.precision)}</span>
+                    <span>Recall {formatMetric(job.metrics?.recall)}</span>
                   </div>
                 </div>
+
                 {job.error ? <div className="error-box">{job.error}</div> : null}
+
                 <div className="source-toolbar">
                   <button className="secondary-button compact-button" type="button" onClick={() => setStudioTab('registry')}>
                     Open registry
@@ -550,6 +710,41 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                     </button>
                   ) : null}
                 </div>
+
+                <details className="studio-log-details">
+                  <summary>Run artifacts and dataset contract</summary>
+                  <div className="studio-detail-stack">
+                    <div className="studio-runtime-note">
+                      <div className="micro-label">Generated dataset manifest</div>
+                      <div>{job.generated_dataset_yaml || 'Not written yet'}</div>
+                    </div>
+                    <ArtifactList artifacts={job.artifacts} />
+                    {job.dataset_scan ? (
+                      <div className="studio-dataset-review">
+                        <div className="micro-label">Dataset scan snapshot</div>
+                        <div className="studio-meta-grid">
+                          <div>
+                            <div className="micro-label">Tier</div>
+                            <div className="studio-meta-value">{job.dataset_scan.tier}</div>
+                          </div>
+                          <div>
+                            <div className="micro-label">Validation strategy</div>
+                            <div className="studio-meta-value">{job.validation_strategy || job.dataset_scan.suggested_validation_strategy}</div>
+                          </div>
+                          <div>
+                            <div className="micro-label">Player ids</div>
+                            <div className="studio-meta-value">{formatClassIds(job.dataset_scan.class_mapping?.player_class_ids)}</div>
+                          </div>
+                          <div>
+                            <div className="micro-label">Ball ids</div>
+                            <div className="studio-meta-value">{formatClassIds(job.dataset_scan.class_mapping?.ball_class_ids)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+
                 <details className="studio-log-details">
                   <summary>Logs</summary>
                   <div className="log-panel">
@@ -561,6 +756,11 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
               </section>
             ))
           )}
+          {completedJobs.length > 0 ? (
+            <div className="field-note">
+              Completed runs stay on disk under `backend/training_runs/` and can be promoted again later from the Registry tab.
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -571,7 +771,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
             <div className="row-between">
               <div>
                 <div className="section-title">Detector registry</div>
-                <div className="field-note">Analysis and live preview use the active detector when the analysis selector stays on `soccana`.</div>
+                <div className="field-note">Analysis and live preview use the active detector whenever the analysis selector stays on `soccana`.</div>
               </div>
               <div className="active-badge">{activeRegistryId === 'soccana' ? 'using pretrained detector' : 'using custom detector'}</div>
             </div>
@@ -592,6 +792,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                       {entry.id === activeRegistryId ? 'Active' : entry.is_pretrained ? 'Pretrained' : 'Available'}
                     </div>
                   </div>
+
                   <div className="studio-meta-grid">
                     <div>
                       <div className="micro-label">Created</div>
@@ -602,6 +803,16 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                       <div className="studio-meta-value">{entry.base_weights || 'soccana'}</div>
                     </div>
                     <div>
+                      <div className="micro-label">Resolved device</div>
+                      <div className="studio-meta-value">{entry.resolved_device || 'n/a'}</div>
+                    </div>
+                    <div>
+                      <div className="micro-label">Backend</div>
+                      <div className="studio-meta-value">
+                        {[entry.backend, entry.backend_version ? `v${entry.backend_version}` : null].filter(Boolean).join(' ') || 'n/a'}
+                      </div>
+                    </div>
+                    <div>
                       <div className="micro-label">mAP50</div>
                       <div className="studio-meta-value">{formatMetric(entry.metrics?.mAP50)}</div>
                     </div>
@@ -610,7 +821,32 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                       <div className="studio-meta-value">{entry.path}</div>
                     </div>
                   </div>
+
+                  {!entry.is_pretrained ? (
+                    <div className="studio-class-map compact-class-map">
+                      <div className="studio-class-map-card">
+                        <div className="micro-label">Player ids</div>
+                        <div className="studio-meta-value">{formatClassIds(entry.class_ids?.player_class_ids)}</div>
+                      </div>
+                      <div className="studio-class-map-card">
+                        <div className="micro-label">Ball ids</div>
+                        <div className="studio-meta-value">{formatClassIds(entry.class_ids?.ball_class_ids)}</div>
+                      </div>
+                      <div className="studio-class-map-card">
+                        <div className="micro-label">Ref ids</div>
+                        <div className="studio-meta-value">{formatClassIds(entry.class_ids?.referee_class_ids)}</div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {entry.summary_path ? (
+                    <div className="studio-runtime-note compact-note">
+                      <div className="micro-label">Run summary</div>
+                      <div>{entry.summary_path}</div>
+                    </div>
+                  ) : null}
                 </div>
+
                 {entry.id !== activeRegistryId && entry.training_run_id ? (
                   <button
                     className="primary-button compact-button"

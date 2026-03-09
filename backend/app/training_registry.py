@@ -95,6 +95,11 @@ class TrainingRegistry:
         base_weights: str,
         metrics: dict[str, Any] | None,
         created_at: str | None = None,
+        resolved_device: str | None = None,
+        backend: str | None = None,
+        backend_version: str | None = None,
+        summary_path: str | None = None,
+        artifacts: dict[str, Any] | None = None,
         activate: bool = False,
     ) -> dict[str, Any]:
         detector_id = f"custom_{run_id}"
@@ -111,6 +116,11 @@ class TrainingRegistry:
                 "metrics": metrics or None,
                 "training_run_id": run_id,
                 "class_ids": resolve_registered_class_ids(checkpoint_path),
+                "resolved_device": resolved_device,
+                "backend": backend,
+                "backend_version": backend_version,
+                "summary_path": summary_path,
+                "artifacts": artifacts or None,
             }
             index = next((idx for idx, item in enumerate(detectors) if str(item.get("id")) == detector_id), None)
             if index is None:
@@ -138,6 +148,11 @@ class TrainingRegistry:
         base_weights: str,
         metrics: dict[str, Any] | None,
         created_at: str | None = None,
+        resolved_device: str | None = None,
+        backend: str | None = None,
+        backend_version: str | None = None,
+        summary_path: str | None = None,
+        artifacts: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self.register_detector(
             run_id=run_id,
@@ -146,6 +161,11 @@ class TrainingRegistry:
             base_weights=base_weights,
             metrics=metrics,
             created_at=created_at,
+            resolved_device=resolved_device,
+            backend=backend,
+            backend_version=backend_version,
+            summary_path=summary_path,
+            artifacts=artifacts,
             activate=True,
         )
 
@@ -175,6 +195,11 @@ class TrainingRegistry:
             "metrics": None,
             "training_run_id": None,
             "class_ids": resolve_registered_class_ids(resolve_model_path("soccana", "detector")),
+            "resolved_device": None,
+            "backend": None,
+            "backend_version": None,
+            "summary_path": None,
+            "artifacts": None,
         }
 
         detectors: list[dict[str, Any]] = []
@@ -194,6 +219,11 @@ class TrainingRegistry:
                     detector.setdefault("training_run_id", detector.get("training_run_id"))
                     detector.setdefault("base_weights", detector.get("base_weights") or "soccana")
                     detector.setdefault("created_at", datetime.utcnow().isoformat() + "Z")
+                    detector.setdefault("resolved_device", detector.get("resolved_device"))
+                    detector.setdefault("backend", detector.get("backend"))
+                    detector.setdefault("backend_version", detector.get("backend_version"))
+                    detector.setdefault("summary_path", detector.get("summary_path"))
+                    detector.setdefault("artifacts", detector.get("artifacts"))
                     path_value = detector.get("path")
                     if path_value:
                         detector["path"] = str(Path(str(path_value)).expanduser().resolve())

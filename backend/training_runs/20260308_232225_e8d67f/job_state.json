@@ -1,6 +1,7 @@
 {
   "job_id": "bfd5b7898c61",
   "run_id": "20260308_232225_e8d67f",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f",
   "status": "completed",
   "progress": 100.0,
   "current_epoch": 1,
@@ -125,6 +126,8 @@
     "[23:23:02] Activated detector custom_20260308_232225_e8d67f."
   ],
   "created_at": "2026-03-08T23:22:25.712531Z",
+  "started_at": null,
+  "finished_at": null,
   "config": {
     "base_weights": "soccana",
     "dataset_path": "/private/tmp/fpw_train_smoke",
@@ -138,14 +141,22 @@
     "freeze": null,
     "cache": false
   },
+  "dataset_scan": null,
+  "generated_dataset_yaml": null,
+  "generated_split_lists": {},
+  "resolved_device": null,
+  "backend": null,
+  "backend_version": null,
+  "validation_strategy": null,
   "metrics": {
     "mAP50": 0.0,
     "mAP50_95": 0.0,
     "precision": 0.0,
     "recall": 0.0
   },
+  "artifacts": {},
   "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
+  "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/summary.json",
   "error": null,
-  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f",
   "pid": null
 }
