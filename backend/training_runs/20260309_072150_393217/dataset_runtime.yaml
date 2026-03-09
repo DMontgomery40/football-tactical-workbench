@@ -1,0 +1,8 @@
+path: /private/tmp/fpw_train_valid_v1
+train: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/train.txt
+val: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/val.txt
+names:
+  0: player
+  1: goalkeeper
+  2: referee
+  3: ball

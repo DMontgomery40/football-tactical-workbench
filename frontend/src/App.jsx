@@ -1,5 +1,20 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  FloatingFocusManager,
+  FloatingPortal,
+  autoUpdate,
+  flip,
+  offset,
+  safePolygon,
+  shift,
+  useClick,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react';
 
 import TrainingStudio from './TrainingStudio';
 
@@ -156,6 +171,31 @@ function friendlyProviderName(value) {
   return value || 'provider';
 }
 
+function isAppleSiliconRuntime(runtimeProfile) {
+  return runtimeProfile?.host_platform === 'macos' && /arm|apple/i.test(String(runtimeProfile?.host_arch || ''));
+}
+
+function formatRuntimeDevice(value) {
+  const device = String(value || 'cpu').toLowerCase();
+  if (device === 'mps') return 'MPS';
+  if (device === 'cuda') return 'CUDA';
+  return device.toUpperCase();
+}
+
+function formatPlannedBackends(runtimeProfile) {
+  if (!Array.isArray(runtimeProfile?.planned_backends) || runtimeProfile.planned_backends.length === 0) {
+    return '';
+  }
+  return runtimeProfile.planned_backends
+    .map((entry) => {
+      if (entry?.id === 'onnxruntime_coreml') return 'ORT CoreML';
+      if (entry?.id === 'onnxruntime_cuda') return 'ORT CUDA';
+      return entry?.label || entry?.id || '';
+    })
+    .filter(Boolean)
+    .join(' + ');
+}
+
 function formatPercent(value, digits = 1) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return '0%';
@@ -265,192 +305,77 @@ function formatHelpLinkMeta(link) {
 }
 
 function HelpPopover({ entry }) {
-  const [isPinned, setIsPinned] = useState(false);
-  const [isMouseOverPopover, setIsMouseOverPopover] = useState(false);
-  const [hasKeyboardFocus, setHasKeyboardFocus] = useState(false);
-  const [panelStyle, setPanelStyle] = useState(null);
-  const tooltipId = useId();
-  const rootRef = useRef(null);
-  const triggerRef = useRef(null);
-  const panelRef = useRef(null);
-  const closeTimerRef = useRef(null);
-
-  const isOpen = Boolean(entry) && (isPinned || isMouseOverPopover || hasKeyboardFocus);
-
-  function clearCloseTimer() {
-    if (closeTimerRef.current) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  }
-
-  function openForPointer() {
-    clearCloseTimer();
-    setIsMouseOverPopover(true);
-  }
-
-  function closeForPointerWithDelay() {
-    clearCloseTimer();
-    closeTimerRef.current = window.setTimeout(() => {
-      setIsMouseOverPopover(false);
-      closeTimerRef.current = null;
-    }, 180);
-  }
-
-  useLayoutEffect(() => {
-    if (!isOpen || !triggerRef.current || !panelRef.current || typeof window === 'undefined') {
-      return undefined;
-    }
-
-    function updatePosition() {
-      if (!triggerRef.current || !panelRef.current) {
-        return;
-      }
-
-      const triggerRect = triggerRef.current.getBoundingClientRect();
-      const panelRect = panelRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const gutter = 16;
-      const gap = 8;
-      const width = Math.min(420, Math.max(280, viewportWidth - gutter * 2));
-
-      let left = triggerRect.right + gap;
-      if (left + width > viewportWidth - gutter) {
-        left = triggerRect.left - gap - width;
-      }
-      if (left < gutter) {
-        left = Math.max(gutter, Math.min(triggerRect.left, viewportWidth - gutter - width));
-      }
-
-      let top = triggerRect.bottom + gap;
-      if (top + panelRect.height > viewportHeight - gutter) {
-        top = triggerRect.top - gap - panelRect.height;
-      }
-      if (top < gutter) {
-        top = Math.max(gutter, viewportHeight - gutter - panelRect.height);
-      }
-
-      setPanelStyle({
-        left: `${Math.round(left)}px`,
-        top: `${Math.round(top)}px`,
-        width: `${Math.round(width)}px`,
-        visibility: 'visible',
-      });
-    }
-
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isPinned) {
-      return undefined;
-    }
-
-    function handlePointerDown(event) {
-      const target = event.target;
-      const insideTrigger = rootRef.current && rootRef.current.contains(target);
-      const insidePanel = panelRef.current && panelRef.current.contains(target);
-      if (!insideTrigger && !insidePanel) {
-        setIsPinned(false);
-      }
-    }
-
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setIsPinned(false);
-      }
-    }
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isPinned]);
-
-  useEffect(() => (
-    () => {
-      clearCloseTimer();
-    }
-  ), []);
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const titleId = `${panelId}-title`;
+  const { refs, floatingStyles, context } = useFloating({
+    open,
+    onOpenChange: setOpen,
+    placement: 'right-start',
+    whileElementsMounted: autoUpdate,
+    middleware: [offset(10), flip({ padding: 16 }), shift({ padding: 16 })],
+  });
+  const hover = useHover(context, {
+    move: false,
+    handleClose: safePolygon({ buffer: 2 }),
+  });
+  const focus = useFocus(context);
+  const click = useClick(context, { toggle: true });
+  const dismiss = useDismiss(context);
+  const role = useRole(context, { role: 'dialog' });
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, focus, click, dismiss, role]);
 
   if (!entry) {
     return null;
   }
 
   return (
-    <span
-      ref={rootRef}
-      className={`help-popover ${isOpen ? 'open' : ''}`}
-    >
+    <span className={`help-popover ${open ? 'open' : ''}`}>
       <button
-        ref={triggerRef}
+        ref={refs.setReference}
         type="button"
         className="help-trigger"
         aria-label={`More about ${entry.title}`}
-        aria-describedby={isOpen ? tooltipId : undefined}
-        aria-expanded={isOpen}
-        onMouseEnter={openForPointer}
-        onMouseLeave={closeForPointerWithDelay}
-        onFocus={() => setHasKeyboardFocus(true)}
-        onBlur={(event) => {
-          if (!panelRef.current?.contains(event.relatedTarget)) {
-            setHasKeyboardFocus(false);
-          }
-        }}
-        onClick={(event) => {
-          event.preventDefault();
-          setIsPinned((current) => !current);
-        }}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        {...getReferenceProps()}
       >
         i
       </button>
-      {isOpen ? createPortal(
-        <div
-          ref={panelRef}
-          id={tooltipId}
-          role="tooltip"
-          className="help-panel"
-          style={panelStyle || { visibility: 'hidden' }}
-          onMouseEnter={openForPointer}
-          onMouseLeave={closeForPointerWithDelay}
-          onFocus={() => setHasKeyboardFocus(true)}
-          onBlur={(event) => {
-            if (!panelRef.current?.contains(event.relatedTarget) && !rootRef.current?.contains(event.relatedTarget)) {
-              setHasKeyboardFocus(false);
-            }
-          }}
-        >
-          <div className="help-panel-title">{entry.title}</div>
-          {entry.summary ? <div className="help-panel-summary">{entry.summary}</div> : null}
-          {(entry.body || []).length ? (
-            <div className="help-panel-body">
-              {entry.body.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+      {open ? (
+        <FloatingPortal>
+          <FloatingFocusManager context={context} modal={false}>
+            <div
+              ref={refs.setFloating}
+              id={panelId}
+              aria-labelledby={titleId}
+              className="help-panel"
+              style={floatingStyles}
+              {...getFloatingProps()}
+            >
+              <div id={titleId} className="help-panel-title">{entry.title}</div>
+              {entry.summary ? <div className="help-panel-summary">{entry.summary}</div> : null}
+              {(entry.body || []).length ? (
+                <div className="help-panel-body">
+                  {entry.body.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
+              ) : null}
+              {(entry.links || []).length ? (
+                <div className="help-panel-links">
+                  <div className="micro-label">References</div>
+                  {(entry.links || []).map((link) => (
+                    <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="help-link">
+                      <span>{link.label}</span>
+                      {formatHelpLinkMeta(link) ? <span className="help-link-meta">{formatHelpLinkMeta(link)}</span> : null}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-          {(entry.links || []).length ? (
-            <div className="help-panel-links">
-              <div className="micro-label">References</div>
-              {(entry.links || []).map((link) => (
-                <a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="help-link">
-                  <span>{link.label}</span>
-                  {formatHelpLinkMeta(link) ? <span className="help-link-meta">{formatHelpLinkMeta(link)}</span> : null}
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </div>,
-        document.body,
+          </FloatingFocusManager>
+        </FloatingPortal>
       ) : null}
     </span>
   );
@@ -1243,10 +1168,16 @@ export default function App() {
   const playerTrackerModes = config.player_tracker_modes?.length ? config.player_tracker_modes : ['hybrid_reid', 'bytetrack'];
   const activeDetectorLabel = config.active_detector_label || config.active_detector || 'soccana';
   const activeDetectorIsCustom = Boolean(config.active_detector_is_custom && config.active_detector !== 'soccana');
+  const runtimeProfile = config.runtime_profile || null;
   const helpIndex = useMemo(
     () => buildHelpIndex(config.help_catalog),
     [config.help_catalog],
   );
+  const runtimeBackendPill = runtimeProfile
+    ? `${runtimeProfile.backend_label || 'Ultralytics YOLO / PyTorch'} · ${formatRuntimeDevice(runtimeProfile.preferred_device)}`
+    : 'runtime metadata loading';
+  const runtimeRoadmapPill = runtimeProfile ? formatPlannedBackends(runtimeProfile) : '';
+  const platformDirectionLabel = isAppleSiliconRuntime(runtimeProfile) ? 'apple silicon first' : 'wide-angle first';
   const visibleSoccerNetGames = useMemo(
     () => soccerNetGames.slice(0, soccerNetResultLimit),
     [soccerNetGames, soccerNetResultLimit],
@@ -1951,7 +1882,7 @@ export default function App() {
           <div className="eyebrow">football tactical demo</div>
           <h1>Detect, track, calibrate the field, and project the play.</h1>
           <p>
-            Local React + FastAPI demo for wide-angle football analysis with football-specific detection, hybrid appearance-aware player tracking, per-frame field-keypoint calibration with rolling homography smoothing, live model preview, and projected tactical overlays.
+            Local React + FastAPI workbench for wide-angle football analysis with football-specific detection, hybrid appearance-aware player tracking, field-keypoint calibration refreshed every 10 frames, live model preview, and projected tactical overlays.
           </p>
         </div>
         <div className="hero-pills">
@@ -1963,7 +1894,17 @@ export default function App() {
             <span className="chip-dot" aria-hidden="true" />
             {backendStatus.label}
           </span>
-          <span>wide-angle first</span>
+          <span title={runtimeProfile?.host_platform && runtimeProfile?.host_arch ? `${runtimeProfile.host_platform} · ${runtimeProfile.host_arch}` : 'Host runtime profile'}>
+            {platformDirectionLabel}
+          </span>
+          <span title={(runtimeProfile?.runtime_notes || []).join(' ')}>
+            {runtimeBackendPill}
+          </span>
+          {runtimeRoadmapPill ? (
+            <span title="Planned inference backends">
+              {runtimeRoadmapPill}
+            </span>
+          ) : null}
           <div className="theme-switcher" role="group" aria-label="Theme mode">
             {['light', 'dark', 'auto'].map((mode) => (
               <button

@@ -1,0 +1,344 @@
+{
+  "job_id": "513fbe18c2c8",
+  "run_id": "20260309_072150_393217",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217",
+  "status": "completed",
+  "progress": 100.0,
+  "current_epoch": 1,
+  "total_epochs": 1,
+  "logs": [
+    "[07:21:50] Queued detector training run studio-v1-smoke-2",
+    "[07:21:50] Dataset scan tier: valid.",
+    "[07:21:50] Validation strategy: existing_split.",
+    "[07:21:50] Runtime dataset manifest: /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_runtime.yaml",
+    "[07:21:50] Training worker started (pid 99802)",
+    "[07:21:53] New https://pypi.org/project/ultralytics/8.4.21 available \ud83d\ude03 Update with 'pip install -U ultralytics'",
+    "[07:21:53] Ultralytics 8.3.81 \ud83d\ude80 Python-3.12.7 torch-2.10.0 CPU (Apple M4 Pro)",
+    "[07:21:53] \u001b[34m\u001b[1mengine/trainer: \u001b[0mtask=detect, mode=train, model=/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt, data=/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_runtime.yaml, epochs=1, time=None, patience=1, batch=1, imgsz=320, save=True, save_period=-1, cache=False, device=cpu, workers=0, project=/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output, name=train, exist_ok=True, pretrained=True, optimizer=auto, verbose=True, seed=0, deterministic=True, single_cls=False, rect=False, cos_lr=False, close_mosaic=10, resume=False, amp=True, fraction=1.0, profile=False, freeze=0, multi_scale=False, overlap_mask=True, mask_ratio=4, dropout=0.0, val=True, split=val, save_json=False, save_hybrid=False, conf=None, iou=0.7, max_det=300, half=False, dnn=False, plots=True, source=None, vid_stride=1, stream_buffer=False, visualize=False, augment=False, agnostic_nms=False, classes=None, retina_masks=False, embed=None, show=False, save_frames=False, save_txt=False, save_conf=False, save_crop=False, show_labels=True, show_conf=True, show_boxes=True, line_width=None, format=torchscript, keras=False, optimize=False, int8=False, dynamic=False, simplify=True, opset=None, workspace=None, nms=False, lr0=0.01, lrf=0.01, momentum=0.937, weight_decay=0.0005, warmup_epochs=3.0, warmup_momentum=0.8, warmup_bias_lr=0.1, box=7.5, cls=0.5, dfl=1.5, pose=12.0, kobj=1.0, nbs=64, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4, degrees=0.0, translate=0.1, scale=0.5, shear=0.0, perspective=0.0, flipud=0.0, fliplr=0.5, bgr=0.0, mosaic=1.0, mixup=0.0, copy_paste=0.0, copy_paste_mode=flip, auto_augment=randaugment, erasing=0.4, crop_fraction=1.0, cfg=None, tracker=botsort.yaml, save_dir=/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train",
+    "[07:22:05] Overriding model.yaml nc=3 with nc=4",
+    "[07:22:05]                    from  n    params  module                                       arguments",
+    "[07:22:05]   0                  -1  1       464  ultralytics.nn.modules.conv.Conv             [3, 16, 3, 2]",
+    "[07:22:05]   1                  -1  1      4672  ultralytics.nn.modules.conv.Conv             [16, 32, 3, 2]",
+    "[07:22:05]   2                  -1  1      6640  ultralytics.nn.modules.block.C3k2            [32, 64, 1, False, 0.25]",
+    "[07:22:05]   3                  -1  1     36992  ultralytics.nn.modules.conv.Conv             [64, 64, 3, 2]",
+    "[07:22:05]   4                  -1  1     26080  ultralytics.nn.modules.block.C3k2            [64, 128, 1, False, 0.25]",
+    "[07:22:05]   5                  -1  1    147712  ultralytics.nn.modules.conv.Conv             [128, 128, 3, 2]",
+    "[07:22:05]   6                  -1  1     87040  ultralytics.nn.modules.block.C3k2            [128, 128, 1, True]",
+    "[07:22:05]   7                  -1  1    295424  ultralytics.nn.modules.conv.Conv             [128, 256, 3, 2]",
+    "[07:22:05]   8                  -1  1    346112  ultralytics.nn.modules.block.C3k2            [256, 256, 1, True]",
+    "[07:22:05]   9                  -1  1    164608  ultralytics.nn.modules.block.SPPF            [256, 256, 5]",
+    "[07:22:05]  10                  -1  1    249728  ultralytics.nn.modules.block.C2PSA           [256, 256, 1]",
+    "[07:22:05]  11                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']",
+    "[07:22:05]  12             [-1, 6]  1         0  ultralytics.nn.modules.conv.Concat           [1]",
+    "[07:22:05]  13                  -1  1    111296  ultralytics.nn.modules.block.C3k2            [384, 128, 1, False]",
+    "[07:22:05]  14                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']",
+    "[07:22:05]  15             [-1, 4]  1         0  ultralytics.nn.modules.conv.Concat           [1]",
+    "[07:22:05]  16                  -1  1     32096  ultralytics.nn.modules.block.C3k2            [256, 64, 1, False]",
+    "[07:22:05]  17                  -1  1     36992  ultralytics.nn.modules.conv.Conv             [64, 64, 3, 2]",
+    "[07:22:05]  18            [-1, 13]  1         0  ultralytics.nn.modules.conv.Concat           [1]",
+    "[07:22:05]  19                  -1  1     86720  ultralytics.nn.modules.block.C3k2            [192, 128, 1, False]",
+    "[07:22:05]  20                  -1  1    147712  ultralytics.nn.modules.conv.Conv             [128, 128, 3, 2]",
+    "[07:22:05]  21            [-1, 10]  1         0  ultralytics.nn.modules.conv.Concat           [1]",
+    "[07:22:05]  22                  -1  1    378880  ultralytics.nn.modules.block.C3k2            [384, 256, 1, True]",
+    "[07:22:05]  23        [16, 19, 22]  1    431452  ultralytics.nn.modules.head.Detect           [4, [64, 128, 256]]",
+    "[07:22:05] YOLO11n summary: 181 layers, 2,590,620 parameters, 2,590,604 gradients, 6.4 GFLOPs",
+    "[07:22:05] Transferred 493/499 items from pretrained weights",
+    "[07:22:05] Freezing layer 'model.23.dfl.conv.weight'",
+    "[07:22:05] \u001b[34m\u001b[1mtrain: \u001b[0mScanning /private/tmp/fpw_train_valid_v1/labels/train.cache... 4 images, 0 backgrounds, 0 corrupt: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 4/4 [00:00<?, ?it/s]",
+    "[07:22:05] \u001b[34m\u001b[1mtrain: \u001b[0mScanning /private/tmp/fpw_train_valid_v1/labels/train.cache... 4 images, 0 backgrounds, 0 corrupt: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 4/4 [00:00<?, ?it/s]",
+    "[07:22:05] /Users/davidmontgomery/football_pose_workbench/backend/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.",
+    "[07:22:05]   super().__init__(loader)",
+    "[07:22:05] \u001b[34m\u001b[1mval: \u001b[0mScanning /private/tmp/fpw_train_valid_v1/labels/val.cache... 2 images, 0 backgrounds, 0 corrupt: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 2/2 [00:00<?, ?it/s]",
+    "[07:22:05] \u001b[34m\u001b[1mval: \u001b[0mScanning /private/tmp/fpw_train_valid_v1/labels/val.cache... 2 images, 0 backgrounds, 0 corrupt: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 2/2 [00:00<?, ?it/s]",
+    "[07:22:05] /Users/davidmontgomery/football_pose_workbench/backend/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.",
+    "[07:22:05]   super().__init__(loader)",
+    "[07:22:05] Plotting labels to /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/labels.jpg...",
+    "[07:22:09] Epoch 1/1 - mAP50 0.0000",
+    "[07:22:09] \u001b[34m\u001b[1moptimizer:\u001b[0m 'optimizer=auto' found, ignoring 'lr0=0.01' and 'momentum=0.937' and determining best 'optimizer', 'lr0' and 'momentum' automatically...",
+    "[07:22:09] \u001b[34m\u001b[1moptimizer:\u001b[0m AdamW(lr=0.00125, momentum=0.9) with parameter groups 81 weight(decay=0.0), 88 weight(decay=0.0005), 87 bias(decay=0.0)",
+    "[07:22:09] Image sizes 320 train, 320 val",
+    "[07:22:09] Using 0 dataloader workers",
+    "[07:22:09] Logging results to \u001b[1m/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train\u001b[0m",
+    "[07:22:09] Starting training for 1 epochs...",
+    "[07:22:09]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[07:22:09]   0%|          | 0/4 [00:00<?, ?it/s]",
+    "[07:22:09]         1/1         0G      1.658       3.66      1.911          3        320:   0%|          | 0/4 [00:00<?, ?it/s]",
+    "[07:22:09]         1/1         0G      1.658       3.66      1.911          3        320:  25%|\u2588\u2588\u258c       | 1/4 [00:00<00:00,  4.99it/s]",
+    "[07:22:09]         1/1         0G      1.879      3.586      2.128          3        320:  25%|\u2588\u2588\u258c       | 1/4 [00:00<00:00,  4.99it/s]",
+    "[07:22:09]         1/1         0G      1.879      3.586      2.128          3        320:  50%|\u2588\u2588\u2588\u2588\u2588     | 2/4 [00:00<00:00,  5.01it/s]",
+    "[07:22:09]         1/1         0G      1.764      3.366      2.372          2        320:  50%|\u2588\u2588\u2588\u2588\u2588     | 2/4 [00:00<00:00,  5.01it/s]",
+    "[07:22:09]         1/1         0G      1.764      3.366      2.372          2        320:  75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 3/4 [00:00<00:00,  5.05it/s]",
+    "[07:22:09]         1/1         0G      1.875      3.317      2.268          3        320:  75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 3/4 [00:00<00:00,  5.05it/s]",
+    "[07:22:09]         1/1         0G      1.875      3.317      2.268          3        320: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 4/4 [00:00<00:00,  5.51it/s]",
+    "[07:22:09]         1/1         0G      1.875      3.317      2.268          3        320: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 4/4 [00:00<00:00,  5.32it/s]",
+    "[07:22:09]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[07:22:09]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.79it/s]",
+    "[07:22:09]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.78it/s]",
+    "[07:22:09]                    all          2          4          0          0          0          0",
+    "[07:22:09] 1 epochs completed in 0.000 hours.",
+    "[07:22:09] Optimizer stripped from /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/weights/last.pt, 5.4MB",
+    "[07:22:09] Optimizer stripped from /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/weights/best.pt, 5.4MB",
+    "[07:22:09] Validating /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/weights/best.pt...",
+    "[07:22:09] Ultralytics 8.3.81 \ud83d\ude80 Python-3.12.7 torch-2.10.0 CPU (Apple M4 Pro)",
+    "[07:22:09] YOLO11n summary (fused): 100 layers, 2,582,932 parameters, 0 gradients, 6.3 GFLOPs",
+    "[07:22:09]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[07:22:09]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 23.41it/s]",
+    "[07:22:09]                    all          2          4          0          0          0          0",
+    "[07:22:09]                 player          2          2          0          0          0          0",
+    "[07:22:09]                   ball          2          2          0          0          0          0",
+    "[07:22:09] Speed: 0.2ms preprocess, 19.4ms inference, 0.0ms loss, 0.5ms postprocess per image",
+    "[07:22:09] Results saved to \u001b[1m/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train\u001b[0m",
+    "[07:22:12] Training completed"
+  ],
+  "created_at": "2026-03-09T07:21:50.905752Z",
+  "started_at": "2026-03-09T07:21:50.925084Z",
+  "finished_at": "2026-03-09T07:22:12.036786Z",
+  "config": {
+    "base_weights": "soccana",
+    "dataset_path": "/private/tmp/fpw_train_valid_v1",
+    "run_name": "studio-v1-smoke-2",
+    "epochs": 1,
+    "imgsz": 320,
+    "batch": 1,
+    "device": "cpu",
+    "workers": 0,
+    "patience": 1,
+    "freeze": 0,
+    "cache": false,
+    "backend": "ultralytics",
+    "backend_version": "8.3.81",
+    "dataset_scan": {
+      "path": "/private/tmp/fpw_train_valid_v1",
+      "tier": "valid",
+      "has_yaml": true,
+      "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "classes": [
+        "player",
+        "goalkeeper",
+        "referee",
+        "ball"
+      ],
+      "class_count": 4,
+      "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "player_class_id": 0,
+        "ball_class_id": 3,
+        "referee_class_id": 2
+      },
+      "split_paths": {
+        "train": "/private/tmp/fpw_train_valid_v1/images/train",
+        "val": "/private/tmp/fpw_train_valid_v1/images/val",
+        "test": null
+      },
+      "splits": {
+        "train": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/train",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/train"
+          ],
+          "images": 4,
+          "label_files": 4,
+          "labeled_images": 4,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 8,
+          "warnings": [],
+          "errors": []
+        },
+        "val": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/val",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/val"
+          ],
+          "images": 2,
+          "label_files": 2,
+          "labeled_images": 2,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 4,
+          "warnings": [],
+          "errors": []
+        },
+        "test": {
+          "source": "missing",
+          "path": null,
+          "refs": [],
+          "images": 0,
+          "label_files": 0,
+          "labeled_images": 0,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 0,
+          "warnings": [],
+          "errors": []
+        }
+      },
+      "warnings": [],
+      "errors": [],
+      "can_start": true,
+      "suggested_validation_strategy": "existing_split",
+      "detected_format": "yolo_detection"
+    },
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_runtime.yaml",
+    "generated_split_lists": {
+      "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/train.txt",
+      "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/val.txt"
+    },
+    "validation_strategy": "existing_split"
+  },
+  "dataset_scan": {
+    "path": "/private/tmp/fpw_train_valid_v1",
+    "tier": "valid",
+    "has_yaml": true,
+    "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "classes": [
+      "player",
+      "goalkeeper",
+      "referee",
+      "ball"
+    ],
+    "class_count": 4,
+    "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "class_mapping": {
+      "player_class_ids": [
+        0,
+        1
+      ],
+      "ball_class_ids": [
+        3
+      ],
+      "referee_class_ids": [
+        2
+      ],
+      "player_class_id": 0,
+      "ball_class_id": 3,
+      "referee_class_id": 2
+    },
+    "split_paths": {
+      "train": "/private/tmp/fpw_train_valid_v1/images/train",
+      "val": "/private/tmp/fpw_train_valid_v1/images/val",
+      "test": null
+    },
+    "splits": {
+      "train": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/train",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/train"
+        ],
+        "images": 4,
+        "label_files": 4,
+        "labeled_images": 4,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 8,
+        "warnings": [],
+        "errors": []
+      },
+      "val": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/val",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/val"
+        ],
+        "images": 2,
+        "label_files": 2,
+        "labeled_images": 2,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 4,
+        "warnings": [],
+        "errors": []
+      },
+      "test": {
+        "source": "missing",
+        "path": null,
+        "refs": [],
+        "images": 0,
+        "label_files": 0,
+        "labeled_images": 0,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 0,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    "warnings": [],
+    "errors": [],
+    "can_start": true,
+    "suggested_validation_strategy": "existing_split",
+    "detected_format": "yolo_detection"
+  },
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_runtime.yaml",
+  "generated_split_lists": {
+    "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/train.txt",
+    "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/splits/val.txt"
+  },
+  "resolved_device": "cpu",
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "validation_strategy": "existing_split",
+  "metrics": {
+    "mAP50": 0.0,
+    "mAP50_95": 0.0,
+    "precision": 0.0,
+    "recall": 0.0
+  },
+  "artifacts": {
+    "config": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/config.json",
+    "dataset_scan": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_scan.json",
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/dataset_runtime.yaml",
+    "train_log": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/train.log",
+    "progress": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/progress.json",
+    "summary": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/summary.json",
+    "weights_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/weights",
+    "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/weights/best.pt",
+    "results_csv": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/results.csv",
+    "args_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/args.yaml",
+    "plots": [
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/F1_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/PR_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/P_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/R_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/confusion_matrix.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/confusion_matrix_normalized.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/labels.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/labels_correlogram.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/results.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/train_batch0.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/train_batch1.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/train_batch2.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/val_batch0_labels.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/yolo_output/train/val_batch0_pred.jpg"
+    ]
+  },
+  "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/weights/best.pt",
+  "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/summary.json",
+  "error": null,
+  "pid": null
+}

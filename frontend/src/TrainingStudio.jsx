@@ -331,7 +331,12 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
   }
 
   const enabledBaseWeights = trainingConfig?.available_base_weights || [{ id: 'soccana', label: 'soccana (football-pretrained)' }];
-  const deviceOptions = trainingConfig?.device_options || ['auto', 'mps', 'cpu', 'cuda'];
+  const deviceOptions = trainingConfig?.device_options || [
+    { id: 'auto', label: 'Auto' },
+    { id: 'mps', label: 'Apple Silicon MPS' },
+    { id: 'cpu', label: 'CPU only' },
+    { id: 'cuda', label: 'CUDA GPU' },
+  ];
   const activeRegistryId = registry?.active_detector || activeDetector || 'soccana';
   const scanTierClass = datasetScan?.tier === 'valid' ? 'completed' : datasetScan?.tier === 'invalid' ? 'failed' : 'stopping';
   const trainDisabledReason = !datasetPath.trim()
@@ -580,7 +585,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 <span>Device</span>
                 <select value={form.device} onChange={(event) => updateForm('device', event.target.value)}>
                   {deviceOptions.map((item) => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item.id || item} value={item.id || item}>{item.label || item}</option>
                   ))}
                 </select>
               </label>
@@ -608,6 +613,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
                 The worker gets a run-local <code>dataset_runtime.yaml</code>, writes <code>summary.json</code>, <code>train.log</code>,
                 plot artifacts, and the best checkpoint under <code>backend/training_runs/&lt;run_id&gt;/</code>.
               </div>
+              {trainingConfig?.device_guidance ? <div className="muted">{trainingConfig.device_guidance}</div> : null}
             </div>
 
             <div className="source-toolbar">

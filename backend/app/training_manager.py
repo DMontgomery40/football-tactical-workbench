@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app.training import SUMMARY_FILENAME, collect_training_artifacts
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 TRAINING_RUNS_DIR = BASE_DIR / "training_runs"
 TRAINING_RUNS_DIR.mkdir(parents=True, exist_ok=True)
@@ -30,36 +32,53 @@ class TrainingJobState:
     total_epochs: int = 0
     logs: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    started_at: str | None = None
+    finished_at: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
+    dataset_scan: dict[str, Any] | None = None
+    generated_dataset_yaml: str | None = None
+    generated_split_lists: dict[str, str] = field(default_factory=dict)
+    resolved_device: str | None = None
+    backend: str | None = None
+    backend_version: str | None = None
+    validation_strategy: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, Any] = field(default_factory=dict)
     best_checkpoint: str | None = None
+    summary_path: str | None = None
     error: str | None = None
     pid: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        payload = {
+        return {
             "job_id": self.job_id,
             "run_id": self.run_id,
+            "run_dir": self.run_dir,
             "status": self.status,
             "progress": round(self.progress, 2),
             "current_epoch": int(self.current_epoch or 0),
             "total_epochs": int(self.total_epochs or 0),
             "logs": self.logs[-250:],
             "created_at": self.created_at,
+            "started_at": self.started_at,
+            "finished_at": self.finished_at,
             "config": self.config,
+            "dataset_scan": self.dataset_scan,
+            "generated_dataset_yaml": self.generated_dataset_yaml,
+            "generated_split_lists": self.generated_split_lists,
+            "resolved_device": self.resolved_device,
+            "backend": self.backend,
+            "backend_version": self.backend_version,
+            "validation_strategy": self.validation_strategy,
             "metrics": self.metrics or {},
+            "artifacts": self.artifacts or {},
             "best_checkpoint": self.best_checkpoint,
+            "summary_path": self.summary_path,
             "error": self.error,
         }
-        for key in ("dataset_scan", "generated_dataset_yaml", "generated_split_lists", "validation_strategy", "backend", "backend_version", "artifacts"):
-            value = getattr(self, key, None)
-            if value is not None:
-                payload[key] = value
-        return payload
 
     def persistence_dict(self) -> dict[str, Any]:
         payload = self.as_dict()
-        payload["run_dir"] = self.run_dir
         payload["pid"] = self.pid
         return payload
 
@@ -89,6 +108,9 @@ class TrainingManager:
             run_dir=str(run_dir),
             config=normalized_config,
             total_epochs=int(normalized_config.get("epochs") or 0),
+            backend=str(normalized_config.get("backend") or "") or None,
+            backend_version=str(normalized_config.get("backend_version") or "") or None,
+            summary_path=str((run_dir / SUMMARY_FILENAME).resolve()),
         )
         self._write_config(run_dir, normalized_config)
         with self._lock:
@@ -125,8 +147,12 @@ class TrainingManager:
                     "status": job.status,
                     "base_weights": str(job.config.get("base_weights") or "soccana"),
                     "created_at": job.created_at,
+                    "started_at": job.started_at,
+                    "finished_at": job.finished_at,
+                    "resolved_device": job.resolved_device,
                     "metrics": job.metrics or {},
                     "best_checkpoint": job.best_checkpoint,
+                    "summary_path": job.summary_path,
                 }
             )
         return runs
@@ -136,6 +162,8 @@ class TrainingManager:
             job = self._jobs[job_id]
             for key, value in kwargs.items():
                 setattr(job, key, value)
+            if "config" in kwargs and isinstance(job.config, dict):
+                self._write_config(Path(job.run_dir), job.config)
             self._persist_locked(job)
 
     def append_log(self, job_id: str, message: str) -> None:
@@ -172,8 +200,17 @@ class TrainingManager:
             job.progress = max(float(job.progress or 0.0), 1.0)
             job.error = None
             job.pid = proc.pid
+            job.started_at = datetime.utcnow().isoformat() + "Z"
+            job.finished_at = None
             job.config = dict(config)
             job.total_epochs = int(config.get("epochs") or job.total_epochs or 0)
+            job.generated_dataset_yaml = str(config.get("generated_dataset_yaml") or "") or None
+            job.generated_split_lists = dict(config.get("generated_split_lists") or {})
+            job.validation_strategy = str(config.get("validation_strategy") or "") or None
+            job.dataset_scan = dict(config.get("dataset_scan") or {}) or None
+            job.backend = str(config.get("backend") or job.backend or "") or None
+            job.backend_version = str(config.get("backend_version") or job.backend_version or "") or None
+            job.artifacts = self._collect_artifacts(run_dir)
             self._persist_locked(job)
             self._log_offsets[job_id] = current_offset
             self._seen_epochs[job_id] = int(job.current_epoch or 0)
@@ -192,6 +229,7 @@ class TrainingManager:
             if job.status == "queued" and job.pid is None:
                 job.status = "stopped"
                 job.error = None
+                job.finished_at = datetime.utcnow().isoformat() + "Z"
                 self._persist_locked(job)
                 queued_stop = True
                 pid = None
@@ -254,24 +292,33 @@ class TrainingManager:
                 total_epochs=int(payload.get("total_epochs") or 0),
                 logs=list(payload.get("logs") or []),
                 created_at=str(payload.get("created_at") or datetime.utcnow().isoformat() + "Z"),
+                started_at=str(payload.get("started_at")) if payload.get("started_at") else None,
+                finished_at=str(payload.get("finished_at")) if payload.get("finished_at") else None,
                 config=dict(payload.get("config") or {}),
+                dataset_scan=dict(payload.get("dataset_scan") or {}) or None,
+                generated_dataset_yaml=str(payload.get("generated_dataset_yaml")) if payload.get("generated_dataset_yaml") else None,
+                generated_split_lists=dict(payload.get("generated_split_lists") or {}),
+                resolved_device=str(payload.get("resolved_device")) if payload.get("resolved_device") else None,
+                backend=str(payload.get("backend")) if payload.get("backend") else None,
+                backend_version=str(payload.get("backend_version")) if payload.get("backend_version") else None,
+                validation_strategy=str(payload.get("validation_strategy")) if payload.get("validation_strategy") else None,
                 metrics=dict(payload.get("metrics") or {}),
+                artifacts=dict(payload.get("artifacts") or {}),
                 best_checkpoint=str(payload.get("best_checkpoint")) if payload.get("best_checkpoint") else None,
+                summary_path=str(payload.get("summary_path")) if payload.get("summary_path") else str((run_dir / SUMMARY_FILENAME).resolve()),
                 error=str(payload.get("error")) if payload.get("error") else None,
                 pid=int(payload.get("pid")) if payload.get("pid") else None,
             )
             if not job.job_id:
                 continue
 
-            for key in ("dataset_scan", "generated_dataset_yaml", "generated_split_lists", "validation_strategy", "backend", "backend_version", "artifacts"):
-                if key in payload:
-                    setattr(job, key, payload.get(key))
-
             if job.status in {"queued", "running", "stopping"} and job.config:
                 job.status = "queued"
                 job.pid = None
                 job.progress = 0.0
                 job.error = None
+                job.started_at = None
+                job.finished_at = None
                 job.logs.append(f"[{restored_at}] Backend restarted; re-queued detector training from epoch 0.")
                 self._restartable_job_ids.append(job.job_id)
 
@@ -314,12 +361,14 @@ class TrainingManager:
             if latest is None:
                 break
 
+            finished_at = datetime.utcnow().isoformat() + "Z"
             if latest.status in {"stopped", "stopping"}:
-                self.update(job_id, status="stopped", pid=None, error=None)
+                self.update(job_id, status="stopped", pid=None, error=None, finished_at=finished_at)
                 self.append_log(job_id, "Training stopped")
             elif return_code == 0:
                 best_checkpoint = run_dir / "weights" / "best.pt"
                 metrics = self._extract_final_metrics(run_dir) or latest.metrics or {}
+                artifacts = self._collect_artifacts(run_dir)
                 if best_checkpoint.exists():
                     self.update(
                         job_id,
@@ -327,9 +376,11 @@ class TrainingManager:
                         progress=100.0,
                         current_epoch=max(int(latest.current_epoch or 0), int(latest.total_epochs or 0)),
                         metrics=metrics,
+                        artifacts=artifacts,
                         best_checkpoint=str(best_checkpoint.resolve()),
                         pid=None,
                         error=None,
+                        finished_at=finished_at,
                     )
                     self.append_log(job_id, "Training completed")
                 else:
@@ -337,7 +388,9 @@ class TrainingManager:
                         job_id,
                         status="failed",
                         pid=None,
+                        artifacts=artifacts,
                         error="Training exited successfully but no best checkpoint was produced.",
+                        finished_at=finished_at,
                     )
             else:
                 tail = " ".join(self._tail_log(log_path, limit=3))
@@ -345,7 +398,9 @@ class TrainingManager:
                     job_id,
                     status="failed",
                     pid=None,
+                    artifacts=self._collect_artifacts(run_dir),
                     error=f"Training process exited with code {return_code}. {tail}".strip(),
+                    finished_at=finished_at,
                 )
             with self._lock:
                 self._log_offsets.pop(job_id, None)
@@ -355,13 +410,35 @@ class TrainingManager:
     def _job_state_path(self, run_dir: Path | str) -> Path:
         return Path(run_dir) / "job_state.json"
 
+    def _summary_state_path(self, run_dir: Path | str) -> Path:
+        return Path(run_dir) / SUMMARY_FILENAME
+
     def _write_config(self, run_dir: Path, config: dict[str, Any]) -> None:
         (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+    def _collect_artifacts(self, run_dir: Path) -> dict[str, Any]:
+        filtered: dict[str, Any] = {}
+        for key, value in collect_training_artifacts(run_dir).items():
+            if value is None:
+                continue
+            if isinstance(value, (list, dict)) and not value:
+                continue
+            filtered[key] = value
+        return filtered
+
+    def _summary_payload(self, job: TrainingJobState) -> dict[str, Any]:
+        payload = job.as_dict()
+        payload["logs"] = job.logs[-500:]
+        payload["summary_path"] = job.summary_path or str(self._summary_state_path(job.run_dir).resolve())
+        return payload
 
     def _persist_locked(self, job: TrainingJobState) -> None:
         run_dir = Path(job.run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
+        if not job.summary_path:
+            job.summary_path = str(self._summary_state_path(run_dir).resolve())
         self._job_state_path(run_dir).write_text(json.dumps(job.persistence_dict(), indent=2), encoding="utf-8")
+        self._summary_state_path(run_dir).write_text(json.dumps(self._summary_payload(job), indent=2), encoding="utf-8")
 
     def _ingest_progress(self, job_id: str, progress_path: Path) -> None:
         if not progress_path.exists():
@@ -378,6 +455,9 @@ class TrainingManager:
         metrics = dict(payload.get("metrics") or {})
         done = bool(payload.get("done", False))
         progress = 100.0 if done else min((epoch / total_epochs) * 100.0, 99.0)
+        resolved_device = str(payload.get("resolved_device") or "") or None
+        backend = str(payload.get("backend") or "") or None
+        backend_version = str(payload.get("backend_version") or "") or None
 
         with self._lock:
             job = self._jobs.get(job_id)
@@ -388,9 +468,16 @@ class TrainingManager:
             job.progress = max(float(job.progress or 0.0), float(progress))
             if metrics:
                 job.metrics = metrics
-            self._persist_locked(job)
+            if resolved_device:
+                job.resolved_device = resolved_device
+            if backend:
+                job.backend = backend
+            if backend_version:
+                job.backend_version = backend_version
+            job.artifacts = self._collect_artifacts(Path(job.run_dir))
             previous_epoch = self._seen_epochs.get(job_id, 0)
             self._seen_epochs[job_id] = max(previous_epoch, epoch)
+            self._persist_locked(job)
 
         if epoch > previous_epoch:
             if metrics and "mAP50" in metrics:
