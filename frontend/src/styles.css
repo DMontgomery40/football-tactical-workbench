@@ -410,8 +410,9 @@ summary {
 }
 
 .help-panel {
-  position: fixed;
   z-index: 200;
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid var(--line-strong);

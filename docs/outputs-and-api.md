@@ -62,6 +62,20 @@ The saved run summary is the main contract between backend and frontend.
 - `ball_conf`
 - `iou`
 
+The app-level `/api/config` surface now also reports:
+
+- `runtime_profile.backend`
+- `runtime_profile.backend_label`
+- `runtime_profile.host_platform`
+- `runtime_profile.host_arch`
+- `runtime_profile.preferred_device`
+- `runtime_profile.available_devices`
+- `runtime_profile.field_calibration_device_policy`
+- `runtime_profile.detector_export_formats`
+- `runtime_profile.planned_backends`
+- `runtime_profile.runtime_notes`
+- `runtime_profile.license_notes`
+
 ### Core run metrics
 
 - `frames_processed`
@@ -157,6 +171,8 @@ The current track summary columns are:
 - `average_bbox_area`
 - `projected_points`
 - `sampled_color_rgb`
+
+The frontend trajectory review surface combines `track_summary.csv` with `projections.csv` so it can rank projected tracks and draw the recent window of player and ball movement on the pitch map.
 
 ## `entropy_timeseries.csv`
 

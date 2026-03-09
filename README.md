@@ -7,7 +7,7 @@ The current codebase is a wide-angle football pipeline with five core stages:
 - detects players, referees, and the ball with `soccana`
 - tracks players with a hybrid appearance-aware ReID tracker and post-pass stitcher
 - separates home and away tracks with jersey-colour clustering
-- refreshes pitch calibration every frame with `soccana_keypoint` and smooths recent homographies
+- refreshes pitch calibration every 10 frames with `soccana_keypoint` and smooths recent accepted homographies
 - writes a saved overlay run with CSV, JSON, and review artifacts
 
 This README follows the current code and verified runtime behaviour.
@@ -38,7 +38,9 @@ This README follows the current code and verified runtime behaviour.
 - field calibration model: `soccana_keypoint`
 - player tracker: `hybrid_reid`
 - ball tracker: `bytetrack.yaml`
-- calibration refresh cadence: every frame, with a rolling 5-homography smooth
+- calibration refresh cadence: every 10 frames, with a rolling 5-homography smooth
+- runtime today: Ultralytics + PyTorch, Mac-first on Apple Silicon with MPS preferred for detector workloads
+- planned inference runway: ONNX Runtime with CoreML on Apple Silicon and ONNX Runtime with CUDA on GPU hosts
 - frontend dev server: `0.0.0.0:4317`
 - backend API server: `0.0.0.0:8431`
 - run storage: `backend/runs/`
@@ -114,6 +116,7 @@ To stop a backend started through `run_all.sh`:
 ## Runtime Behaviour
 
 - Backend startup prewarms the default detector and field-calibration models from the local model cache or configured model source.
+- The current runtime is Mac-first for local development. On Apple Silicon, detector inference prefers MPS while field calibration still falls back to CPU.
 - The default player tracker now uses sparse appearance embeddings plus a tracklet stitch pass; run summaries report both raw IDs and stitched canonical IDs.
 - The first `hybrid_reid` run may need to populate torchvision appearance weights in the local torch cache before tracking starts.
 - Overlay export targets browser playback: the backend transcodes to H.264 when `ffmpeg` is available and also attempts direct browser-codec writing when it is not.
@@ -122,6 +125,7 @@ To stop a backend started through `run_all.sh`:
 - Warn-level diagnostics now include a collapsed code drilldown in Run Review with the likely failing function, why that logic is failing, and the concrete code change to try next.
 - Goal-aligned experiment inputs can come from discovered label files or from an explicit label path selected in the UI.
 - The UI includes a `Reset` control for clearing saved theme and form state from browser local storage.
+- Training remains on the current Ultralytics stack today. ONNX Runtime is the planned inference direction, not the active default yet.
 
 ## Documentation
 
@@ -168,6 +172,10 @@ If you want to evaluate the geometric volatility experiment against actual goals
 - [Ultralytics](https://www.ultralytics.com/) for the YOLO runtime used by the detector and keypoint models
 - ByteTrack via Ultralytics tracker integration for the current ball-tracking path and the legacy player-tracking fallback
 - Torchvision ResNet-18 weights for sparse appearance embeddings in the player ReID path
+
+## Runtime Note
+
+This repository is MIT, but the current detector/training runtime still depends on the local Ultralytics stack, which Ultralytics distributes under AGPL-3.0 by default unless you have a separate enterprise license. The planned long-term inference direction is ONNX Runtime so the app can stay Mac-first on Apple Silicon while keeping a clean path to CUDA hosts.
 
 ## License
 

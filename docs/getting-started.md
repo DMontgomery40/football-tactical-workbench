@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- macOS or another environment with local filesystem access to your clips
+- macOS on Apple Silicon is the primary local target today, though other environments with local filesystem access can still run the app
 - Python 3 with `venv`
 - Node.js and `npm`
 - `ffmpeg` on your `PATH` if you want browser-friendly H.264 overlays
@@ -37,6 +37,8 @@ npm install
 ```
 
 The frontend is a Vite + React single-page app.
+
+The UI now uses `@floating-ui/react` for accessible help popovers and anchored drilldowns.
 
 ## Environment Variables
 
@@ -146,6 +148,8 @@ The active model names in code are:
 
 - detector: `soccana`
 - field calibration: `soccana_keypoint`
+- detector runtime today: Ultralytics + PyTorch
+- planned inference runway: ONNX Runtime with CoreML on Apple Silicon and ONNX Runtime with CUDA on GPU hosts
 
 The backend resolves them through Hugging Face and caches them under:
 
@@ -157,6 +161,8 @@ The detector uses the football-specific class mapping embedded in `backend/app/w
 - player class id: `0`
 - ball class id: `1`
 - referee class id: `2`
+
+On Apple Silicon, detector inference prefers MPS while field calibration currently falls back to CPU.
 
 ## Recommended First Validation
 

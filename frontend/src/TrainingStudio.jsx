@@ -134,6 +134,8 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
 
   async function loadTrainingConfig() {
     const data = await requestJson('/api/train/config');
+    const deviceOptionIds = new Set((data.device_options || []).map((item) => item.id || item));
+    const defaultDevice = (data.device_options || [])[0]?.id || (data.device_options || [])[0] || data.default_hyperparameters?.device || 'auto';
     setTrainingConfig(data);
     setForm((current) => ({
       ...current,
@@ -141,7 +143,7 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
       epochs: current.epochs || String(data.default_hyperparameters?.epochs || 50),
       imgsz: current.imgsz || String(data.default_hyperparameters?.imgsz || 640),
       batch: current.batch || String(data.default_hyperparameters?.batch || 16),
-      device: current.device || data.default_hyperparameters?.device || 'auto',
+      device: deviceOptionIds.has(current.device) ? current.device : defaultDevice,
       workers: current.workers || String(data.default_hyperparameters?.workers || 4),
       patience: current.patience || String(data.default_hyperparameters?.patience || 20),
       freeze: current.freeze ?? '',
@@ -337,6 +339,8 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
     { id: 'cpu', label: 'CPU only' },
     { id: 'cuda', label: 'CUDA GPU' },
   ];
+  const runtimeProfile = trainingConfig?.runtime_profile || null;
+  const plannedBackendsLabel = (runtimeProfile?.planned_backends || []).map((item) => item.label).filter(Boolean).join(' · ');
   const activeRegistryId = registry?.active_detector || activeDetector || 'soccana';
   const scanTierClass = datasetScan?.tier === 'valid' ? 'completed' : datasetScan?.tier === 'invalid' ? 'failed' : 'stopping';
   const trainDisabledReason = !datasetPath.trim()
@@ -364,8 +368,8 @@ export default function TrainingStudio({ apiBase, activeDetector, onActiveDetect
           <div className="studio-status-ribbon">
             <span>{trainingConfig?.backend_label || 'Training backend'}</span>
             {trainingConfig?.backend_version ? <span>v{trainingConfig.backend_version}</span> : null}
-            <span>mac-first via MPS</span>
-            <span>CUDA-ready path preserved</span>
+            {runtimeProfile?.preferred_device ? <span>{String(runtimeProfile.preferred_device).toUpperCase()} preferred</span> : null}
+            {plannedBackendsLabel ? <span>{plannedBackendsLabel}</span> : null}
           </div>
         </div>
         <div className="studio-header-side">
