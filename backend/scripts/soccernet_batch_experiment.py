@@ -25,7 +25,7 @@ if str(ROOT_DIR) not in sys.path:
 
 from app.reid_tracker import (  # noqa: E402
     DEFAULT_PLAYER_TRACKER_MODE,
-    LEGACY_PLAYER_TRACKER_MODE,
+    BYTETRACK_PLAYER_TRACKER_MODE,
     normalize_player_tracker_mode,
 )
 from app.wide_angle import analyze_video  # noqa: E402
@@ -34,7 +34,7 @@ from app.wide_angle import analyze_video  # noqa: E402
 SOCCERNET_DATASET_DIR = ROOT_DIR / "datasets" / "soccernet"
 EXPERIMENTS_DIR = ROOT_DIR / "experiments"
 DEFAULT_FILES = ["1_224p.mkv", "2_224p.mkv", "Labels-v2.json"]
-DEFAULT_COMPARE_TRACKER_MODES = [LEGACY_PLAYER_TRACKER_MODE, DEFAULT_PLAYER_TRACKER_MODE]
+DEFAULT_COMPARE_TRACKER_MODES = [BYTETRACK_PLAYER_TRACKER_MODE, DEFAULT_PLAYER_TRACKER_MODE]
 
 
 class BatchJobManager:

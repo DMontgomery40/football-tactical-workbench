@@ -2,6 +2,12 @@
 
 This repository is a browser-first football analysis tool. Keep the UI and the backend aligned.
 
+## No Old-Mode Escape Hatches
+
+- Do not introduce old-mode switches or parallel escape-hatch codepaths for freshly added systems.
+- If a new path is wrong, fix it or fail visibly. Do not add permanent mode toggles so a broken implementation can linger.
+- When an older comparison path must exist, name it by what it does.
+
 ## Current product direction
 
 - This is no longer a pose-first project.
@@ -54,7 +60,7 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Default detector choice is `soccana`.
 - Default field calibration model is `soccana_keypoint`.
 - Default player tracker mode is `hybrid_reid`.
-- Keep the legacy `bytetrack` player mode available as an explicit comparison fallback, not as the silent default.
+- Keep `bytetrack` player mode available as an explicit comparison option, not as the silent default.
 - Pitch calibration is automatic and refreshed every 10 frames.
 - Ball detection uses the same soccer-specific detector unless the user explicitly asks to change that.
 - AI diagnostics are a real post-run path now. Do not revert to heuristic-only diagnostics unless explicitly requested.

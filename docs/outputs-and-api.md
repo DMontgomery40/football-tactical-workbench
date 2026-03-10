@@ -179,7 +179,6 @@ The app-level `/api/config` surface also reports:
 - `diagnostics`
 - `heuristic_diagnostics`
 - `diagnostics_source`
-- `diagnostics_orchestrator`
 - `diagnostics_provider`
 - `diagnostics_model`
 - `diagnostics_status`

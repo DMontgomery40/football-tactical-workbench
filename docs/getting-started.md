@@ -66,7 +66,6 @@ Supported variables in code:
 | Variable | Purpose |
 | --- | --- |
 | `AI_DIAGNOSTICS_PROVIDER` | `auto`, `openai`, `openrouter`, `anthropic`, `local`, or `off` |
-| `AI_DIAGNOSTICS_ORCHESTRATOR` | `auto`, `pydantic_ai`, or `legacy` |
 | `AI_DIAGNOSTICS_MODEL` | Shared override model name |
 | `AI_DIAGNOSTICS_TIMEOUT_SECONDS` | Optional request timeout override |
 | `AI_DIAGNOSTICS_BASE_URL` | Local OpenAI-compatible base URL |
@@ -94,8 +93,6 @@ The code also accepts local OpenAI-compatible aliases through:
 2. OpenRouter
 3. Anthropic
 4. local endpoint
-
-`AI_DIAGNOSTICS_ORCHESTRATOR=auto` tries the typed PydanticAI diagnostics path first and falls back to the legacy per-provider JSON path if that adapter fails. Set it to `pydantic_ai` to force the new path or `legacy` to bypass it while debugging provider issues.
 
 ### Validation gates
 

@@ -12,12 +12,12 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 DEFAULT_PLAYER_TRACKER_MODE = "hybrid_reid"
-LEGACY_PLAYER_TRACKER_MODE = "bytetrack"
+BYTETRACK_PLAYER_TRACKER_MODE = "bytetrack"
 BALL_TRACKER_NAME = "bytetrack.yaml"
-PLAYER_TRACKER_MODE_OPTIONS = [DEFAULT_PLAYER_TRACKER_MODE, LEGACY_PLAYER_TRACKER_MODE]
+PLAYER_TRACKER_MODE_OPTIONS = [DEFAULT_PLAYER_TRACKER_MODE, BYTETRACK_PLAYER_TRACKER_MODE]
 PLAYER_TRACKER_MODE_LABELS = {
     DEFAULT_PLAYER_TRACKER_MODE: "hybrid_reid",
-    LEGACY_PLAYER_TRACKER_MODE: "bytetrack",
+    BYTETRACK_PLAYER_TRACKER_MODE: "bytetrack",
 }
 REID_MODEL_CACHE_DIR = Path(__file__).resolve().parent.parent / "models" / "appearance"
 REID_MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -27,8 +27,8 @@ def normalize_player_tracker_mode(value: Any) -> str:
     raw = str(value or "").strip().lower()
     if raw in {"", "auto", "default", "hybrid", "hybrid_reid", "reid", "appearance"}:
         return DEFAULT_PLAYER_TRACKER_MODE
-    if raw in {"bytetrack", "byte", "legacy"}:
-        return LEGACY_PLAYER_TRACKER_MODE
+    if raw in {"bytetrack", "byte"}:
+        return BYTETRACK_PLAYER_TRACKER_MODE
     return DEFAULT_PLAYER_TRACKER_MODE
 
 

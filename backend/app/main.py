@@ -1216,7 +1216,6 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["experiments"] = list(normalized.get("experiments") or [])
     normalized["entropy_timeseries_csv"] = normalized.get("entropy_timeseries_csv")
     normalized["diagnostics_source"] = normalized.get("diagnostics_source", "heuristic")
-    normalized["diagnostics_orchestrator"] = normalized.get("diagnostics_orchestrator")
     normalized["diagnostics_provider"] = normalized.get("diagnostics_provider")
     normalized["diagnostics_model"] = normalized.get("diagnostics_model")
     normalized["diagnostics_status"] = normalized.get("diagnostics_status", "unknown")
@@ -1225,8 +1224,7 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["diagnostics_json"] = normalized.get("diagnostics_json")
     normalized["diagnostics_prompt_context"] = normalized.get("diagnostics_prompt_context")
     diagnostics_prompt_version = normalized.get("diagnostics_prompt_version")
-    diagnostics_orchestrator = normalized.get("diagnostics_orchestrator")
-    if not diagnostics_prompt_version or diagnostics_orchestrator is None:
+    if not diagnostics_prompt_version:
         run_dir_value = normalized.get("run_dir")
         if run_dir_value:
             artifact_path = Path(str(run_dir_value)) / "outputs" / "diagnostics_ai.json"
@@ -1234,11 +1232,8 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
                 try:
                     artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
                     diagnostics_prompt_version = artifact_payload.get("prompt_version")
-                    if diagnostics_orchestrator is None:
-                        diagnostics_orchestrator = artifact_payload.get("orchestrator")
                 except Exception:
                     diagnostics_prompt_version = None
-    normalized["diagnostics_orchestrator"] = diagnostics_orchestrator
     normalized["diagnostics_prompt_version"] = diagnostics_prompt_version
     normalized["diagnostics_current_prompt_version"] = CURRENT_DIAGNOSTICS_PROMPT_VERSION
     normalized["diagnostics_stale"] = bool(
@@ -1269,8 +1264,8 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["raw_unique_player_track_ids"] = normalized.get("raw_unique_player_track_ids", normalized.get("unique_player_track_ids", 0))
         normalized["tracklet_merges_applied"] = normalized.get("tracklet_merges_applied", 0)
     else:
-        normalized["player_tracker_mode"] = "legacy/unknown"
-        normalized["resolved_player_tracker_mode"] = "legacy/unknown"
+        normalized["player_tracker_mode"] = "historical/unknown"
+        normalized["resolved_player_tracker_mode"] = "historical/unknown"
         normalized["requested_player_tracker_mode"] = None
         normalized["player_tracker_runtime"] = None
         normalized["raw_unique_player_track_ids"] = None
@@ -1346,12 +1341,12 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["raw_detector_boxes_sampled"] = normalized.get("raw_detector_boxes_sampled", 0)
     normalized["raw_detector_class_histogram_sample"] = normalized.get("raw_detector_class_histogram_sample", {})
 
-    is_legacy = "field_calibration_refresh_frames" not in normalized
-    if is_legacy:
+    is_historical_summary = "field_calibration_refresh_frames" not in normalized
+    if is_historical_summary:
         normalized["diagnostics"] = [
             {
                 "level": "warn",
-                "title": "Legacy run format",
+                "title": "Historical run format",
                 "message": "This run predates the automatic field-calibration pipeline and is being shown for reference only.",
                 "next_step": "Rerun the clip to see current calibration metrics, live-preview-aligned diagnostics, and the Soccana model stack.",
             }
@@ -1411,17 +1406,17 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["last_good_calibration_frame"] = -1
         normalized["entropy_timeseries_csv"] = None
         normalized["experiments"] = []
-        normalized["player_tracker_mode"] = "legacy"
-        normalized["resolved_player_tracker_mode"] = "legacy"
+        normalized["player_tracker_mode"] = "historical"
+        normalized["resolved_player_tracker_mode"] = "historical"
         normalized["requested_player_tracker_mode"] = None
         normalized["player_tracker_runtime"] = None
         normalized["raw_unique_player_track_ids"] = normalized.get("unique_player_track_ids", 0)
         normalized["tracklet_merges_applied"] = 0
-        normalized["legacy_summary"] = True
+        normalized["historical_summary"] = True
     else:
-        normalized["legacy_summary"] = False
+        normalized["historical_summary"] = False
 
-    if normalized.get("diagnostics_stale") and not normalized.get("legacy_summary"):
+    if normalized.get("diagnostics_stale") and not normalized.get("historical_summary"):
         stale_title = "Stored AI diagnostics are outdated"
         existing = list(normalized.get("diagnostics") or [])
         if not any(str(item.get("title")) == stale_title for item in existing if isinstance(item, dict)):
@@ -1457,7 +1452,6 @@ def refresh_run_diagnostics(run_dir: Path) -> dict[str, Any]:
     summary["diagnostics"] = diagnostics
     summary["heuristic_diagnostics"] = heuristic_diagnostics
     summary["diagnostics_source"] = "ai" if artifact.get("status") == "completed" else "heuristic"
-    summary["diagnostics_orchestrator"] = artifact.get("orchestrator")
     summary["diagnostics_provider"] = artifact.get("provider")
     summary["diagnostics_model"] = artifact.get("model")
     summary["diagnostics_status"] = artifact.get("status")
