@@ -848,17 +848,6 @@
             ],
             "title": "Diagnostics Model"
           },
-          "diagnostics_orchestrator": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Diagnostics Orchestrator"
-          },
           "diagnostics_prompt_context": {
             "anyOf": [
               {
@@ -1170,6 +1159,11 @@
             "title": "Heuristic Diagnostics",
             "type": "array"
           },
+          "historical_summary": {
+            "default": false,
+            "title": "Historical Summary",
+            "type": "boolean"
+          },
           "home_tracks": {
             "default": 0,
             "title": "Home Tracks",
@@ -1238,11 +1232,6 @@
             },
             "title": "Learn Cards",
             "type": "array"
-          },
-          "legacy_summary": {
-            "default": false,
-            "title": "Legacy Summary",
-            "type": "boolean"
           },
           "longest_track_length": {
             "default": 0,

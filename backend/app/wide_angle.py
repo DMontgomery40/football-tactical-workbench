@@ -23,7 +23,7 @@ from app.reid_tracker import (
     BALL_TRACKER_NAME,
     DEFAULT_PLAYER_TRACKER_MODE,
     HybridReIDTracker,
-    LEGACY_PLAYER_TRACKER_MODE,
+    BYTETRACK_PLAYER_TRACKER_MODE,
     PLAYER_TRACKER_MODE_OPTIONS,
     build_stitched_track_map,
     normalize_player_tracker_mode,
@@ -488,7 +488,7 @@ def requested_player_tracker_mode(config_payload: dict[str, Any]) -> str | None:
 
 
 def resolved_tracker_runtime_label(tracker_mode: str) -> str:
-    return "legacy_bytetrack" if tracker_mode == LEGACY_PLAYER_TRACKER_MODE else "hybrid_reid_stitch"
+    return "bytetrack_comparison" if tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE else "hybrid_reid_stitch"
 
 
 def default_tracker_backend() -> dict[str, Any]:
@@ -1623,7 +1623,7 @@ def detect_players_for_frame(
     player_tracker: HybridReIDTracker | None,
 ) -> list[dict[str, Any]]:
     detections: list[dict[str, Any]] = []
-    if tracker_mode == LEGACY_PLAYER_TRACKER_MODE:
+    if tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE:
         player_results = player_model.track(
             source=frame,
             persist=True,
@@ -1651,7 +1651,7 @@ def detect_players_for_frame(
     confidences = player_boxes.conf.cpu().numpy() if player_boxes.conf is not None else np.zeros(len(xyxy), dtype=np.float32)
     track_ids = (
         player_boxes.id.cpu().numpy().astype(int)
-        if tracker_mode == LEGACY_PLAYER_TRACKER_MODE and player_boxes.id is not None
+        if tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE and player_boxes.id is not None
         else np.full(len(xyxy), -1, dtype=int)
     )
     bboxes: list[tuple[int, int, int, int]] = []
@@ -1673,7 +1673,7 @@ def detect_players_for_frame(
                 "identity_feature": None,
             }
         )
-    if tracker_mode != LEGACY_PLAYER_TRACKER_MODE and player_tracker is not None:
+    if tracker_mode != BYTETRACK_PLAYER_TRACKER_MODE and player_tracker is not None:
         assigned_track_ids = player_tracker.update(frame, detections, frame_index)
         for detection, track_id in zip(detections, assigned_track_ids):
             detection["track_id"] = int(track_id)
@@ -1713,7 +1713,7 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             detection_confidence_floor=player_conf,
             device=detector_device,
         )
-        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        if tracker_mode != BYTETRACK_PLAYER_TRACKER_MODE
         else None
     )
     tracker_runtime = player_tracker.describe_backend() if player_tracker is not None else default_tracker_backend()
@@ -2040,7 +2040,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
             detection_confidence_floor=player_conf,
             device=detector_device,
         )
-        if tracker_mode != LEGACY_PLAYER_TRACKER_MODE
+        if tracker_mode != BYTETRACK_PLAYER_TRACKER_MODE
         else None
     )
     tracker_backend = player_tracker.describe_backend() if player_tracker is not None else default_tracker_backend()
@@ -3414,7 +3414,6 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     summary["diagnostics"] = ai_diagnostics
     summary["heuristic_diagnostics"] = heuristic_diagnostics
     summary["diagnostics_source"] = "ai" if diagnostics_artifact.get("status") == "completed" else "heuristic"
-    summary["diagnostics_orchestrator"] = diagnostics_artifact.get("orchestrator")
     summary["diagnostics_provider"] = diagnostics_artifact.get("provider")
     summary["diagnostics_model"] = diagnostics_artifact.get("model")
     summary["diagnostics_status"] = diagnostics_artifact.get("status")

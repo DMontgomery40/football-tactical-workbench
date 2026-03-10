@@ -160,13 +160,6 @@ function friendlyProviderName(value) {
   return value || 'provider';
 }
 
-function friendlyDiagnosticsOrchestrator(value) {
-  const orchestrator = String(value || '').toLowerCase();
-  if (orchestrator === 'pydantic_ai') return 'PydanticAI orchestration';
-  if (orchestrator === 'legacy') return 'legacy provider fallback';
-  return value || '';
-}
-
 function formatPercent(value, digits = 1) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return '0%';
@@ -1075,7 +1068,7 @@ export default function App() {
     const calibrationRate = summary.field_calibration_success_rate ?? (calibrationAttempts > 0 ? calibrationSuccesses / calibrationAttempts : 0);
     const rows = [
       ['Frames', summary.frames_processed || 0, 'Decoded frames pushed through detection and tracking'],
-      ['Tracker mode', summary.player_tracker_mode || 'n/a', 'Hybrid ReID adds appearance features and a stitch pass; ByteTrack is the legacy fallback'],
+      ['Tracker mode', summary.player_tracker_mode || 'n/a', 'Hybrid ReID adds appearance features and a stitch pass; ByteTrack is the simpler comparison tracker'],
       ['Detector classes', `P ${formatClassIds(summary.player_detector_class_ids)} · B ${formatClassIds(summary.ball_detector_class_ids)}`, `Resolved from ${summary.detector_class_names_source || 'unknown'}`],
       ['Player track IDs', summary.unique_player_track_ids || 0, hasExplicitIdentityMetrics ? 'Canonical stitched IDs after any tracklet merges' : 'Track IDs from the saved run summary'],
       ['Home tracks', summary.home_tracks || 0, 'Unsupervised jersey-color split, not official metadata'],
@@ -2479,7 +2472,7 @@ export default function App() {
                       ) : null}
                       <div className="diagnostics-meta">
                         {summary.diagnostics_source === 'ai'
-                          ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}${summary.diagnostics_orchestrator ? ` · ${friendlyDiagnosticsOrchestrator(summary.diagnostics_orchestrator)}` : ''}.`
+                          ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
                           : 'Heuristic run diagnostics are showing for this run.'}
                         {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
                       </div>

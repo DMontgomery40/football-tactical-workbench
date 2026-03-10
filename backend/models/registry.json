@@ -6,7 +6,7 @@
       "label": "soccana (pretrained)",
       "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
       "is_pretrained": true,
-      "created_at": "2026-03-10T05:23:28.888419Z",
+      "created_at": "2026-03-10T10:05:56.740484Z",
       "metrics": null,
       "training_run_id": null,
       "class_ids": {

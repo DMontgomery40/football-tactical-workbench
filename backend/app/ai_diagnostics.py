@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-import ssl
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib import error, request
 
 from pydantic import BaseModel, Field
 
@@ -150,7 +148,6 @@ load_project_env()
 class ProviderConfig:
     provider: str
     model: str
-    endpoint: str
     base_url: str
     api_key: str
     timeout_seconds: float
@@ -185,13 +182,6 @@ def _normalize_openai_compatible_base_url(raw_value: str) -> str:
     return normalized
 
 
-def resolve_orchestrator_preference() -> str:
-    value = _env("AI_DIAGNOSTICS_ORCHESTRATOR", "auto").lower()
-    if value in {"auto", "pydantic_ai", "legacy"}:
-        return value
-    return "auto"
-
-
 def resolve_provider_config() -> ProviderConfig | None:
     provider_pref = _env("AI_DIAGNOSTICS_PROVIDER", "auto").lower()
     timeout_seconds = float(_env("AI_DIAGNOSTICS_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)) or DEFAULT_TIMEOUT_SECONDS)
@@ -210,7 +200,6 @@ def resolve_provider_config() -> ProviderConfig | None:
         return ProviderConfig(
             provider="openai",
             model=shared_model or _env("OPENAI_MODEL") or "gpt-5.4",
-            endpoint="https://api.openai.com/v1/responses",
             base_url="https://api.openai.com/v1",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
@@ -230,7 +219,6 @@ def resolve_provider_config() -> ProviderConfig | None:
         return ProviderConfig(
             provider="openrouter",
             model=shared_model or _env("OPENROUTER_MODEL") or "openai/gpt-4.1-mini",
-            endpoint="https://openrouter.ai/api/v1/chat/completions",
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
@@ -245,7 +233,6 @@ def resolve_provider_config() -> ProviderConfig | None:
         return ProviderConfig(
             provider="anthropic",
             model=shared_model or _env("ANTHROPIC_MODEL") or "claude-3-5-sonnet-latest",
-            endpoint="https://api.anthropic.com/v1/messages",
             base_url="https://api.anthropic.com",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
@@ -257,11 +244,9 @@ def resolve_provider_config() -> ProviderConfig | None:
         if not local_base_url:
             return None
         normalized_base_url = _normalize_openai_compatible_base_url(local_base_url)
-        endpoint = f"{normalized_base_url}/chat/completions"
         return ProviderConfig(
             provider="local",
             model=shared_model or _env("LOCAL_LLM_MODEL") or "gpt-oss-20b",
-            endpoint=endpoint,
             base_url=normalized_base_url,
             api_key=local_api_key or "local",
             timeout_seconds=timeout_seconds,
@@ -651,7 +636,7 @@ Stable repository facts:
 - This is a browser-first football analysis tool. The overlay video and minimap are the primary debugging artifacts.
 - The active football pipeline is detector -> player tracking / identity handling -> team clustering -> field registration -> overlay / exports / diagnostics.
 - The detector is football-specific (`soccana`), ball detection shares the football detector by default, and field registration uses `soccana_keypoint`.
-- Player identity may run in multiple tracker modes including legacy ByteTrack and hybrid ReID / stitch paths.
+- Player identity may run in multiple tracker modes including ByteTrack comparison mode and hybrid ReID / stitch paths.
 - Field calibration is a live part of the pipeline, not a post-hoc note. Calibration failures can invalidate the minimap even when detection looks healthy.
 - The supplied code excerpts are current implementation truth. Prefer them over generic computer-vision assumptions.
 
@@ -797,96 +782,6 @@ def build_run_context(
     }
 
 
-def _post_json(url: str, headers: dict[str, str], payload: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:
-    data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    req = request.Request(url, data=data, method="POST")
-    req.add_header("Content-Type", "application/json")
-    for key, value in headers.items():
-        req.add_header(key, value)
-    ssl_context = None
-    try:
-        import certifi
-
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        ssl_context = ssl.create_default_context()
-    try:
-        with request.urlopen(req, timeout=timeout_seconds, context=ssl_context) as response:
-            raw = response.read().decode("utf-8")
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code} from provider: {detail[:400]}") from exc
-    except error.URLError as exc:
-        raise RuntimeError(f"Provider request failed: {exc.reason}") from exc
-    if not raw.strip():
-        raise RuntimeError("Provider returned an empty response body.")
-    return json.loads(raw)
-
-
-def _extract_text_from_openai_compatible(payload: dict[str, Any]) -> str:
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise RuntimeError("Provider returned no choices.")
-    message = choices[0].get("message") if isinstance(choices[0], dict) else None
-    if not isinstance(message, dict):
-        raise RuntimeError("Provider returned no message content.")
-    content = message.get("content", "")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: list[str] = []
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text":
-                parts.append(str(item.get("text", "")))
-        return "\n".join(part for part in parts if part)
-    raise RuntimeError("Provider returned unsupported message content.")
-
-
-def _extract_text_from_openai_responses(payload: dict[str, Any]) -> str:
-    if isinstance(payload.get("output_text"), str) and payload.get("output_text", "").strip():
-        return str(payload["output_text"])
-
-    output = payload.get("output")
-    if not isinstance(output, list):
-        error_payload = payload.get("error")
-        if error_payload:
-            raise RuntimeError(f"OpenAI Responses API error: {error_payload}")
-        raise RuntimeError("Responses API payload had no output array.")
-
-    parts: list[str] = []
-    for item in output:
-        if not isinstance(item, dict):
-            continue
-        content = item.get("content")
-        if not isinstance(content, list):
-            continue
-        for block in content:
-            if not isinstance(block, dict):
-                continue
-            if block.get("type") == "output_text" and block.get("text"):
-                parts.append(str(block.get("text")))
-    if parts:
-        return "\n".join(parts)
-
-    error_payload = payload.get("error")
-    if error_payload:
-        raise RuntimeError(f"OpenAI Responses API error: {error_payload}")
-    raise RuntimeError("Responses API returned no text output.")
-
-
-def _extract_text_from_anthropic(payload: dict[str, Any]) -> str:
-    content = payload.get("content")
-    if not isinstance(content, list):
-        raise RuntimeError("Anthropic response had no content list.")
-    parts: list[str] = []
-    for item in content:
-        if isinstance(item, dict) and item.get("type") == "text":
-            parts.append(str(item.get("text", "")))
-    if not parts:
-        raise RuntimeError("Anthropic response had no text parts.")
-    return "\n".join(parts)
-
-
 def _normalize_diagnostics_agent_output(output: DiagnosticsAgentOutput) -> DiagnosticsAgentOutput:
     summary_line = output.summary_line.strip()
     if not summary_line:
@@ -1003,88 +898,8 @@ def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, co
     return json.dumps(normalized_output.model_dump(mode="json"), ensure_ascii=True)
 
 
-def call_provider_legacy(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
-    user_payload = render_context_for_provider(context)
-    if config.provider == "openai":
-        response_payload = _post_json(
-            url=config.endpoint,
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                **config.extra_headers,
-            },
-            payload={
-                "model": config.model,
-                "instructions": system_prompt,
-                "input": user_payload,
-                "temperature": 0.1,
-                "max_output_tokens": config.max_output_tokens,
-                "text": {
-                    "format": {
-                        "type": "json_object",
-                    }
-                },
-            },
-            timeout_seconds=config.timeout_seconds,
-        )
-        return _extract_text_from_openai_responses(response_payload)
-
-    if config.provider in {"openrouter", "local"}:
-        payload = {
-            "model": config.model,
-            "temperature": 0.1,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_payload},
-            ],
-            "response_format": {"type": "json_object"},
-            "max_tokens": config.max_output_tokens,
-        }
-        response_payload = _post_json(
-            url=config.endpoint,
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                **config.extra_headers,
-            },
-            payload=payload,
-            timeout_seconds=config.timeout_seconds,
-        )
-        return _extract_text_from_openai_compatible(response_payload)
-
-    if config.provider == "anthropic":
-        response_payload = _post_json(
-            url=config.endpoint,
-            headers={
-                "x-api-key": config.api_key,
-                **config.extra_headers,
-            },
-            payload={
-                "model": config.model,
-                "temperature": 0.1,
-                "max_tokens": config.max_output_tokens,
-                "system": system_prompt,
-                "messages": [
-                    {"role": "user", "content": user_payload},
-                ],
-            },
-            timeout_seconds=config.timeout_seconds,
-        )
-        return _extract_text_from_anthropic(response_payload)
-
-    raise RuntimeError(f"Unsupported diagnostics provider: {config.provider}")
-
-
-def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> tuple[str, str, str | None]:
-    orchestrator_preference = resolve_orchestrator_preference()
-    if orchestrator_preference == "legacy":
-        return call_provider_legacy(config, system_prompt, context), "legacy", None
-    try:
-        return call_provider_via_pydantic_ai(config, system_prompt, context), "pydantic_ai", None
-    except Exception as exc:
-        if orchestrator_preference == "pydantic_ai":
-            raise RuntimeError(f"PydanticAI diagnostics path failed while forced on: {exc}") from exc
-        fallback_reason = f"PydanticAI diagnostics path failed for {config.provider}:{config.model}; falling back to legacy provider call. {exc}"
-        raw_text = call_provider_legacy(config, system_prompt, context)
-        return raw_text, "legacy", fallback_reason
+def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
+    return call_provider_via_pydantic_ai(config, system_prompt, context)
 
 
 def extract_json_object(raw_text: str) -> dict[str, Any]:
@@ -1367,7 +1182,6 @@ def generate_run_diagnostics(
         "prompt_version": PROMPT_VERSION,
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "status": "disabled",
-        "orchestrator": "disabled",
         "provider": None,
         "model": None,
         "summary_line": build_heuristic_summary_line(summary),
@@ -1410,9 +1224,7 @@ def generate_run_diagnostics(
     }
 
     try:
-        raw_text, orchestrator, fallback_note = call_provider(config, system_prompt, context)
-        if fallback_note and job_manager is not None:
-            job_manager.log(job_id, fallback_note)
+        raw_text = call_provider(config, system_prompt, context)
         parsed = extract_json_object(raw_text)
         diagnostics = sanitize_diagnostics(parsed.get("diagnostics"), fallback_diagnostics)
         summary_line = str(parsed.get("summary_line", "")).strip()
@@ -1420,7 +1232,6 @@ def generate_run_diagnostics(
             "prompt_version": PROMPT_VERSION,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "status": "completed",
-            "orchestrator": orchestrator,
             "provider": config.provider,
             "model": config.model,
             "summary_line": summary_line,
@@ -1436,7 +1247,6 @@ def generate_run_diagnostics(
             "prompt_version": PROMPT_VERSION,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "status": "failed",
-            "orchestrator": "pydantic_ai" if "PydanticAI" in str(exc) else "legacy",
             "provider": config.provider,
             "model": config.model,
             "summary_line": build_heuristic_summary_line(summary),

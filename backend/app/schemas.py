@@ -171,7 +171,6 @@ class RunSummary(BoundaryModel):
     team_cluster_distance: float = 0.0
     jersey_crops_used: int = 0
     diagnostics_source: str = "heuristic"
-    diagnostics_orchestrator: str | None = None
     diagnostics_provider: str | None = None
     diagnostics_model: str | None = None
     diagnostics_status: str = "unknown"
@@ -183,7 +182,7 @@ class RunSummary(BoundaryModel):
     diagnostics_current_prompt_version: str | None = None
     diagnostics_stale: bool = False
     diagnostics_stale_reason: str = ""
-    legacy_summary: bool = False
+    historical_summary: bool = False
     created_at: str = ""
     learn_cards: list[LearnCard] = Field(default_factory=list)
     experiments: list[ExperimentCard] = Field(default_factory=list)

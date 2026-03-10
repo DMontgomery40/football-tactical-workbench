@@ -151,7 +151,6 @@ def test_serialize_run_summary_stays_pydantic_v2_compatible_for_nested_review_da
             "resolved_player_tracker_mode": "hybrid_reid",
             "raw_unique_player_track_ids": 9,
             "tracklet_merges_applied": 2,
-            "diagnostics_orchestrator": "pydantic_ai",
             "diagnostics": [
                 {
                     "level": "warn",
@@ -193,7 +192,6 @@ def test_serialize_run_summary_stays_pydantic_v2_compatible_for_nested_review_da
     )
 
     assert validated.summary_version == main.SUMMARY_SCHEMA_VERSION
-    assert validated.diagnostics_orchestrator == "pydantic_ai"
     assert validated.diagnostics[0].title == "Detector drift"
     assert validated.top_tracks[0].track_id == 7
     assert isinstance(job_state.summary, RunSummary)
@@ -274,20 +272,19 @@ def test_build_diagnostics_agent_accepts_structured_testmodel_output() -> None:
     assert result.output.diagnostics[0].code_refs == ["backend/app/wide_angle.py::resolve_detector_spec"]
 
 
-def test_call_provider_falls_back_to_legacy_if_pydantic_ai_path_breaks(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_call_provider_uses_pydantic_ai_path(monkeypatch: pytest.MonkeyPatch) -> None:
     config = ai_diagnostics.ProviderConfig(
         provider="openai",
         model="gpt-5.4",
-        endpoint="https://api.openai.com/v1/responses",
         base_url="https://api.openai.com/v1",
         api_key="test-key",
         timeout_seconds=30.0,
         extra_headers={},
         max_output_tokens=1200,
     )
-    legacy_json = json.dumps(
+    payload = json.dumps(
         {
-            "summary_line": "Legacy fallback still returned a typed diagnostics payload.",
+            "summary_line": "PydanticAI path returned a typed diagnostics payload.",
             "diagnostics": [
                 {
                     "level": "warn",
@@ -301,7 +298,7 @@ def test_call_provider_falls_back_to_legacy_if_pydantic_ai_path_breaks(monkeypat
                 },
                 {
                     "level": "good",
-                    "title": "Tracking fallback",
+                    "title": "Tracking context",
                     "message": "Tracker wiring still initialized.",
                     "next_step": "Leave it unchanged until detections recover.",
                 },
@@ -315,81 +312,48 @@ def test_call_provider_falls_back_to_legacy_if_pydantic_ai_path_breaks(monkeypat
         }
     )
 
-    monkeypatch.setattr(ai_diagnostics, "call_provider_via_pydantic_ai", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("adapter import broke")))
-    monkeypatch.setattr(ai_diagnostics, "call_provider_legacy", lambda *_args, **_kwargs: legacy_json)
+    monkeypatch.setattr(ai_diagnostics, "call_provider_via_pydantic_ai", lambda *_args, **_kwargs: payload)
 
-    raw_text, orchestrator, fallback_note = ai_diagnostics.call_provider(
+    raw_text = ai_diagnostics.call_provider(
         config,
         system_prompt="prompt",
         context={"run_metrics": {}},
     )
 
-    assert json.loads(raw_text)["summary_line"].startswith("Legacy fallback")
-    assert orchestrator == "legacy"
-    assert fallback_note is not None
-    assert "PydanticAI diagnostics path failed" in fallback_note
+    assert json.loads(raw_text)["summary_line"].startswith("PydanticAI path")
 
 
-def test_call_provider_respects_legacy_orchestrator_override(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_run_diagnostics_uses_heuristic_fallback_when_pydantic_ai_path_breaks(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     config = ai_diagnostics.ProviderConfig(
         provider="openai",
         model="gpt-5.4",
-        endpoint="https://api.openai.com/v1/responses",
         base_url="https://api.openai.com/v1",
         api_key="test-key",
         timeout_seconds=30.0,
         extra_headers={},
         max_output_tokens=1200,
     )
-
-    legacy_json = json.dumps({"summary_line": "Legacy only.", "diagnostics": []})
-    legacy_mock = Mock(return_value=legacy_json)
-    pydantic_mock = Mock(side_effect=AssertionError("PydanticAI path should not run when legacy is forced"))
-
-    monkeypatch.setenv("AI_DIAGNOSTICS_ORCHESTRATOR", "legacy")
-    monkeypatch.setattr(ai_diagnostics, "call_provider_legacy", legacy_mock)
-    monkeypatch.setattr(ai_diagnostics, "call_provider_via_pydantic_ai", pydantic_mock)
-
-    raw_text, orchestrator, fallback_note = ai_diagnostics.call_provider(
-        config,
-        system_prompt="prompt",
-        context={"run_metrics": {}},
-    )
-
-    assert json.loads(raw_text)["summary_line"] == "Legacy only."
-    assert orchestrator == "legacy"
-    assert fallback_note is None
-    legacy_mock.assert_called_once()
-    pydantic_mock.assert_not_called()
-
-
-def test_call_provider_can_force_pydantic_ai_without_legacy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    config = ai_diagnostics.ProviderConfig(
-        provider="openai",
-        model="gpt-5.4",
-        endpoint="https://api.openai.com/v1/responses",
-        base_url="https://api.openai.com/v1",
-        api_key="test-key",
-        timeout_seconds=30.0,
-        extra_headers={},
-        max_output_tokens=1200,
-    )
-
-    legacy_mock = Mock(return_value='{"summary_line":"legacy","diagnostics":[]}')
-
-    monkeypatch.setenv("AI_DIAGNOSTICS_ORCHESTRATOR", "pydantic_ai")
+    monkeypatch.setattr(ai_diagnostics, "resolve_provider_config", lambda: config)
     monkeypatch.setattr(
         ai_diagnostics,
         "call_provider_via_pydantic_ai",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("adapter import broke")),
     )
-    monkeypatch.setattr(ai_diagnostics, "call_provider_legacy", legacy_mock)
+    monkeypatch.setattr(ai_diagnostics, "load_recent_logs", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_diagnostics, "build_code_context", lambda *_args, **_kwargs: [])
 
-    with pytest.raises(RuntimeError, match="forced on"):
-        ai_diagnostics.call_provider(
-            config,
-            system_prompt="prompt",
-            context={"run_metrics": {}},
-        )
+    diagnostics, artifact = ai_diagnostics.generate_run_diagnostics(
+        summary={"frames_processed": 12, "player_rows": 0, "ball_rows": 0},
+        heuristic_diagnostics=[],
+        outputs_dir=tmp_path,
+        job_id="job-123",
+        job_manager=None,
+    )
 
-    legacy_mock.assert_not_called()
+    assert artifact["status"] == "failed"
+    assert artifact["provider"] == "openai"
+    assert "adapter import broke" in artifact["error"]
+    assert diagnostics == artifact["diagnostics"]

@@ -1022,8 +1022,6 @@ export interface components {
             diagnostics_json?: string | null;
             /** Diagnostics Model */
             diagnostics_model?: string | null;
-            /** Diagnostics Orchestrator */
-            diagnostics_orchestrator?: string | null;
             /** Diagnostics Prompt Context */
             diagnostics_prompt_context?: {
                 [key: string]: unknown;
@@ -1273,6 +1271,11 @@ export interface components {
             /** Heuristic Diagnostics */
             heuristic_diagnostics?: components["schemas"]["DiagnosticItem"][];
             /**
+             * Historical Summary
+             * @default false
+             */
+            historical_summary: boolean;
+            /**
              * Home Tracks
              * @default 0
              */
@@ -1318,11 +1321,6 @@ export interface components {
             last_good_calibration_frame: number;
             /** Learn Cards */
             learn_cards?: components["schemas"]["LearnCard"][];
-            /**
-             * Legacy Summary
-             * @default false
-             */
-            legacy_summary: boolean;
             /**
              * Longest Track Length
              * @default 0

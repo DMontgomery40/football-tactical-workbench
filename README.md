@@ -185,7 +185,7 @@ The app still has first-class SoccerNet support:
 - [Soccana](https://huggingface.co/Adit-jain/soccana) for football-specific detector weights
 - [Soccana Keypoint](https://huggingface.co/Adit-jain/Soccana_Keypoint) for pitch keypoint weights
 - [Ultralytics](https://www.ultralytics.com/) for the current YOLO runtime used by detector and training paths
-- ByteTrack via Ultralytics tracker integration for the current ball-tracking path and the legacy player-tracking fallback
+- ByteTrack via Ultralytics tracker integration for the current ball-tracking path and the explicit player-tracking comparison path
 - Torchvision ResNet-18 weights for sparse appearance embeddings in the player ReID path
 
 ## Runtime Note
