@@ -1,4 +1,4 @@
-import { readStoredJson, readStoredString } from './storage';
+import { readStoredJson, readStoredString } from './storage.js';
 
 export const STUDIO_TABS = [
   { id: 'datasets', label: 'Datasets' },
@@ -87,6 +87,7 @@ export function createInitialStudioState() {
     },
     errors: {
       global: '',
+      operation: '',
       scan: '',
       jobs: '',
       registry: '',
@@ -102,7 +103,7 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, bootstrap: true },
-        errors: { ...state.errors, global: '' },
+        errors: { ...state.errors, global: '', operation: '' },
       };
     case 'bootstrap/success': {
       const nextRegistry = action.registry || state.registry;
@@ -116,7 +117,7 @@ export function trainingStudioReducer(state, action) {
         selectedJobId: resolveSelectedJobId(state.selectedJobId, nextJobs),
         selectedRegistryEntryId: resolveSelectedRegistryEntryId(state.selectedRegistryEntryId, nextRegistry),
         pending: { ...state.pending, bootstrap: false },
-        errors: { ...state.errors, global: '' },
+        errors: { ...state.errors, global: '', operation: '' },
         bootstrapped: true,
       };
     }
@@ -200,11 +201,21 @@ export function trainingStudioReducer(state, action) {
       return { ...state, selectedJobId: action.jobId };
     case 'registry/select':
       return { ...state, selectedRegistryEntryId: action.entryId };
+    case 'operation/error':
+      return {
+        ...state,
+        errors: { ...state.errors, operation: action.message || 'An operation completed with follow-up refresh errors.' },
+      };
+    case 'operation/clear':
+      return {
+        ...state,
+        errors: { ...state.errors, operation: '' },
+      };
     case 'train/start':
       return {
         ...state,
         pending: { ...state.pending, start: true },
-        errors: { ...state.errors, train: '' },
+        errors: { ...state.errors, train: '', operation: '' },
       };
     case 'train/success':
       return {
@@ -224,7 +235,7 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, stopJobId: action.jobId },
-        errors: { ...state.errors, jobs: '' },
+        errors: { ...state.errors, jobs: '', operation: '' },
       };
     case 'job/stop/end':
       return {
@@ -235,7 +246,7 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, activateRunId: action.runId },
-        errors: { ...state.errors, registry: '' },
+        errors: { ...state.errors, registry: '', operation: '' },
       };
     case 'run/activate/end':
       return {
@@ -247,7 +258,7 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, activateDetectorId: action.detectorId },
-        errors: { ...state.errors, registry: '' },
+        errors: { ...state.errors, registry: '', operation: '' },
       };
     case 'detector/activate/end':
       return {

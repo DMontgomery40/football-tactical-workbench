@@ -2,6 +2,7 @@ export function readStoredString(key, fallback = '') {
   try {
     return window.localStorage.getItem(key) ?? fallback;
   } catch {
+    // INTENTIONAL_SWALLOW: localStorage can be unavailable in privacy or embedded contexts; falling back keeps the UI bootable.
     return fallback;
   }
 }
@@ -11,6 +12,7 @@ export function readStoredJson(key, fallback) {
     const raw = window.localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
+    // INTENTIONAL_SWALLOW: persisted drafts are best-effort only; unreadable storage must fall back to the in-code default.
     return fallback;
   }
 }
@@ -22,7 +24,9 @@ export function writeStoredValue(key, value) {
       return;
     }
     window.localStorage.setItem(key, String(value));
-  } catch {}
+  } catch {
+    // INTENTIONAL_SWALLOW: persistence is best-effort; write failures must not block interactive state updates.
+  }
 }
 
 export function writeStoredJson(key, value) {
@@ -32,5 +36,7 @@ export function writeStoredJson(key, value) {
       return;
     }
     window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // INTENTIONAL_SWALLOW: persistence is best-effort; write failures must not block interactive state updates.
+  }
 }

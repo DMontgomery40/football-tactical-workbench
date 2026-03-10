@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any
 from urllib import error, request
 
+from pydantic import BaseModel, Field
 
-PROMPT_VERSION = "run-diagnostics-v7"
+
+PROMPT_VERSION = "run-diagnostics-v8"
 DEFAULT_TIMEOUT_SECONDS = 75.0
 DEFAULT_MAX_OUTPUT_TOKENS = 3000
 
@@ -149,14 +151,38 @@ class ProviderConfig:
     provider: str
     model: str
     endpoint: str
+    base_url: str
     api_key: str
     timeout_seconds: float
     extra_headers: dict[str, str]
     max_output_tokens: int
 
 
+class DiagnosticsAgentItem(BaseModel):
+    level: str
+    title: str
+    message: str = ""
+    next_step: str = ""
+    implementation_diagnosis: str = ""
+    suggested_fix: str = ""
+    code_refs: list[str] = Field(default_factory=list)
+    evidence_keys: list[str] = Field(default_factory=list)
+
+
+class DiagnosticsAgentOutput(BaseModel):
+    summary_line: str
+    diagnostics: list[DiagnosticsAgentItem] = Field(default_factory=list)
+
+
 def _env(name: str, default: str = "") -> str:
     return str(os.environ.get(name, default)).strip()
+
+
+def _normalize_openai_compatible_base_url(raw_value: str) -> str:
+    normalized = str(raw_value or "").rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized[: -len("/chat/completions")]
+    return normalized
 
 
 def resolve_provider_config() -> ProviderConfig | None:
@@ -178,6 +204,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             provider="openai",
             model=shared_model or _env("OPENAI_MODEL") or "gpt-5.4",
             endpoint="https://api.openai.com/v1/responses",
+            base_url="https://api.openai.com/v1",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers={},
@@ -197,6 +224,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             provider="openrouter",
             model=shared_model or _env("OPENROUTER_MODEL") or "openai/gpt-4.1-mini",
             endpoint="https://openrouter.ai/api/v1/chat/completions",
+            base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers=headers,
@@ -211,6 +239,7 @@ def resolve_provider_config() -> ProviderConfig | None:
             provider="anthropic",
             model=shared_model or _env("ANTHROPIC_MODEL") or "claude-3-5-sonnet-latest",
             endpoint="https://api.anthropic.com/v1/messages",
+            base_url="https://api.anthropic.com",
             api_key=api_key,
             timeout_seconds=timeout_seconds,
             extra_headers={"anthropic-version": _env("ANTHROPIC_VERSION") or "2023-06-01"},
@@ -220,12 +249,13 @@ def resolve_provider_config() -> ProviderConfig | None:
     def build_local() -> ProviderConfig | None:
         if not local_base_url:
             return None
-        normalized = local_base_url.rstrip("/")
-        endpoint = normalized if normalized.endswith("/chat/completions") else f"{normalized}/chat/completions"
+        normalized_base_url = _normalize_openai_compatible_base_url(local_base_url)
+        endpoint = f"{normalized_base_url}/chat/completions"
         return ProviderConfig(
             provider="local",
             model=shared_model or _env("LOCAL_LLM_MODEL") or "gpt-oss-20b",
             endpoint=endpoint,
+            base_url=normalized_base_url,
             api_key=local_api_key or "local",
             timeout_seconds=timeout_seconds,
             extra_headers={},
@@ -850,7 +880,110 @@ def _extract_text_from_anthropic(payload: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
+def _normalize_diagnostics_agent_output(output: DiagnosticsAgentOutput) -> DiagnosticsAgentOutput:
+    summary_line = output.summary_line.strip()
+    if not summary_line:
+        raise ValueError("summary_line must not be empty")
+
+    normalized_items: list[DiagnosticsAgentItem] = []
+    for item in output.diagnostics:
+        level = item.level.strip().lower()
+        if level not in {"good", "warn"}:
+            raise ValueError(f"Unsupported diagnostics level: {item.level}")
+
+        normalized = DiagnosticsAgentItem(
+            level=level,
+            title=item.title.strip(),
+            message=item.message.strip(),
+            next_step=item.next_step.strip(),
+            implementation_diagnosis=item.implementation_diagnosis.strip(),
+            suggested_fix=item.suggested_fix.strip(),
+            code_refs=[str(ref).strip() for ref in item.code_refs if str(ref).strip()][:8],
+            evidence_keys=[str(key).strip() for key in item.evidence_keys if str(key).strip()][:12],
+        )
+        if not normalized.title or not normalized.message or not normalized.next_step:
+            raise ValueError("Each diagnostic must include title, message, and next_step")
+        if normalized.level == "warn":
+            missing: list[str] = []
+            if not normalized.implementation_diagnosis:
+                missing.append("implementation_diagnosis")
+            if not normalized.suggested_fix:
+                missing.append("suggested_fix")
+            if not normalized.code_refs:
+                missing.append("code_refs")
+            if missing:
+                raise ValueError(f"Warn diagnostic '{normalized.title}' is missing {', '.join(missing)}")
+        normalized_items.append(normalized)
+
+    if not 3 <= len(normalized_items) <= 5:
+        raise ValueError(f"Diagnostics output must include 3 to 5 diagnostics, got {len(normalized_items)}")
+
+    return DiagnosticsAgentOutput(summary_line=summary_line, diagnostics=normalized_items)
+
+
+def _build_openai_client(config: ProviderConfig) -> Any:
+    from openai import AsyncOpenAI
+
+    return AsyncOpenAI(
+        api_key=config.api_key,
+        base_url=config.base_url,
+        default_headers=config.extra_headers or None,
+    )
+
+
+def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
+    from pydantic_ai import Agent, ModelRetry, RunContext
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+    from pydantic_ai.providers.openai import OpenAIProvider
+
+    if config.provider == "openai":
+        model = OpenAIResponsesModel(
+            config.model,
+            provider=OpenAIProvider(api_key=config.api_key, base_url=config.base_url),
+        )
+    elif config.provider in {"openrouter", "local"}:
+        model = OpenAIChatModel(
+            config.model,
+            provider=OpenAIProvider(openai_client=_build_openai_client(config)),
+        )
+    elif config.provider == "anthropic":
+        model = AnthropicModel(
+            config.model,
+            provider=AnthropicProvider(
+                api_key=config.api_key,
+                base_url=config.base_url,
+            ),
+        )
+    else:
+        raise RuntimeError(f"Unsupported diagnostics provider: {config.provider}")
+
+    agent = Agent(
+        model=model,
+        output_type=DiagnosticsAgentOutput,
+        instructions=system_prompt,
+        model_settings={
+            "temperature": 0.1,
+            "max_tokens": config.max_output_tokens,
+            "timeout": config.timeout_seconds,
+        },
+        output_retries=2,
+    )
+
+    @agent.output_validator
+    def validate_output(_ctx: RunContext[None], output: DiagnosticsAgentOutput) -> DiagnosticsAgentOutput:
+        try:
+            return _normalize_diagnostics_agent_output(output)
+        except ValueError as exc:
+            raise ModelRetry(str(exc)) from exc
+
+    result = agent.run_sync(render_context_for_provider(context))
+    normalized_output = _normalize_diagnostics_agent_output(result.output)
+    return json.dumps(normalized_output.model_dump(mode="json"), ensure_ascii=True)
+
+
+def call_provider_legacy(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
     user_payload = render_context_for_provider(context)
     if config.provider == "openai":
         response_payload = _post_json(
@@ -918,6 +1051,15 @@ def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str,
         return _extract_text_from_anthropic(response_payload)
 
     raise RuntimeError(f"Unsupported diagnostics provider: {config.provider}")
+
+
+def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> tuple[str, str, str | None]:
+    try:
+        return call_provider_via_pydantic_ai(config, system_prompt, context), "pydantic_ai", None
+    except Exception as exc:
+        fallback_reason = f"PydanticAI diagnostics path failed for {config.provider}:{config.model}; falling back to legacy provider call. {exc}"
+        raw_text = call_provider_legacy(config, system_prompt, context)
+        return raw_text, "legacy", fallback_reason
 
 
 def extract_json_object(raw_text: str) -> dict[str, Any]:
@@ -1200,6 +1342,7 @@ def generate_run_diagnostics(
         "prompt_version": PROMPT_VERSION,
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "status": "disabled",
+        "orchestrator": "disabled",
         "provider": None,
         "model": None,
         "summary_line": build_heuristic_summary_line(summary),
@@ -1242,7 +1385,9 @@ def generate_run_diagnostics(
     }
 
     try:
-        raw_text = call_provider(config, system_prompt, context)
+        raw_text, orchestrator, fallback_note = call_provider(config, system_prompt, context)
+        if fallback_note and job_manager is not None:
+            job_manager.log(job_id, fallback_note)
         parsed = extract_json_object(raw_text)
         diagnostics = sanitize_diagnostics(parsed.get("diagnostics"), fallback_diagnostics)
         summary_line = str(parsed.get("summary_line", "")).strip()
@@ -1250,6 +1395,7 @@ def generate_run_diagnostics(
             "prompt_version": PROMPT_VERSION,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "status": "completed",
+            "orchestrator": orchestrator,
             "provider": config.provider,
             "model": config.model,
             "summary_line": summary_line,
@@ -1265,6 +1411,7 @@ def generate_run_diagnostics(
             "prompt_version": PROMPT_VERSION,
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "status": "failed",
+            "orchestrator": "pydantic_ai" if "PydanticAI" in str(exc) else "legacy",
             "provider": config.provider,
             "model": config.model,
             "summary_line": build_heuristic_summary_line(summary),

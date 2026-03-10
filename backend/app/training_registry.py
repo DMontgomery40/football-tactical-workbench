@@ -154,9 +154,13 @@ class TrainingRegistry:
         summary_path: str | None = None,
         artifacts: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        resolved_path = self._validate_activatable_detector_path(
+            detector_id=f"custom_{run_id}",
+            checkpoint_path=checkpoint_path,
+        )
         return self.register_detector(
             run_id=run_id,
-            checkpoint_path=checkpoint_path,
+            checkpoint_path=resolved_path,
             run_name=run_name,
             base_weights=base_weights,
             metrics=metrics,
@@ -179,9 +183,24 @@ class TrainingRegistry:
             match = next((item for item in detectors if str(item.get("id")) == normalized_id), None)
             if match is None:
                 raise RuntimeError(f"Detector {normalized_id} is not registered")
+            resolved_path = self._validate_activatable_detector_path(
+                detector_id=normalized_id,
+                checkpoint_path=str(match.get("path") or ""),
+            )
+            match["path"] = resolved_path
             payload["active_detector"] = normalized_id
             self._save_locked(payload)
             return dict(match)
+
+    def _validate_activatable_detector_path(self, *, detector_id: str, checkpoint_path: str) -> str:
+        resolved_path = Path(str(checkpoint_path or "")).expanduser().resolve()
+        if not resolved_path.exists() or not resolved_path.is_file():
+            raise RuntimeError(f"Detector {detector_id} checkpoint is missing: {resolved_path}")
+        try:
+            resolve_detector_spec(str(resolved_path))
+        except Exception as exc:
+            raise RuntimeError(f"Detector {detector_id} could not be loaded for analysis: {exc}") from exc
+        return str(resolved_path)
 
     def _load_locked(self) -> dict[str, Any]:
         self._registry_path.parent.mkdir(parents=True, exist_ok=True)

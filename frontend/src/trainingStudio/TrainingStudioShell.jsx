@@ -32,6 +32,23 @@ function buildFormPatch(trainingConfig, currentForm) {
   };
 }
 
+function getErrorMessage(error, fallback) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function extractResponseError(payload, fallback) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return fallback;
+  }
+  if (typeof payload.detail === 'string' && payload.detail.trim()) {
+    return payload.detail;
+  }
+  if (typeof payload.error === 'string' && payload.error.trim()) {
+    return payload.error;
+  }
+  return fallback;
+}
+
 export default function TrainingStudioShell({ apiBase, activeDetector, helpCatalog = [], onActiveDetectorChange }) {
   const [state, dispatch] = useReducer(trainingStudioReducer, undefined, createInitialStudioState);
   const autoScanAttemptedRef = useRef(false);
@@ -40,9 +57,22 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
 
   async function requestJson(path, options = {}) {
     const response = await fetch(`${apiBase}${path}`, options);
-    const payload = await response.json().catch(() => ({}));
+    const rawText = await response.text();
+    let payload = {};
+
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText);
+      } catch (error) {
+        if (!response.ok) {
+          throw new Error(rawText.trim() || `Request failed (${response.status})`);
+        }
+        throw new Error(`Invalid JSON response from ${path}: ${getErrorMessage(error, 'Could not parse response body.')}`);
+      }
+    }
+
     if (!response.ok) {
-      throw new Error(payload.detail || payload.error || 'Request failed');
+      throw new Error(extractResponseError(payload, rawText.trim() || `Request failed (${response.status})`));
     }
     return payload;
   }
@@ -247,17 +277,33 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
     dispatch({ type: 'run/activate/start', runId });
     try {
       await requestJson(`/api/train/runs/${runId}/activate`, { method: 'POST' });
-      const registry = await loadRegistry();
+    } catch (error) {
+      dispatch({ type: 'registry/error', message: getErrorMessage(error, 'Could not activate detector.') });
+      dispatch({ type: 'run/activate/end' });
+      return;
+    }
+
+    let registry;
+    try {
+      registry = await loadRegistry();
+    } catch (error) {
+      dispatch({
+        type: 'operation/error',
+        message: `Detector activated, but the detector registry could not be refreshed. ${getErrorMessage(error, 'Reload the registry to confirm the active checkpoint.')}`,
+      });
+      dispatch({ type: 'run/activate/end' });
+      return;
+    }
+
+    try {
       dispatch({ type: 'registry/select', entryId: registry?.active_detector || 'soccana' });
       dispatch({ type: 'run/activate/end', success: true });
-      try {
-        await loadJobs();
-      } catch (error) {
-        dispatch({ type: 'jobs/error', message: error.message || 'Detector activated, but training jobs could not be refreshed.' });
-      }
+      await loadJobs();
     } catch (error) {
-      dispatch({ type: 'registry/error', message: error.message || 'Could not activate detector.' });
-      dispatch({ type: 'run/activate/end' });
+      dispatch({
+        type: 'operation/error',
+        message: `Detector activated, but the training jobs list could not be refreshed. ${getErrorMessage(error, 'Open Jobs again after the refresh issue is fixed.')}`,
+      });
     }
   }
 
@@ -269,13 +315,23 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ detector_id: entry.id }),
       });
+    } catch (error) {
+      dispatch({ type: 'registry/error', message: getErrorMessage(error, 'Could not activate detector.') });
+      dispatch({ type: 'detector/activate/end' });
+      return;
+    }
+
+    try {
       const registry = await loadRegistry();
       dispatch({ type: 'registry/select', entryId: registry?.active_detector || entry.id });
-      dispatch({ type: 'detector/activate/end' });
     } catch (error) {
-      dispatch({ type: 'registry/error', message: error.message || 'Could not activate detector.' });
-      dispatch({ type: 'detector/activate/end' });
+      dispatch({
+        type: 'operation/error',
+        message: `Detector activated, but the detector registry could not be refreshed. ${getErrorMessage(error, 'Reload the registry to confirm the active checkpoint.')}`,
+      });
     }
+
+    dispatch({ type: 'detector/activate/end' });
   }
 
   const normalizedDatasetPath = normalizeDatasetPath(state.datasetPath);
@@ -310,6 +366,7 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
       />
 
       {state.errors.global ? <div className="error-box">{state.errors.global}</div> : null}
+      {state.errors.operation ? <div className="error-box">{state.errors.operation}</div> : null}
 
       {state.studioTab === 'datasets' ? (
         <DatasetsTab

@@ -60,6 +60,7 @@ from app.wide_angle import (
     analyze_video as analyze_wide_angle_video,
     generate_live_preview_stream,
     prewarm_default_models,
+    resolve_model_path,
 )
 
 TRAINING_IMPORT_ERROR: str | None = None
@@ -902,20 +903,26 @@ def activate_training_run(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=409, detail="Only completed training runs can be activated")
     if not job.best_checkpoint:
         raise HTTPException(status_code=409, detail="Completed training run has no best checkpoint")
+    checkpoint_path = Path(job.best_checkpoint).expanduser().resolve()
+    if not checkpoint_path.exists() or not checkpoint_path.is_file():
+        raise HTTPException(status_code=409, detail=f"Completed training run checkpoint is missing: {checkpoint_path}")
 
-    entry = registry.activate_detector(
-        run_id=run_id,
-        checkpoint_path=job.best_checkpoint,
-        run_name=str(job.config.get("run_name") or run_id),
-        base_weights=str(job.config.get("base_weights") or "soccana"),
-        metrics=job.metrics,
-        created_at=job.created_at,
-        resolved_device=job.resolved_device,
-        backend=job.backend,
-        backend_version=job.backend_version,
-        summary_path=job.summary_path,
-        artifacts=job.artifacts,
-    )
+    try:
+        entry = registry.activate_detector(
+            run_id=run_id,
+            checkpoint_path=str(checkpoint_path),
+            run_name=str(job.config.get("run_name") or run_id),
+            base_weights=str(job.config.get("base_weights") or "soccana"),
+            metrics=job.metrics,
+            created_at=job.created_at,
+            resolved_device=job.resolved_device,
+            backend=job.backend,
+            backend_version=job.backend_version,
+            summary_path=job.summary_path,
+            artifacts=job.artifacts,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     manager.append_log(job.job_id, f"Activated detector {entry['id']}.")
     return {"success": True, "active_detector": entry["id"]}
 
@@ -928,11 +935,15 @@ def get_training_registry() -> dict[str, Any]:
 @app.post("/api/train/registry/activate")
 def activate_registered_detector(request: TrainingRegistryActivateRequest) -> dict[str, Any]:
     _manager, registry = require_training_available()
-    build_training_registry_snapshot()
+    normalized_detector_id = request.detector_id.strip()
+    registry_snapshot = build_training_registry_snapshot()
+    known_detector_ids = {str(item.get("id") or "") for item in registry_snapshot.get("detectors") or []}
+    if normalized_detector_id not in known_detector_ids:
+        raise HTTPException(status_code=404, detail=f"Detector {normalized_detector_id or request.detector_id} is not registered")
     try:
-        entry = registry.activate_detector_id(request.detector_id)
+        entry = registry.activate_detector_id(normalized_detector_id)
     except RuntimeError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"success": True, "active_detector": entry["id"]}
 
 
@@ -1651,15 +1662,34 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
 
 
 def resolve_analysis_detector_model(detector_model: str, player_model: str = "") -> str:
-    requested = detector_model.strip() or player_model.strip()
-    if requested and requested != "soccana":
-        return requested
+    requested_detector = detector_model.strip()
+    if requested_detector:
+        if requested_detector == "soccana":
+            return resolve_model_path("soccana", "detector")
+        return requested_detector
+
+    requested_player = player_model.strip()
+    if requested_player:
+        if requested_player == "soccana":
+            return resolve_model_path("soccana", "detector")
+        return requested_player
     if training_available():
+        active_entry = training_registry.get_active_entry()
+        active_detector_id = str(active_entry.get("id") or "soccana")
         try:
-            return training_registry.get_active_path()
-        except Exception:
-            pass
-    return requested or "soccana"
+            active_path = Path(training_registry.get_active_path()).expanduser().resolve()
+        except Exception as exc:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Active detector {active_detector_id} could not be resolved for analysis: {exc}",
+            ) from exc
+        if active_detector_id != "soccana" and (not active_path.exists() or not active_path.is_file()):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Active detector {active_detector_id} checkpoint is missing: {active_path}",
+            )
+        return str(active_path)
+    return requested_detector or requested_player or "soccana"
 
 
 def build_training_registry_snapshot() -> dict[str, Any]:

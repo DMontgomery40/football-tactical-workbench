@@ -11,6 +11,12 @@ import {
   refreshRunDiagnostics as refreshRunDiagnosticsContract,
 } from './lib/api/contracts';
 import TrainingStudio from './TrainingStudio';
+import {
+  APP_STORAGE_KEYS,
+  buildWorkspaceResetErrorMessage,
+  clearSavedWorkspace,
+  resolveAppShellErrors,
+} from './workspacePersistence';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
@@ -60,18 +66,6 @@ const defaultForm = {
 };
 
 const DEFAULT_SOCCERNET_FILES = ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
-
-const STORAGE_KEYS = {
-  appSpace: 'fpw.appSpace',
-  themeMode: 'fpw.themeMode',
-  form: 'fpw.form',
-  soccerNetSplit: 'fpw.soccerNetSplit',
-  soccerNetQuery: 'fpw.soccerNetQuery',
-  soccerNetFiles: 'fpw.soccerNetFiles',
-  folderPath: 'fpw.folderPath',
-  localVideoPath: 'fpw.localVideoPath',
-  analysisSidebarWidth: 'fpw.analysisSidebarWidth',
-};
 
 const WORKSPACE_MODES = [
   { id: 'input', label: 'Input' },
@@ -659,14 +653,14 @@ function TrajectoryPanel({
 
 export default function App() {
   const [appSpace, setAppSpace] = useState(() => {
-    const stored = readStoredString(STORAGE_KEYS.appSpace, 'analysis');
+    const stored = readStoredString(APP_STORAGE_KEYS.appSpace, 'analysis');
     return stored === 'training' ? 'training' : 'analysis';
   });
-  const [themeMode, setThemeMode] = useState(() => readStoredString(STORAGE_KEYS.themeMode, 'light'));
+  const [themeMode, setThemeMode] = useState(() => readStoredString(APP_STORAGE_KEYS.themeMode, 'light'));
   const [config, setConfig] = useState({ player_models: [], ball_models: [], learn_cards: [], help_catalog: [] });
   const [soccerNetConfig, setSoccerNetConfig] = useState({ dataset_dir: '', splits: [], split_counts: {}, video_files: [], label_files: [], notes: [] });
-  const [soccerNetSplit, setSoccerNetSplit] = useState(() => readStoredString(STORAGE_KEYS.soccerNetSplit, 'train'));
-  const [soccerNetQuery, setSoccerNetQuery] = useState(() => readStoredString(STORAGE_KEYS.soccerNetQuery, ''));
+  const [soccerNetSplit, setSoccerNetSplit] = useState(() => readStoredString(APP_STORAGE_KEYS.soccerNetSplit, 'train'));
+  const [soccerNetQuery, setSoccerNetQuery] = useState(() => readStoredString(APP_STORAGE_KEYS.soccerNetQuery, ''));
   const [soccerNetGames, setSoccerNetGames] = useState([]);
   const [soccerNetGamesCount, setSoccerNetGamesCount] = useState(0);
   const [soccerNetResultLimit, setSoccerNetResultLimit] = useState(24);
@@ -674,14 +668,14 @@ export default function App() {
   const [soccerNetSelectedGame, setSoccerNetSelectedGame] = useState('');
   const [soccerNetPassword, setSoccerNetPassword] = useState('');
   const [soccerNetFiles, setSoccerNetFiles] = useState(() => {
-    const stored = readStoredJson(STORAGE_KEYS.soccerNetFiles, null);
+    const stored = readStoredJson(APP_STORAGE_KEYS.soccerNetFiles, null);
     return Array.isArray(stored) && stored.length > 0 ? stored : DEFAULT_SOCCERNET_FILES;
   });
   const [soccerNetError, setSoccerNetError] = useState('');
   const [soccerNetLoadingGames, setSoccerNetLoadingGames] = useState(false);
   const [soccerNetDownloadJob, setSoccerNetDownloadJob] = useState(null);
   const [form, setForm] = useState(() => {
-    const stored = readStoredJson(STORAGE_KEYS.form, {});
+    const stored = readStoredJson(APP_STORAGE_KEYS.form, {});
     return { ...defaultForm, ...(stored && typeof stored === 'object' ? stored : {}) };
   });
   const [selectedFile, setSelectedFile] = useState(null);
@@ -709,12 +703,13 @@ export default function App() {
   });
   const [statusClock, setStatusClock] = useState(() => Date.now());
   const [jobError, setJobError] = useState('');
+  const [workspaceError, setWorkspaceError] = useState('');
   const [jobActionPending, setJobActionPending] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState('input');
   const [reviewPanel, setReviewPanel] = useState('overview');
   const [analysisSidebarWidth, setAnalysisSidebarWidth] = useState(() => {
-    const stored = Number(readStoredString(STORAGE_KEYS.analysisSidebarWidth, ''));
+    const stored = Number(readStoredString(APP_STORAGE_KEYS.analysisSidebarWidth, ''));
     return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_ANALYSIS_SIDEBAR_WIDTH;
   });
   const [layoutWidth, setLayoutWidth] = useState(0);
@@ -796,7 +791,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.themeMode, themeMode);
+      window.localStorage.setItem(APP_STORAGE_KEYS.themeMode, themeMode);
     } catch {}
     const resolvedTheme = themeMode === 'auto'
       ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -807,29 +802,29 @@ export default function App() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.appSpace, appSpace);
+      window.localStorage.setItem(APP_STORAGE_KEYS.appSpace, appSpace);
     } catch {}
   }, [appSpace]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.form, JSON.stringify(form));
-      window.localStorage.setItem(STORAGE_KEYS.localVideoPath, form.localVideoPath || '');
-      window.localStorage.setItem(STORAGE_KEYS.folderPath, form.folderPath || '');
+      window.localStorage.setItem(APP_STORAGE_KEYS.form, JSON.stringify(form));
+      window.localStorage.setItem(APP_STORAGE_KEYS.localVideoPath, form.localVideoPath || '');
+      window.localStorage.setItem(APP_STORAGE_KEYS.folderPath, form.folderPath || '');
     } catch {}
   }, [form]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.soccerNetSplit, soccerNetSplit);
-      window.localStorage.setItem(STORAGE_KEYS.soccerNetQuery, soccerNetQuery);
-      window.localStorage.setItem(STORAGE_KEYS.soccerNetFiles, JSON.stringify(soccerNetFiles));
+      window.localStorage.setItem(APP_STORAGE_KEYS.soccerNetSplit, soccerNetSplit);
+      window.localStorage.setItem(APP_STORAGE_KEYS.soccerNetQuery, soccerNetQuery);
+      window.localStorage.setItem(APP_STORAGE_KEYS.soccerNetFiles, JSON.stringify(soccerNetFiles));
     } catch {}
   }, [soccerNetSplit, soccerNetQuery, soccerNetFiles]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.analysisSidebarWidth, String(Math.round(analysisSidebarWidth)));
+      window.localStorage.setItem(APP_STORAGE_KEYS.analysisSidebarWidth, String(Math.round(analysisSidebarWidth)));
     } catch {}
   }, [analysisSidebarWidth]);
 
@@ -1025,6 +1020,7 @@ export default function App() {
   const playerTrackerModes = config.player_tracker_modes?.length ? config.player_tracker_modes : ['hybrid_reid', 'bytetrack'];
   const activeDetectorLabel = config.active_detector_label || config.active_detector || 'soccana';
   const activeDetectorIsCustom = Boolean(config.active_detector_is_custom && config.active_detector !== 'soccana');
+  const appShellErrors = resolveAppShellErrors({ workspaceError, jobError });
   const helpIndex = useMemo(
     () => buildHelpIndex(config.help_catalog),
     [config.help_catalog],
@@ -1565,9 +1561,13 @@ export default function App() {
   }
 
   function handleResetSavedWorkspace() {
+    setWorkspaceError('');
     try {
-      Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key));
-    } catch {}
+      clearSavedWorkspace(window.localStorage);
+    } catch (error) {
+      setWorkspaceError(buildWorkspaceResetErrorMessage(error));
+      return;
+    }
     window.location.reload();
   }
 
@@ -1782,6 +1782,10 @@ export default function App() {
         </button>
       </section>
 
+      {appShellErrors.map((message, index) => (
+        <div key={`${index}-${message}`} className="error-box">{message}</div>
+      ))}
+
       {appSpace === 'training' ? (
         <TrainingStudio
           apiBase={API_BASE}
@@ -1912,7 +1916,6 @@ export default function App() {
             <button className="primary-button" disabled={isSubmitting} type="submit">
               {isSubmitting ? 'Starting analysis...' : 'Analyze loaded clip'}
             </button>
-            {jobError ? <div className="error-box">{jobError}</div> : null}
             </form>
 
             <section className="card form-card">
@@ -2327,7 +2330,6 @@ export default function App() {
                       </button>
                     ) : null}
                   </div>
-                  {jobError ? <div className="error-box">{jobError}</div> : null}
                 </>
               ) : (
                 <div className="empty-card">No analysis running. Load a clip, then click Analyze.</div>

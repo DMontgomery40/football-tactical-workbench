@@ -90,6 +90,16 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Avoid stale or duplicate controls. If a workflow is removed backend-side, remove its UI.
 - If the UI starts getting worse from incremental patches, prefer a coherent refactor over more local fixes.
 
+## Error handling rules
+
+- Silent error swallowing is banned by default. Do not introduce empty `catch {}`, `catch { return fallback; }`, `except Exception: pass`, or broad fallback returns that erase an operator-visible failure.
+- If an error affects a user-triggered action, state-changing request, dataset scan, training job, registry activation, artifact load, diagnostics generation, or API response parsing, surface it explicitly. Valid sinks are the visible UI state, job logs, `summary.json`, or structured server logging. Pick the sink the operator will actually see.
+- If a mutation succeeds but a follow-up refresh fails, never report the mutation itself as failed and never hide the refresh failure. Surface a partial-success warning that says what succeeded and what did not refresh.
+- The only allowed silent-swallow cases are truly best-effort cleanup, telemetry, or local persistence where ignoring the failure cannot change runtime correctness or operator decisions.
+- Every intentional swallow must include an inline comment starting with `INTENTIONAL_SWALLOW:` that names the exact failure being ignored, why it is safe here, and what fallback behavior is preserved.
+- Intentional swallows must catch as narrowly as practical. If a broad catch is unavoidable, explain why in the `INTENTIONAL_SWALLOW:` comment.
+- Never silently swallow API parse failures, model-loading failures, file reads for user-visible artifacts, registry mutations, training control requests, or anything that can make the UI claim a stale or guessed state is current.
+
 ## Tooltip rules
 
 - The central source of truth for educational tooltip content is [backend/app/help_catalog.json](backend/app/help_catalog.json).
@@ -111,6 +121,21 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Do not use native browser `title` tooltips as the primary help mechanism for technical guidance.
 
 ## Validation expectations
+
+Automated test placement:
+
+- Put all new automated tests under the top-level `tests/` directory.
+- Keep language-specific groupings inside `tests/` (for example `tests/backend/` and `tests/frontend/`) instead of scattering tests across the repo.
+- Use `pytest` for Python-side automated tests under `tests/backend/`.
+- Keep generated test artifacts out of git by using ignore rules under `tests/` rather than ignoring the tests themselves.
+
+Full suite requirement:
+
+- After every change, run the full suite with:
+
+```bash
+bash tests/testsuite_full.sh
+```
 
 After backend changes:
 
