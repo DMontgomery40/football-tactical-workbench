@@ -55,23 +55,23 @@ function JobDetail({
           <div className="studio-meta-value">{job.config?.base_weights || 'soccana'}</div>
         </div>
         <div>
-          <MicroLabelWithHelp label="Backend" entry={helpIndex.get('training.jobs')} />
+          <MicroLabelWithHelp label="Backend" entry={helpIndex.get('training.backend_runtime')} />
           <div className="studio-meta-value">{[job.backend, job.backend_version ? `v${job.backend_version}` : null].filter(Boolean).join(' ')}</div>
         </div>
         <div>
-          <MicroLabelWithHelp label="Resolved device" entry={helpIndex.get('training.device')} />
+          <MicroLabelWithHelp label="Resolved device" entry={helpIndex.get('training.resolved_device')} />
           <div className="studio-meta-value">{job.resolved_device || job.config?.device || 'pending'}</div>
         </div>
         <div>
-          <MicroLabelWithHelp label="Epoch" entry={helpIndex.get('training.hyperparameters')} />
+          <MicroLabelWithHelp label="Epoch progress" entry={helpIndex.get('training.epoch_progress')} />
           <div className="studio-meta-value">{job.current_epoch || 0} / {job.total_epochs || 0}</div>
         </div>
         <div>
-          <MicroLabelWithHelp label="Started" entry={helpIndex.get('training.jobs')} />
+          <div className="micro-label">Started</div>
           <div className="studio-meta-value">{formatTimestamp(job.started_at || job.created_at)}</div>
         </div>
         <div>
-          <MicroLabelWithHelp label="Finished" entry={helpIndex.get('training.jobs')} />
+          <div className="micro-label">Finished</div>
           <div className="studio-meta-value">{job.finished_at ? formatTimestamp(job.finished_at) : 'still running'}</div>
         </div>
       </div>
@@ -83,7 +83,7 @@ function JobDetail({
       <div className="studio-detail-toolbar">
         <div className="muted">{job.progress || 0}% complete</div>
         <div className="studio-metric-cluster">
-          <MicroLabelWithHelp label="Run metrics" entry={helpIndex.get('training.job_metrics')} />
+          <MicroLabelWithHelp label="Validation metrics" entry={helpIndex.get('training.job_metrics')} />
           <div className="studio-metric-inline">
             <span>mAP50 {formatMetric(job.metrics?.mAP50)}</span>
             <span>mAP50-95 {formatMetric(job.metrics?.mAP50_95)}</span>
@@ -129,29 +129,29 @@ function JobDetail({
           <div className="studio-runtime-note">
             <div className="label-with-help">
               <div className="micro-label">Generated dataset manifest</div>
-              <HelpPopover entry={helpIndex.get('training.job_artifacts')} />
+              <HelpPopover entry={helpIndex.get('training.dataset_yaml')} />
             </div>
             <div>{job.generated_dataset_yaml || 'Not written yet'}</div>
           </div>
-          <ArtifactList artifacts={job.artifacts} helpEntry={helpIndex.get('training.job_artifacts')} />
+          <ArtifactList artifacts={job.artifacts} helpIndex={helpIndex} helpEntry={helpIndex.get('training.job_artifacts')} />
           {job.dataset_scan ? (
             <div className="studio-dataset-review">
-              <div className="micro-label">Dataset scan snapshot</div>
+              <MicroLabelWithHelp label="Dataset scan snapshot" entry={helpIndex.get('training.scan_result')} />
               <div className="studio-meta-grid">
                 <div>
-                  <div className="micro-label">Tier</div>
+                  <MicroLabelWithHelp label="Tier" entry={helpIndex.get('training.scan_result')} />
                   <div className="studio-meta-value">{job.dataset_scan.tier}</div>
                 </div>
                 <div>
-                  <div className="micro-label">Validation strategy</div>
+                  <MicroLabelWithHelp label="Validation strategy" entry={helpIndex.get('training.validation_strategy')} />
                   <div className="studio-meta-value">{job.validation_strategy || job.dataset_scan.suggested_validation_strategy}</div>
                 </div>
                 <div>
-                  <div className="micro-label">Player ids</div>
+                  <MicroLabelWithHelp label="Player ids" entry={helpIndex.get('training.class_mapping')} />
                   <div className="studio-meta-value">{formatClassIds(job.dataset_scan.class_mapping?.player_class_ids)}</div>
                 </div>
                 <div>
-                  <div className="micro-label">Ball ids</div>
+                  <MicroLabelWithHelp label="Ball ids" entry={helpIndex.get('training.class_mapping')} />
                   <div className="studio-meta-value">{formatClassIds(job.dataset_scan.class_mapping?.ball_class_ids)}</div>
                 </div>
               </div>
@@ -190,7 +190,6 @@ export default function JobsTab({
     <section className="studio-stack">
       <section className="card studio-panel">
         <SectionTitleWithHelp title="Training jobs" entry={helpIndex.get('training.jobs')} />
-        <div className="field-note">Use this view to judge run health, inspect artifacts, and promote completed checkpoints into the detector registry.</div>
       </section>
       {jobsError ? <div className="error-box">{jobsError}</div> : null}
       {!jobs.length ? (

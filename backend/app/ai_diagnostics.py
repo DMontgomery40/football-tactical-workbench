@@ -10,7 +10,7 @@ from typing import Any
 from urllib import error, request
 
 
-PROMPT_VERSION = "run-diagnostics-v6"
+PROMPT_VERSION = "run-diagnostics-v7"
 DEFAULT_TIMEOUT_SECONDS = 75.0
 DEFAULT_MAX_OUTPUT_TOKENS = 3000
 
@@ -77,7 +77,7 @@ def _build_good_output_example() -> str:
                         "The rejection logic lives in the `candidate_is_usable` condition inside the main analysis loop. Without per-gate logging, diagnostics cannot distinguish 'no candidate homography' from 'candidate rejected by drift/inliers/error', so the user gets a weak aggregate warning."
                     ),
                     "suggested_fix": (
-                        "Add per-frame calibration rejection reasons to the run summary or diagnostics context. Record one of: `no_candidate`, `low_visible_keypoints`, `low_inliers`, `high_reprojection_error`, or `high_temporal_drift`."
+                        "Add per-frame calibration rejection reasons to the run summary or diagnostics context. Record one of: `no_candidate`, `low_visible_count`, `low_inliers`, `high_reprojection_error`, or `high_temporal_drift`, and preserve whether stale recovery mode was active."
                     ),
                     "code_refs": [
                         "backend/app/wide_angle.py::detect_pitch_homography",
@@ -672,7 +672,10 @@ def build_run_context(
             "detector": summary.get("player_model"),
             "ball": summary.get("ball_model"),
             "field_calibration": summary.get("field_calibration_model"),
+            "requested_player_tracker_mode": summary.get("requested_player_tracker_mode"),
             "player_tracker_mode": summary.get("player_tracker_mode"),
+            "resolved_player_tracker_mode": summary.get("resolved_player_tracker_mode"),
+            "player_tracker_runtime": summary.get("player_tracker_runtime"),
             "player_tracker_backend": summary.get("player_tracker_backend"),
             "device": summary.get("device"),
             "field_calibration_device": summary.get("field_calibration_device"),
@@ -680,6 +683,9 @@ def build_run_context(
             "ball_conf": summary.get("ball_conf"),
             "iou": summary.get("iou"),
             "field_calibration_refresh_frames": summary.get("field_calibration_refresh_frames"),
+            "field_keypoint_confidence_threshold": summary.get("field_keypoint_confidence_threshold"),
+            "field_calibration_min_visible_keypoints": summary.get("field_calibration_min_visible_keypoints"),
+            "field_calibration_stale_recovery_min_visible_keypoints": summary.get("field_calibration_stale_recovery_min_visible_keypoints"),
         },
         "run_metrics": {
             "frames_processed": summary.get("frames_processed"),
@@ -708,6 +714,21 @@ def build_run_context(
             "field_calibration_refresh_attempts": summary.get("field_calibration_refresh_attempts"),
             "field_calibration_refresh_successes": summary.get("field_calibration_refresh_successes"),
             "field_calibration_refresh_rejections": summary.get("field_calibration_refresh_rejections"),
+            "field_calibration_stale_recovery_attempts": summary.get("field_calibration_stale_recovery_attempts"),
+            "field_calibration_stale_recovery_successes": summary.get("field_calibration_stale_recovery_successes"),
+            "field_calibration_stale_recovery_rejections": summary.get("field_calibration_stale_recovery_rejections"),
+            "field_calibration_rejections_no_candidate": summary.get("field_calibration_rejections_no_candidate"),
+            "field_calibration_rejections_low_visible_count": summary.get("field_calibration_rejections_low_visible_count"),
+            "field_calibration_rejections_low_inliers": summary.get("field_calibration_rejections_low_inliers"),
+            "field_calibration_rejections_high_reprojection_error": summary.get("field_calibration_rejections_high_reprojection_error"),
+            "field_calibration_rejections_high_temporal_drift": summary.get("field_calibration_rejections_high_temporal_drift"),
+            "field_calibration_rejections_invalid_candidate": summary.get("field_calibration_rejections_invalid_candidate"),
+            "field_calibration_primary_rejections_no_candidate": summary.get("field_calibration_primary_rejections_no_candidate"),
+            "field_calibration_primary_rejections_low_visible_count": summary.get("field_calibration_primary_rejections_low_visible_count"),
+            "field_calibration_primary_rejections_low_inliers": summary.get("field_calibration_primary_rejections_low_inliers"),
+            "field_calibration_primary_rejections_high_reprojection_error": summary.get("field_calibration_primary_rejections_high_reprojection_error"),
+            "field_calibration_primary_rejections_high_temporal_drift": summary.get("field_calibration_primary_rejections_high_temporal_drift"),
+            "field_calibration_primary_rejections_invalid_candidate": summary.get("field_calibration_primary_rejections_invalid_candidate"),
             "average_visible_pitch_keypoints": summary.get("average_visible_pitch_keypoints"),
             "last_good_calibration_frame": summary.get("last_good_calibration_frame"),
             "goal_events_count": summary.get("goal_events_count"),
@@ -715,6 +736,7 @@ def build_run_context(
             "jersey_crops_used": summary.get("jersey_crops_used"),
             "identity_embedding_updates": summary.get("identity_embedding_updates"),
             "identity_embedding_interval_frames": summary.get("identity_embedding_interval_frames"),
+            "player_tracker_stitching_enabled": summary.get("player_tracker_stitching_enabled"),
         },
         "derived_metrics": {
             "player_track_churn_ratio": round(unique_player_track_ids / frames_processed, 6) if frames_processed > 0 else None,
@@ -729,6 +751,7 @@ def build_run_context(
             "detections_csv": summary.get("detections_csv"),
             "track_summary_csv": summary.get("track_summary_csv"),
             "projection_csv": summary.get("projection_csv"),
+            "calibration_debug_csv": summary.get("calibration_debug_csv"),
             "summary_json": summary.get("summary_json"),
         },
         "code_context": code_context,

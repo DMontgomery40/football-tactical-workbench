@@ -1,4 +1,4 @@
-import { FieldLabel, HelpPopover, SectionTitleWithHelp } from '../helpUi';
+import { FieldLabel, HelpPopover, MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
 import { formatPathTail } from './formatters';
 
 function resolveWorkspaceStatus(datasetPath, datasetScan, scanMatchesCurrentPath) {
@@ -57,7 +57,7 @@ export default function TrainTab({
         </div>
 
         <div className={`studio-readiness-card ${hasReadyScan ? 'ready' : ''}`}>
-          <div className="micro-label">Dataset readiness</div>
+          <MicroLabelWithHelp label="Dataset readiness" entry={helpIndex.get('training.scan_result')} />
           <div className="studio-readiness-title">
             {hasReadyScan ? 'Ready to fine-tune' : 'Dataset scan still required'}
           </div>
@@ -73,7 +73,7 @@ export default function TrainTab({
         <div className="studio-form-context">
           <div className="row-between studio-form-context-head">
             <div>
-              <div className="micro-label">Dataset in scope</div>
+              <MicroLabelWithHelp label="Dataset in scope" entry={helpIndex.get('training.dataset_path')} />
               <div className="studio-form-context-title">{datasetContextLabel}</div>
             </div>
             <div className={`status-pill ${workspaceStatus.className}`}>{workspaceStatus.label}</div>
@@ -83,15 +83,15 @@ export default function TrainTab({
           </div>
           <div className="studio-form-context-grid">
             <div className="studio-context-stat">
-              <div className="micro-label">Scan status</div>
+              <MicroLabelWithHelp label="Scan status" entry={helpIndex.get('training.scan_result')} />
               <div className="studio-meta-value">{scanMatchesCurrentPath ? (datasetScan?.tier || 'waiting') : 'stale'}</div>
             </div>
             <div className="studio-context-stat">
-              <div className="micro-label">Validation</div>
+              <MicroLabelWithHelp label="Validation" entry={helpIndex.get('training.validation_strategy')} />
               <div className="studio-meta-value">{scanMatchesCurrentPath ? (datasetScan?.suggested_validation_strategy || 'n/a') : 'rescan required'}</div>
             </div>
             <div className="studio-context-stat">
-              <div className="micro-label">Classes</div>
+              <MicroLabelWithHelp label="Classes" entry={helpIndex.get('training.class_mapping')} />
               <div className="studio-meta-value">{scanMatchesCurrentPath && Array.isArray(datasetScan?.classes) ? datasetScan.classes.length : 0}</div>
             </div>
           </div>
@@ -102,26 +102,23 @@ export default function TrainTab({
         <div className="studio-form-header">
           <div className="studio-form-header-copy">
             <SectionTitleWithHelp title="Detector fine-tuning" entry={helpIndex.get('training.detector_finetuning')} />
-            <div className="field-note">
-              Tune the football-pretrained detector against the scanned dataset while keeping the control layout stable across empty and loaded states.
-            </div>
           </div>
           <div className={`status-pill ${workspaceStatus.className}`}>{workspaceStatus.label}</div>
         </div>
 
         <div className="studio-form-context training-form-context-inline">
           <div>
-            <div className="micro-label">Dataset source</div>
+            <MicroLabelWithHelp label="Dataset source" entry={helpIndex.get('training.dataset_path')} />
             <div className="studio-form-context-title">{datasetContextLabel}</div>
             <div className="studio-path-text">{datasetContextPath || 'Choose a dataset first from the Datasets tab.'}</div>
           </div>
           <div className="studio-form-context-grid compact-form-context-grid">
             <div className="studio-context-stat">
-              <div className="micro-label">Class source</div>
+              <MicroLabelWithHelp label="Class source" entry={helpIndex.get('training.class_source')} />
               <div className="studio-meta-value">{scanMatchesCurrentPath ? (datasetScan?.classes_source || 'n/a') : 'n/a'}</div>
             </div>
             <div className="studio-context-stat">
-              <div className="micro-label">Device default</div>
+              <MicroLabelWithHelp label="Device default" entry={helpIndex.get('training.device')} />
               <div className="studio-meta-value">{form.device || 'auto'}</div>
             </div>
           </div>
@@ -146,15 +143,15 @@ export default function TrainTab({
             />
           </label>
           <label>
-            <FieldLabel label="Epochs" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Epochs" entry={helpIndex.get('training.epochs')} />
             <input type="number" min="1" value={form.epochs} onChange={(event) => onFormChange({ epochs: event.target.value })} />
           </label>
           <label>
-            <FieldLabel label="Image size" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Image size" entry={helpIndex.get('training.imgsz')} />
             <input type="number" min="32" step="32" value={form.imgsz} onChange={(event) => onFormChange({ imgsz: event.target.value })} />
           </label>
           <label>
-            <FieldLabel label="Batch" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Batch" entry={helpIndex.get('training.batch')} />
             <input type="number" min="1" value={form.batch} onChange={(event) => onFormChange({ batch: event.target.value })} />
           </label>
           <label>
@@ -166,21 +163,21 @@ export default function TrainTab({
             </select>
           </label>
           <label>
-            <FieldLabel label="Workers" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Workers" entry={helpIndex.get('training.workers')} />
             <input type="number" min="0" value={form.workers} onChange={(event) => onFormChange({ workers: event.target.value })} />
           </label>
           <label>
-            <FieldLabel label="Patience" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Patience" entry={helpIndex.get('training.patience')} />
             <input type="number" min="0" value={form.patience} onChange={(event) => onFormChange({ patience: event.target.value })} />
           </label>
           <label>
-            <FieldLabel label="Freeze" entry={helpIndex.get('training.hyperparameters')} />
+            <FieldLabel label="Freeze" entry={helpIndex.get('training.freeze')} />
             <input type="number" min="0" value={form.freeze} onChange={(event) => onFormChange({ freeze: event.target.value })} placeholder="leave blank for none" />
           </label>
           <label className="studio-checkbox-field">
             <span className="checkbox-label-row">
               <span>Cache images</span>
-              <HelpPopover entry={helpIndex.get('training.hyperparameters')} />
+              <HelpPopover entry={helpIndex.get('training.cache')} />
             </span>
             <input type="checkbox" checked={form.cache} onChange={(event) => onFormChange({ cache: event.target.checked })} />
           </label>

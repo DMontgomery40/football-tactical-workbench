@@ -23,7 +23,8 @@ function buildFormPatch(trainingConfig, currentForm) {
     epochs: currentForm.epochs || String(trainingConfig.default_hyperparameters?.epochs || DEFAULT_FORM.epochs),
     imgsz: currentForm.imgsz || String(trainingConfig.default_hyperparameters?.imgsz || DEFAULT_FORM.imgsz),
     batch: currentForm.batch || String(trainingConfig.default_hyperparameters?.batch || DEFAULT_FORM.batch),
-    device: currentForm.device || trainingConfig.default_hyperparameters?.device || DEFAULT_FORM.device,
+    // Device support can change across reloads and machines, so always rehydrate from the backend default.
+    device: trainingConfig.default_hyperparameters?.device || DEFAULT_FORM.device,
     workers: currentForm.workers || String(trainingConfig.default_hyperparameters?.workers || DEFAULT_FORM.workers),
     patience: currentForm.patience || String(trainingConfig.default_hyperparameters?.patience || DEFAULT_FORM.patience),
     freeze: currentForm.freeze ?? '',
@@ -246,9 +247,14 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
     dispatch({ type: 'run/activate/start', runId });
     try {
       await requestJson(`/api/train/runs/${runId}/activate`, { method: 'POST' });
-      const [registry] = await Promise.all([loadRegistry(), loadJobs()]);
+      const registry = await loadRegistry();
       dispatch({ type: 'registry/select', entryId: registry?.active_detector || 'soccana' });
-      dispatch({ type: 'run/activate/end' });
+      dispatch({ type: 'run/activate/end', success: true });
+      try {
+        await loadJobs();
+      } catch (error) {
+        dispatch({ type: 'jobs/error', message: error.message || 'Detector activated, but training jobs could not be refreshed.' });
+      }
     } catch (error) {
       dispatch({ type: 'registry/error', message: error.message || 'Could not activate detector.' });
       dispatch({ type: 'run/activate/end' });

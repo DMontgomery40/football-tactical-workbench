@@ -18,9 +18,6 @@ export default function DatasetsTab({
     <section className="studio-panel-grid">
       <section className="card studio-panel">
         <SectionTitleWithHelp title="Dataset intake" entry={helpIndex.get('training.dataset_intake')} />
-        <div className="field-note">
-          Point this at a YOLO detector dataset root. The scanner checks split structure, label integrity, class mapping, and whether the trained checkpoint can safely come back into analysis.
-        </div>
         <label>
           <FieldLabel label="Dataset path" entry={helpIndex.get('training.dataset_path')} />
           <input
@@ -69,7 +66,7 @@ export default function DatasetsTab({
                 <div className="studio-meta-value">{datasetScan.path}</div>
               </div>
               <div>
-                <MicroLabelWithHelp label="Dataset YAML" entry={helpIndex.get('training.dataset_intake')} />
+                <MicroLabelWithHelp label="Dataset YAML" entry={helpIndex.get('training.dataset_yaml')} />
                 <div className="studio-meta-value">{datasetScan.has_yaml ? datasetScan.yaml_path : 'Missing'}</div>
               </div>
               <div>
@@ -77,12 +74,12 @@ export default function DatasetsTab({
                 <div className="studio-meta-value">{datasetScan.suggested_validation_strategy || 'existing_split'}</div>
               </div>
               <div>
-                <MicroLabelWithHelp label="Class source" entry={helpIndex.get('training.class_mapping')} />
+                <MicroLabelWithHelp label="Class source" entry={helpIndex.get('training.class_source')} />
                 <div className="studio-meta-value">{datasetScan.classes_source || 'missing'}</div>
               </div>
             </div>
 
-            <div className="micro-label">Classes</div>
+            <MicroLabelWithHelp label="Classes" entry={helpIndex.get('training.class_mapping')} />
             <div className="class-chip-row">
               {(datasetScan.classes || []).length ? (
                 datasetScan.classes.map((item) => (
@@ -111,7 +108,7 @@ export default function DatasetsTab({
             <div className="studio-split-grid">
               {Object.entries(datasetScan.splits || {}).map(([splitName, split]) => (
                 <div key={splitName} className="studio-split-card detailed-split-card">
-                  <MicroLabelWithHelp label={splitName} entry={helpIndex.get('training.dataset_intake')} />
+                  <MicroLabelWithHelp label={splitName} entry={helpIndex.get('training.validation_strategy')} />
                   <div className="studio-split-count">{split.images || 0} images</div>
                   <div className="muted">{split.label_files || 0} label files</div>
                   <div className="muted">{split.labeled_images || 0} labeled images</div>

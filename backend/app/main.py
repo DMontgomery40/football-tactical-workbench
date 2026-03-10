@@ -1212,26 +1212,52 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     )
     if has_identity_metrics:
         normalized["player_tracker_mode"] = normalized.get("player_tracker_mode", DEFAULT_PLAYER_TRACKER_MODE)
+        normalized["resolved_player_tracker_mode"] = normalized.get("resolved_player_tracker_mode", normalized["player_tracker_mode"])
+        normalized["requested_player_tracker_mode"] = normalized.get("requested_player_tracker_mode")
+        normalized["player_tracker_runtime"] = normalized.get("player_tracker_runtime")
         normalized["raw_unique_player_track_ids"] = normalized.get("raw_unique_player_track_ids", normalized.get("unique_player_track_ids", 0))
         normalized["tracklet_merges_applied"] = normalized.get("tracklet_merges_applied", 0)
     else:
         normalized["player_tracker_mode"] = "legacy/unknown"
+        normalized["resolved_player_tracker_mode"] = "legacy/unknown"
+        normalized["requested_player_tracker_mode"] = None
+        normalized["player_tracker_runtime"] = None
         normalized["raw_unique_player_track_ids"] = None
         normalized["tracklet_merges_applied"] = None
         normalized["stitched_track_id_reduction"] = None
         normalized["identity_embedding_updates"] = None
         normalized["identity_embedding_interval_frames"] = None
     normalized["player_tracker_backend"] = normalized.get("player_tracker_backend")
+    normalized["player_tracker_stitching_enabled"] = normalized.get("player_tracker_stitching_enabled")
     normalized["field_calibration_success_rate"] = normalized.get("field_calibration_success_rate", 0.0)
     normalized["field_calibration_refresh_rejections"] = normalized.get("field_calibration_refresh_rejections", 0)
+    normalized["field_keypoint_confidence_threshold"] = normalized.get("field_keypoint_confidence_threshold", 0.25)
+    normalized["field_calibration_min_visible_keypoints"] = normalized.get("field_calibration_min_visible_keypoints", 4)
+    normalized["field_calibration_stale_recovery_min_visible_keypoints"] = normalized.get("field_calibration_stale_recovery_min_visible_keypoints", 5)
     normalized["field_calibration_rejections_no_candidate"] = normalized.get("field_calibration_rejections_no_candidate", 0)
-    normalized["field_calibration_rejections_low_visible_keypoints"] = normalized.get("field_calibration_rejections_low_visible_keypoints", 0)
+    low_visible_rejections = normalized.get(
+        "field_calibration_rejections_low_visible_count",
+        normalized.get("field_calibration_rejections_low_visible_keypoints", 0),
+    )
+    normalized["field_calibration_rejections_low_visible_count"] = low_visible_rejections
+    normalized["field_calibration_rejections_low_visible_keypoints"] = normalized.get(
+        "field_calibration_rejections_low_visible_keypoints",
+        low_visible_rejections,
+    )
     normalized["field_calibration_rejections_low_inliers"] = normalized.get("field_calibration_rejections_low_inliers", 0)
     normalized["field_calibration_rejections_high_reprojection_error"] = normalized.get("field_calibration_rejections_high_reprojection_error", 0)
     normalized["field_calibration_rejections_high_temporal_drift"] = normalized.get("field_calibration_rejections_high_temporal_drift", 0)
     normalized["field_calibration_rejections_invalid_candidate"] = normalized.get("field_calibration_rejections_invalid_candidate", 0)
     normalized["field_calibration_primary_rejections_no_candidate"] = normalized.get("field_calibration_primary_rejections_no_candidate", 0)
-    normalized["field_calibration_primary_rejections_low_visible_keypoints"] = normalized.get("field_calibration_primary_rejections_low_visible_keypoints", 0)
+    low_visible_primary_rejections = normalized.get(
+        "field_calibration_primary_rejections_low_visible_count",
+        normalized.get("field_calibration_primary_rejections_low_visible_keypoints", 0),
+    )
+    normalized["field_calibration_primary_rejections_low_visible_count"] = low_visible_primary_rejections
+    normalized["field_calibration_primary_rejections_low_visible_keypoints"] = normalized.get(
+        "field_calibration_primary_rejections_low_visible_keypoints",
+        low_visible_primary_rejections,
+    )
     normalized["field_calibration_primary_rejections_low_inliers"] = normalized.get("field_calibration_primary_rejections_low_inliers", 0)
     normalized["field_calibration_primary_rejections_high_reprojection_error"] = normalized.get("field_calibration_primary_rejections_high_reprojection_error", 0)
     normalized["field_calibration_primary_rejections_high_temporal_drift"] = normalized.get("field_calibration_primary_rejections_high_temporal_drift", 0)
@@ -1258,6 +1284,13 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["player_rows_while_calibration_stale"] = normalized.get("player_rows_while_calibration_stale", 0)
     normalized["field_calibration_stale_recovery_attempts"] = normalized.get("field_calibration_stale_recovery_attempts", 0)
     normalized["field_calibration_stale_recovery_successes"] = normalized.get("field_calibration_stale_recovery_successes", 0)
+    normalized["field_calibration_stale_recovery_rejections"] = normalized.get(
+        "field_calibration_stale_recovery_rejections",
+        max(
+            int(normalized["field_calibration_stale_recovery_attempts"]) - int(normalized["field_calibration_stale_recovery_successes"]),
+            0,
+        ),
+    )
     normalized["detector_debug_sample_frames"] = normalized.get("detector_debug_sample_frames", 0)
     normalized["raw_detector_boxes_sampled"] = normalized.get("raw_detector_boxes_sampled", 0)
     normalized["raw_detector_class_histogram_sample"] = normalized.get("raw_detector_class_histogram_sample", {})
@@ -1280,13 +1313,18 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["field_calibration_refresh_successes"] = 0
         normalized["field_calibration_success_rate"] = 0.0
         normalized["field_calibration_refresh_rejections"] = 0
+        normalized["field_keypoint_confidence_threshold"] = 0.25
+        normalized["field_calibration_min_visible_keypoints"] = 4
+        normalized["field_calibration_stale_recovery_min_visible_keypoints"] = 5
         normalized["field_calibration_rejections_no_candidate"] = 0
+        normalized["field_calibration_rejections_low_visible_count"] = 0
         normalized["field_calibration_rejections_low_visible_keypoints"] = 0
         normalized["field_calibration_rejections_low_inliers"] = 0
         normalized["field_calibration_rejections_high_reprojection_error"] = 0
         normalized["field_calibration_rejections_high_temporal_drift"] = 0
         normalized["field_calibration_rejections_invalid_candidate"] = 0
         normalized["field_calibration_primary_rejections_no_candidate"] = 0
+        normalized["field_calibration_primary_rejections_low_visible_count"] = 0
         normalized["field_calibration_primary_rejections_low_visible_keypoints"] = 0
         normalized["field_calibration_primary_rejections_low_inliers"] = 0
         normalized["field_calibration_primary_rejections_high_reprojection_error"] = 0
@@ -1314,6 +1352,7 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["player_rows_while_calibration_stale"] = 0
         normalized["field_calibration_stale_recovery_attempts"] = 0
         normalized["field_calibration_stale_recovery_successes"] = 0
+        normalized["field_calibration_stale_recovery_rejections"] = 0
         normalized["detector_debug_sample_frames"] = 0
         normalized["raw_detector_boxes_sampled"] = 0
         normalized["raw_detector_class_histogram_sample"] = {}
@@ -1322,6 +1361,9 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
         normalized["entropy_timeseries_csv"] = None
         normalized["experiments"] = []
         normalized["player_tracker_mode"] = "legacy"
+        normalized["resolved_player_tracker_mode"] = "legacy"
+        normalized["requested_player_tracker_mode"] = None
+        normalized["player_tracker_runtime"] = None
         normalized["raw_unique_player_track_ids"] = normalized.get("unique_player_track_ids", 0)
         normalized["tracklet_merges_applied"] = 0
         normalized["legacy_summary"] = True

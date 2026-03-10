@@ -1,4 +1,4 @@
-import { SectionTitleWithHelp } from '../helpUi';
+import { MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
 import { formatClassIds, formatMetric, formatTimestamp } from './formatters';
 
 function RegistryListItem({ entry, isSelected, isActive, onSelect }) {
@@ -23,7 +23,7 @@ function RegistryListItem({ entry, isSelected, isActive, onSelect }) {
   );
 }
 
-function RegistryDetail({ entry, activeRegistryId, pendingActivateDetectorId, onActivateEntry }) {
+function RegistryDetail({ entry, helpIndex, activeRegistryId, pendingActivateDetectorId, onActivateEntry }) {
   if (!entry) {
     return <div className="empty-card studio-panel">Select a detector to inspect activation state, metadata, and checkpoint details.</div>;
   }
@@ -46,23 +46,23 @@ function RegistryDetail({ entry, activeRegistryId, pendingActivateDetectorId, on
           <div className="studio-meta-value">{formatTimestamp(entry.created_at)}</div>
         </div>
         <div>
-          <div className="micro-label">Base weights</div>
+          <MicroLabelWithHelp label="Base weights" entry={helpIndex.get('training.base_weights')} />
           <div className="studio-meta-value">{entry.base_weights || 'soccana'}</div>
         </div>
         <div>
-          <div className="micro-label">Resolved device</div>
+          <MicroLabelWithHelp label="Resolved device" entry={helpIndex.get('training.resolved_device')} />
           <div className="studio-meta-value">{entry.resolved_device || 'n/a'}</div>
         </div>
         <div>
-          <div className="micro-label">Backend</div>
+          <MicroLabelWithHelp label="Backend" entry={helpIndex.get('training.backend_runtime')} />
           <div className="studio-meta-value">{[entry.backend, entry.backend_version ? `v${entry.backend_version}` : null].filter(Boolean).join(' ') || 'n/a'}</div>
         </div>
         <div>
-          <div className="micro-label">mAP50</div>
+          <MicroLabelWithHelp label="mAP50" entry={helpIndex.get('training.metric_map50')} />
           <div className="studio-meta-value">{formatMetric(entry.metrics?.mAP50)}</div>
         </div>
         <div>
-          <div className="micro-label">Checkpoint</div>
+          <MicroLabelWithHelp label="Checkpoint" entry={helpIndex.get('training.checkpoint_path')} />
           <div className="studio-meta-value">{entry.path}</div>
         </div>
       </div>
@@ -70,15 +70,15 @@ function RegistryDetail({ entry, activeRegistryId, pendingActivateDetectorId, on
       {!entry.is_pretrained ? (
         <div className="studio-class-map compact-class-map">
           <div className="studio-class-map-card">
-            <div className="micro-label">Player ids</div>
+            <MicroLabelWithHelp label="Player ids" entry={helpIndex.get('training.class_mapping')} />
             <div className="studio-meta-value">{formatClassIds(entry.class_ids?.player_class_ids)}</div>
           </div>
           <div className="studio-class-map-card">
-            <div className="micro-label">Ball ids</div>
+            <MicroLabelWithHelp label="Ball ids" entry={helpIndex.get('training.class_mapping')} />
             <div className="studio-meta-value">{formatClassIds(entry.class_ids?.ball_class_ids)}</div>
           </div>
           <div className="studio-class-map-card">
-            <div className="micro-label">Ref ids</div>
+            <MicroLabelWithHelp label="Ref ids" entry={helpIndex.get('training.class_mapping')} />
             <div className="studio-meta-value">{formatClassIds(entry.class_ids?.referee_class_ids)}</div>
           </div>
         </div>
@@ -86,7 +86,7 @@ function RegistryDetail({ entry, activeRegistryId, pendingActivateDetectorId, on
 
       {entry.summary_path ? (
         <div className="studio-runtime-note compact-note">
-          <div className="micro-label">Run summary</div>
+          <MicroLabelWithHelp label="Run summary" entry={helpIndex.get('training.run_summary_artifact')} />
           <div>{entry.summary_path}</div>
         </div>
       ) : null}
@@ -153,6 +153,7 @@ export default function RegistryTab({
           </section>
           <RegistryDetail
             entry={selectedEntry}
+            helpIndex={helpIndex}
             activeRegistryId={activeRegistryId}
             pendingActivateDetectorId={pendingActivateDetectorId}
             onActivateEntry={onActivateEntry}

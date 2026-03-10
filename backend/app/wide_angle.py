@@ -40,12 +40,12 @@ KEYPOINT_MODEL_DEFAULT = "soccana_keypoint"
 CALIBRATION_REFRESH_FRAMES = 10
 CALIBRATION_SMOOTHING_WINDOW = 5
 CALIBRATION_MAX_AGE_FRAMES = 30
-FIELD_KEYPOINT_CONFIDENCE = 0.35
+FIELD_KEYPOINT_CONFIDENCE = 0.25
 MIN_CALIBRATION_VISIBLE_KEYPOINTS = 4
 MIN_CALIBRATION_INLIERS = 4
 MAX_CALIBRATION_REPROJECTION_ERROR_CM = 250.0
 MAX_CALIBRATION_TEMPORAL_DRIFT_CM = 1800.0
-STALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS = 7
+STALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5
 STALE_RECOVERY_MIN_CALIBRATION_INLIERS = 5
 STALE_RECOVERY_MAX_CALIBRATION_REPROJECTION_ERROR_CM = 350.0
 STALE_RECOVERY_TEMPORAL_DRIFT_CM = 5000.0
@@ -167,7 +167,7 @@ TEAM_BOX_COLORS = {
 }
 CALIBRATION_REJECTION_REASON_KEYS = (
     "no_candidate",
-    "low_visible_keypoints",
+    "low_visible_count",
     "low_inliers",
     "high_reprojection_error",
     "high_temporal_drift",
@@ -481,8 +481,18 @@ def resolve_player_tracker_mode(config_payload: dict[str, Any]) -> str:
     )
 
 
+def requested_player_tracker_mode(config_payload: dict[str, Any]) -> str | None:
+    raw_value = str(config_payload.get("tracker_mode") or config_payload.get("player_tracker_mode") or "").strip()
+    return raw_value or None
+
+
+def resolved_tracker_runtime_label(tracker_mode: str) -> str:
+    return "legacy_bytetrack" if tracker_mode == LEGACY_PLAYER_TRACKER_MODE else "hybrid_reid_stitch"
+
+
 def default_tracker_backend() -> dict[str, Any]:
     return {
+        "tracker_mode": DEFAULT_PLAYER_TRACKER_MODE,
         "embedding_source": "none",
         "embedding_error": None,
         "deep_feature_updates": 0,
@@ -529,7 +539,7 @@ def calibration_rejection_flags(
     if homography_candidate is None:
         flags.append("no_candidate")
     if visible_count < min_visible_count:
-        flags.append("low_visible_keypoints")
+        flags.append("low_visible_count")
     if inlier_count < min_inlier_count:
         flags.append("low_inliers")
     if homography_candidate is not None and (
@@ -559,7 +569,7 @@ def calibration_success_rate(successes: int, attempts: int) -> float:
 def calibration_rejection_summary(rejections: dict[str, int], invalid_candidate_rejections: int = 0) -> str:
     parts = [
         f"no cand {int(rejections.get('no_candidate', 0))}",
-        f"low vis {int(rejections.get('low_visible_keypoints', 0))}",
+        f"low vis {int(rejections.get('low_visible_count', 0))}",
         f"low inliers {int(rejections.get('low_inliers', 0))}",
         f"reproj {int(rejections.get('high_reprojection_error', 0))}",
         f"drift {int(rejections.get('high_temporal_drift', 0))}",
@@ -1970,7 +1980,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     source_video_path = Path(config_payload["source_video_path"])
     label_path = str(config_payload.get("label_path") or "").strip()
     player_model_name = str(config_payload["player_model"])
+    requested_tracker_mode = requested_player_tracker_mode(config_payload)
     tracker_mode = resolve_player_tracker_mode(config_payload)
+    tracker_mode_name = tracker_mode_label(tracker_mode)
+    tracker_runtime_label = resolved_tracker_runtime_label(tracker_mode)
     include_ball = bool(config_payload["include_ball"])
     player_conf = float(config_payload["player_conf"])
     ball_conf = float(config_payload["ball_conf"])
@@ -2030,7 +2043,11 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         else None
     )
     tracker_backend = player_tracker.describe_backend() if player_tracker is not None else default_tracker_backend()
-    job_manager.log(job_id, f"Player tracker mode: {tracker_mode_label(tracker_mode)}")
+    job_manager.log(
+        job_id,
+        f"Player tracker mode resolved to {tracker_mode_name} ({tracker_runtime_label})"
+        + (f" from requested '{requested_tracker_mode}'" if requested_tracker_mode else " from default"),
+    )
     job_manager.log(
         job_id,
         "Detector class ids: "
@@ -2068,6 +2085,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     calibration_invalid_candidate_rejections = 0
     calibration_stale_recovery_attempts = 0
     calibration_stale_recovery_successes = 0
+    calibration_stale_recovery_rejections = 0
     calibration_debug_rows: list[dict[str, Any]] = []
     frames_with_field_homography = 0
     frames_with_usable_homography = 0
@@ -2175,11 +2193,15 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                     calibration_refresh_rejections += 1
                     calibration_primary_rejections_by_reason["invalid_candidate"] += 1
                     calibration_invalid_candidate_rejections += 1
+                    if stale_recovery_mode:
+                        calibration_stale_recovery_rejections += 1
             else:
                 calibration_refresh_rejections += 1
                 for rejection_flag in rejection_flags:
                     calibration_rejections_by_reason[rejection_flag] += 1
                 calibration_primary_rejections_by_reason[primary_calibration_rejection_reason(rejection_flags)] += 1
+                if stale_recovery_mode:
+                    calibration_stale_recovery_rejections += 1
             calibration_refresh_debug = {
                 "frame_index": frame_index,
                 "candidate_exists": homography_candidate is not None,
@@ -2194,6 +2216,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                 "candidate_is_usable": candidate_is_usable,
                 "candidate_accepted": candidate_accepted,
                 "stale_recovery_mode": stale_recovery_mode,
+                "rejection_no_candidate": int("no_candidate" in rejection_flags),
+                "rejection_low_visible_count": int("low_visible_count" in rejection_flags),
+                "rejection_low_inliers": int("low_inliers" in rejection_flags),
+                "rejection_high_reprojection_error": int("high_reprojection_error" in rejection_flags),
+                "rejection_high_temporal_drift": int("high_temporal_drift" in rejection_flags),
+                "rejection_invalid_candidate": int(candidate_is_usable and not candidate_accepted),
             }
 
         calibration_is_stale = calibration_stale_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
@@ -2250,6 +2278,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                     "candidate_usable": int(calibration_refresh_debug["candidate_is_usable"]),
                     "candidate_accepted": int(calibration_refresh_debug["candidate_accepted"]),
                     "rejection_reason_primary": primary_rejection_reason,
+                    "rejection_no_candidate": int(calibration_refresh_debug["rejection_no_candidate"]),
+                    "rejection_low_visible_count": int(calibration_refresh_debug["rejection_low_visible_count"]),
+                    "rejection_low_inliers": int(calibration_refresh_debug["rejection_low_inliers"]),
+                    "rejection_high_reprojection_error": int(calibration_refresh_debug["rejection_high_reprojection_error"]),
+                    "rejection_high_temporal_drift": int(calibration_refresh_debug["rejection_high_temporal_drift"]),
+                    "rejection_invalid_candidate": int(calibration_refresh_debug["rejection_invalid_candidate"]),
                     "calibration_stale_after_refresh": int(calibration_is_stale),
                     "last_good_calibration_frame_after_refresh": int(last_good_calibration_frame),
                 }
@@ -2652,6 +2686,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                     "candidate_usable",
                     "candidate_accepted",
                     "rejection_reason_primary",
+                    "rejection_no_candidate",
+                    "rejection_low_visible_count",
+                    "rejection_low_inliers",
+                    "rejection_high_reprojection_error",
+                    "rejection_high_temporal_drift",
+                    "rejection_invalid_candidate",
                     "calibration_stale_after_refresh",
                     "last_good_calibration_frame_after_refresh",
                 ]
@@ -2674,6 +2714,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
                         row["candidate_usable"],
                         row["candidate_accepted"],
                         row["rejection_reason_primary"],
+                        row["rejection_no_candidate"],
+                        row["rejection_low_visible_count"],
+                        row["rejection_low_inliers"],
+                        row["rejection_high_reprojection_error"],
+                        row["rejection_high_temporal_drift"],
+                        row["rejection_invalid_candidate"],
                         row["calibration_stale_after_refresh"],
                         row["last_good_calibration_frame_after_refresh"],
                     ]
@@ -3244,9 +3290,13 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "device": detector_device,
         "field_calibration_device": keypoint_device,
         "player_model": detector_spec["name"],
+        "requested_player_tracker_mode": requested_tracker_mode,
         "player_tracker_mode": tracker_mode_label(tracker_mode),
+        "resolved_player_tracker_mode": tracker_mode_name,
+        "player_tracker_runtime": tracker_runtime_label,
         "player_tracker_backend": tracker_backend.get("embedding_source"),
         "player_tracker_embedding_error": tracker_backend.get("embedding_error"),
+        "player_tracker_stitching_enabled": bool(player_tracker is not None),
         "detector_class_names_source": detector_spec["class_names_source"],
         "player_detector_class_ids": list(detector_spec["player_class_ids"]),
         "ball_detector_class_ids": list(detector_spec["ball_class_ids"]),
@@ -3310,16 +3360,22 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "field_calibration_refresh_successes": calibration_refresh_successes,
         "field_calibration_success_rate": round(field_calibration_success, 6),
         "field_calibration_refresh_rejections": calibration_refresh_rejections,
+        "field_keypoint_confidence_threshold": FIELD_KEYPOINT_CONFIDENCE,
+        "field_calibration_min_visible_keypoints": MIN_CALIBRATION_VISIBLE_KEYPOINTS,
+        "field_calibration_stale_recovery_min_visible_keypoints": STALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS,
         "field_calibration_stale_recovery_attempts": calibration_stale_recovery_attempts,
         "field_calibration_stale_recovery_successes": calibration_stale_recovery_successes,
+        "field_calibration_stale_recovery_rejections": calibration_stale_recovery_rejections,
         "field_calibration_rejections_no_candidate": int(calibration_rejections_by_reason["no_candidate"]),
-        "field_calibration_rejections_low_visible_keypoints": int(calibration_rejections_by_reason["low_visible_keypoints"]),
+        "field_calibration_rejections_low_visible_count": int(calibration_rejections_by_reason["low_visible_count"]),
+        "field_calibration_rejections_low_visible_keypoints": int(calibration_rejections_by_reason["low_visible_count"]),
         "field_calibration_rejections_low_inliers": int(calibration_rejections_by_reason["low_inliers"]),
         "field_calibration_rejections_high_reprojection_error": int(calibration_rejections_by_reason["high_reprojection_error"]),
         "field_calibration_rejections_high_temporal_drift": int(calibration_rejections_by_reason["high_temporal_drift"]),
         "field_calibration_rejections_invalid_candidate": int(calibration_invalid_candidate_rejections),
         "field_calibration_primary_rejections_no_candidate": int(calibration_primary_rejections_by_reason["no_candidate"]),
-        "field_calibration_primary_rejections_low_visible_keypoints": int(calibration_primary_rejections_by_reason["low_visible_keypoints"]),
+        "field_calibration_primary_rejections_low_visible_count": int(calibration_primary_rejections_by_reason["low_visible_count"]),
+        "field_calibration_primary_rejections_low_visible_keypoints": int(calibration_primary_rejections_by_reason["low_visible_count"]),
         "field_calibration_primary_rejections_low_inliers": int(calibration_primary_rejections_by_reason["low_inliers"]),
         "field_calibration_primary_rejections_high_reprojection_error": int(calibration_primary_rejections_by_reason["high_reprojection_error"]),
         "field_calibration_primary_rejections_high_temporal_drift": int(calibration_primary_rejections_by_reason["high_temporal_drift"]),

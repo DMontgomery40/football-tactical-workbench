@@ -241,7 +241,7 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, activateRunId: '' },
-        studioTab: 'registry',
+        studioTab: action.success ? 'registry' : state.studioTab,
       };
     case 'detector/activate/start':
       return {
