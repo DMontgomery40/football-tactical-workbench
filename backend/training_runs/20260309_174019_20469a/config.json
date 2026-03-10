@@ -1,0 +1,114 @@
+{
+  "base_weights": "soccana",
+  "dataset_path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data",
+  "run_name": "20260309_174019_20469a",
+  "epochs": 50,
+  "imgsz": 640,
+  "batch": 16,
+  "device": "auto",
+  "workers": 4,
+  "patience": 20,
+  "freeze": null,
+  "cache": false,
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "dataset_scan": {
+    "path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data",
+    "tier": "valid",
+    "has_yaml": true,
+    "yaml_path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/data.yaml",
+    "classes": [
+      "ball",
+      "goalkeeper",
+      "player",
+      "referee"
+    ],
+    "class_count": 4,
+    "classes_source": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/data.yaml",
+    "class_mapping": {
+      "player_class_ids": [
+        1,
+        2
+      ],
+      "ball_class_ids": [
+        0
+      ],
+      "referee_class_ids": [
+        3
+      ],
+      "player_class_id": 1,
+      "ball_class_id": 0,
+      "referee_class_id": 3
+    },
+    "split_paths": {
+      "train": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/train/images",
+      "val": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/valid/images",
+      "test": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/test/images"
+    },
+    "splits": {
+      "train": {
+        "source": "dataset_yaml",
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/train/images",
+        "refs": [
+          "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/train/images"
+        ],
+        "images": 298,
+        "label_files": 298,
+        "labeled_images": 298,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 7133,
+        "warnings": [],
+        "errors": []
+      },
+      "val": {
+        "source": "dataset_yaml",
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/valid/images",
+        "refs": [
+          "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/valid/images"
+        ],
+        "images": 49,
+        "label_files": 49,
+        "labeled_images": 49,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 1174,
+        "warnings": [],
+        "errors": []
+      },
+      "test": {
+        "source": "dataset_yaml",
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/test/images",
+        "refs": [
+          "/Users/davidmontgomery/football_pose_workbench/backend/datasets/huggingface/martinjolif_football_player_detection/data/test/images"
+        ],
+        "images": 25,
+        "label_files": 25,
+        "labeled_images": 25,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 599,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    "warnings": [],
+    "errors": [],
+    "can_start": true,
+    "suggested_validation_strategy": "existing_split",
+    "detected_format": "yolo_detection"
+  },
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/dataset_runtime.yaml",
+  "generated_split_lists": {
+    "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/splits/train.txt",
+    "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/splits/val.txt",
+    "test": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/splits/test.txt"
+  },
+  "validation_strategy": "existing_split"
+}

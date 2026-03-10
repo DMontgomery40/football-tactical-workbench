@@ -910,11 +910,9 @@ def list_jobs() -> list[dict[str, Any]]:
 
 
 @app.get("/api/experiments/active")
-def active_experiment() -> dict[str, Any]:
+def active_experiment() -> dict[str, Any] | None:
     experiment = load_active_batch_experiment()
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="No active experiment found")
-    return experiment
+    return experiment or None
 
 
 @app.get("/api/soccernet/config")

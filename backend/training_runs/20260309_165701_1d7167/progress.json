@@ -1,0 +1,172 @@
+{
+  "epoch": 2,
+  "total_epochs": 2,
+  "metrics": {
+    "mAP50": 0.0,
+    "mAP50_95": 0.0,
+    "precision": 0.0,
+    "recall": 0.0
+  },
+  "done": true,
+  "resolved_device": "cpu",
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/dataset_runtime.yaml",
+  "training_curves": {
+    "loss": [
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 0.25,
+        "box_loss": 1.65839,
+        "cls_loss": 3.66,
+        "dfl_loss": 1.91069
+      },
+      {
+        "epoch": 1,
+        "step": 2,
+        "epoch_progress": 0.5,
+        "box_loss": 1.87883,
+        "cls_loss": 3.58626,
+        "dfl_loss": 2.12753
+      },
+      {
+        "epoch": 1,
+        "step": 3,
+        "epoch_progress": 0.75,
+        "box_loss": 1.7636,
+        "cls_loss": 3.36613,
+        "dfl_loss": 2.37241
+      },
+      {
+        "epoch": 1,
+        "step": 4,
+        "epoch_progress": 1.0,
+        "box_loss": 1.87481,
+        "cls_loss": 3.31744,
+        "dfl_loss": 2.26793
+      },
+      {
+        "epoch": 1,
+        "step": 4,
+        "epoch_progress": 1.0,
+        "box_loss": 1.87481,
+        "cls_loss": 3.31744,
+        "dfl_loss": 2.26793
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 1.25,
+        "box_loss": 3.43163,
+        "cls_loss": 3.97733,
+        "dfl_loss": 4.66552
+      },
+      {
+        "epoch": 2,
+        "step": 2,
+        "epoch_progress": 1.5,
+        "box_loss": 3.35766,
+        "cls_loss": 3.6374,
+        "dfl_loss": 3.95731
+      },
+      {
+        "epoch": 2,
+        "step": 3,
+        "epoch_progress": 1.75,
+        "box_loss": 2.80669,
+        "cls_loss": 3.43609,
+        "dfl_loss": 3.21023
+      },
+      {
+        "epoch": 2,
+        "step": 4,
+        "epoch_progress": 2.0,
+        "box_loss": 2.59777,
+        "cls_loss": 3.36178,
+        "dfl_loss": 2.94018
+      },
+      {
+        "epoch": 2,
+        "step": 4,
+        "epoch_progress": 2.0,
+        "box_loss": 2.59777,
+        "cls_loss": 3.36178,
+        "dfl_loss": 2.94018
+      }
+    ],
+    "optimizer": [
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 0.25,
+        "grad_norm": 56.54325866699219,
+        "lr": 0.0
+      },
+      {
+        "epoch": 1,
+        "step": 2,
+        "epoch_progress": 0.5,
+        "grad_norm": 56.54325866699219,
+        "lr": 1.25e-05
+      },
+      {
+        "epoch": 1,
+        "step": 3,
+        "epoch_progress": 0.75,
+        "grad_norm": 56.4233283996582,
+        "lr": 2.5e-05
+      },
+      {
+        "epoch": 1,
+        "step": 4,
+        "epoch_progress": 1.0,
+        "grad_norm": 56.4233283996582,
+        "lr": 3.7500000000000003e-05
+      },
+      {
+        "epoch": 1,
+        "step": 4,
+        "epoch_progress": 1.0,
+        "grad_norm": 56.4233283996582,
+        "lr": 3.7500000000000003e-05
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 1.25,
+        "grad_norm": 56.4233283996582,
+        "lr": 2.525e-05
+      },
+      {
+        "epoch": 2,
+        "step": 2,
+        "epoch_progress": 1.5,
+        "grad_norm": 56.4233283996582,
+        "lr": 3.15625e-05
+      },
+      {
+        "epoch": 2,
+        "step": 3,
+        "epoch_progress": 1.75,
+        "grad_norm": 56.4233283996582,
+        "lr": 3.7875e-05
+      },
+      {
+        "epoch": 2,
+        "step": 4,
+        "epoch_progress": 2.0,
+        "grad_norm": 213.23822021484375,
+        "lr": 4.4187500000000003e-05
+      },
+      {
+        "epoch": 2,
+        "step": 4,
+        "epoch_progress": 2.0,
+        "grad_norm": 213.23822021484375,
+        "lr": 4.4187500000000003e-05
+      }
+    ]
+  },
+  "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/weights/best.pt"
+}

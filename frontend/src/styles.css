@@ -15,6 +15,12 @@
   --accent: #1f5f92;
   --accent-strong: #16486f;
   --accent-soft: rgba(31, 95, 146, 0.14);
+  --chart-grid: rgba(97, 113, 130, 0.22);
+  --chart-box: #2563eb;
+  --chart-cls: #c2410c;
+  --chart-dfl: #15803d;
+  --chart-grad: #be185d;
+  --chart-lr: #0f766e;
   --warn-bg: #f6eadb;
   --warn-line: #cfab79;
   --warn-text: #6b4318;
@@ -45,6 +51,12 @@
   --accent: #8cb8dc;
   --accent-strong: #b2d0e8;
   --accent-soft: rgba(140, 184, 220, 0.22);
+  --chart-grid: rgba(131, 152, 176, 0.22);
+  --chart-box: #74b9ff;
+  --chart-cls: #ffb86b;
+  --chart-dfl: #4ade80;
+  --chart-grad: #ff7ab6;
+  --chart-lr: #2dd4bf;
   --warn-bg: rgba(103, 63, 18, 0.4);
   --warn-line: rgba(221, 169, 105, 0.5);
   --warn-text: #f2c897;
@@ -372,7 +384,8 @@ summary {
 .label-with-help,
 .field-label-row,
 .checkbox-label-row,
-.metric-label-row {
+.metric-label-row,
+.micro-label-with-help {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -412,6 +425,8 @@ summary {
 .help-panel {
   position: fixed;
   z-index: 200;
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid var(--line-strong);
@@ -817,6 +832,10 @@ textarea {
   align-items: start;
 }
 
+.studio-train-grid {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1.18fr);
+}
+
 .studio-stack {
   display: grid;
   gap: 16px;
@@ -1167,6 +1186,62 @@ textarea {
   color: var(--text-strong);
 }
 
+.studio-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.studio-form-header-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.studio-form-context {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-muted) 80%, var(--surface));
+}
+
+.studio-form-context-head {
+  align-items: flex-start;
+}
+
+.studio-form-context-title {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  color: var(--text-strong);
+}
+
+.studio-form-context-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.studio-context-stat {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.training-form-context-inline {
+  margin-top: -2px;
+}
+
+.compact-form-context-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .training-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1230,6 +1305,127 @@ textarea {
   gap: 12px;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+.studio-metric-cluster {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.studio-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.studio-chart-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, var(--surface-muted));
+}
+
+.studio-chart-shell {
+  min-height: 300px;
+  padding: 8px 10px 0;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--page-panel)) 0%, color-mix(in srgb, var(--surface) 84%, var(--surface-muted)) 100%);
+}
+
+.studio-chart-card .recharts-cartesian-axis-tick-value,
+.studio-chart-card .recharts-legend-item-text {
+  fill: var(--text-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.studio-chart-card .recharts-legend-wrapper {
+  transform: translateY(4px);
+}
+
+.studio-chart-card .recharts-default-tooltip {
+  border-radius: 14px;
+}
+
+.studio-chart-card .recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.studio-master-detail {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.studio-list-panel {
+  min-width: 0;
+}
+
+.studio-detail-panel {
+  min-width: 0;
+}
+
+.studio-selection-list {
+  display: grid;
+  gap: 10px;
+}
+
+.studio-selection-item {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 14px 15px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 94%, var(--surface-muted));
+  color: var(--text);
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.studio-selection-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--surface));
+  transform: translateY(-1px);
+}
+
+.active-studio-selection-item {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--surface));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.studio-selection-title {
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.studio-selection-subtitle {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.studio-selection-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.studio-detail-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .train-job-logs summary {
@@ -2272,10 +2468,20 @@ textarea {
   .two-col,
   .three-col,
   .experiment-grid,
+  .studio-chart-grid,
+  .studio-master-detail,
+  .studio-form-context-grid,
   .training-form-grid,
   .metric-group-grid,
   .headline-diagnostic-grid {
     grid-template-columns: 1fr;
+  }
+
+  .studio-form-header,
+  .studio-form-context-head,
+  .studio-detail-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .review-hero-header {
@@ -2359,6 +2565,10 @@ textarea {
 
   .metric-group-rows {
     grid-template-columns: 1fr;
+  }
+
+  .studio-metric-cluster {
+    justify-items: start;
   }
 
   .app-switcher,

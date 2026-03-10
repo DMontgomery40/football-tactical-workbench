@@ -109,6 +109,17 @@ def main() -> None:
                 loss_items = trainer.label_loss_items(trainer.tloss)
             except Exception:
                 loss_items = {}
+        if not loss_items and getattr(trainer, "tloss", None) is not None:
+            try:
+                raw_losses = [safe_float(value) for value in trainer.tloss]
+            except Exception:
+                raw_losses = []
+            if raw_losses:
+                loss_items = {
+                    "train/box_loss": raw_losses[0] if len(raw_losses) > 0 else 0.0,
+                    "train/cls_loss": raw_losses[1] if len(raw_losses) > 1 else 0.0,
+                    "train/dfl_loss": raw_losses[2] if len(raw_losses) > 2 else 0.0,
+                }
 
         training_curves["loss"] = trim_curve([
             *training_curves["loss"],
@@ -156,9 +167,9 @@ def main() -> None:
     def on_epoch_start(trainer: Any) -> None:
         curve_state["epoch_step"] = 0
         try:
-          steps_per_epoch = len(trainer.train_loader)
+            steps_per_epoch = len(trainer.train_loader)
         except Exception:
-          steps_per_epoch = 1
+            steps_per_epoch = 1
         curve_state["steps_per_epoch"] = max(int(steps_per_epoch), 1)
         curve_state["sample_every"] = max(1, int(curve_state["steps_per_epoch"] / TARGET_SAMPLES_PER_EPOCH))
 

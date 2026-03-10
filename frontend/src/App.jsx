@@ -1528,7 +1528,7 @@ export default function App() {
         const experimentResponse = await apiFetch(`${API_BASE}/api/experiments/active`);
         if (experimentResponse.ok) {
           const experiment = await experimentResponse.json();
-          setActiveExperiment(experiment);
+          setActiveExperiment(experiment || null);
         } else {
           setActiveExperiment(null);
         }

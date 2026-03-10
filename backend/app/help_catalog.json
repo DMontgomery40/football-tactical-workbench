@@ -246,5 +246,831 @@
       "analysis.saved_run_review"
     ],
     "links": []
+  },
+  {
+    "id": "training.studio_overview",
+    "title": "Training Studio",
+    "summary": "Training Studio scans a local detector dataset, runs a fine-tune, then lets you review and activate the resulting checkpoint for analysis.",
+    "body": [
+      "This surface is detector-only on purpose. It keeps dataset validation, local fine-tuning, job review, and registry activation in one loop.",
+      "Use it when the stock `soccana` checkpoint does not fit your camera angle or footage domain. A successful run should improve the downstream analysis overlay, not just create a new file."
+    ],
+    "targets": [
+      "training.studio_overview"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.active_detector",
+    "title": "Active detector",
+    "summary": "This is the checkpoint the analysis workspace will use whenever the detector selector stays on `soccana`.",
+    "body": [
+      "A finished job is not live until its registry entry is activated. A checkpoint can exist on disk and still have no effect on analysis.",
+      "If analysis behavior changes unexpectedly, check this first. The visible detector selector can still say `soccana` while a custom checkpoint is active underneath it."
+    ],
+    "targets": [
+      "training.active_detector"
+    ],
+    "links": [
+      {
+        "label": "Broadcast to Minimap game-state reconstruction",
+        "url": "https://arxiv.org/abs/2504.06357",
+        "kind": "paper",
+        "published_at": "2025-04"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.dataset_intake",
+    "title": "Dataset intake",
+    "summary": "Dataset intake validates a local YOLO detection dataset before the studio enables fine-tuning.",
+    "body": [
+      "The scan checks split structure, label files, class names, and the football class contract the analysis pipeline expects.",
+      "If intake is wrong, fix the dataset first. Hyperparameter tuning will not rescue missing splits or bad player, ball, or referee IDs."
+    ],
+    "targets": [
+      "training.dataset_intake"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics detection dataset guide",
+        "url": "https://docs.ultralytics.com/datasets/detect/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.dataset_path",
+    "title": "Dataset path",
+    "summary": "Point this at the detector dataset root, not a single image folder or an output directory.",
+    "body": [
+      "The studio expects a YOLO-style dataset layout it can scan and turn into a run-local manifest. If the root is wrong, the scan fails before training starts.",
+      "The source dataset stays in place. The worker writes its own generated runtime YAML inside the training run folder."
+    ],
+    "targets": [
+      "training.dataset_path"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics detection dataset guide",
+        "url": "https://docs.ultralytics.com/datasets/detect/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.scan_result",
+    "title": "Scan result",
+    "summary": "The scan result tells you whether the dataset is clear to train and what blocked it if not.",
+    "body": [
+      "A ready result means the studio found coherent splits, labels, and class mapping for the current detector workflow. A blocked result means training should wait.",
+      "Warnings still matter. They often explain fallbacks such as a generated validation list, which changes how much trust you should put in the run metrics."
+    ],
+    "targets": [
+      "training.scan_result"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics detection dataset guide",
+        "url": "https://docs.ultralytics.com/datasets/detect/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.validation_strategy",
+    "title": "Validation strategy",
+    "summary": "Validation strategy tells you which validation split the job will use when it reports detector metrics.",
+    "body": [
+      "If the dataset already has a real validation split, the studio keeps it. If it does not, the backend can generate a deterministic fallback inside the training run.",
+      "That choice affects how comparable mAP and recall numbers are across runs, so read it before you promote a checkpoint."
+    ],
+    "targets": [
+      "training.validation_strategy"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.class_mapping",
+    "title": "Class mapping",
+    "summary": "Class mapping connects dataset class IDs to the football roles the analysis pipeline understands.",
+    "body": [
+      "The studio needs player or keeper, ball, and referee IDs so a trained checkpoint can plug back into analysis without manual remapping.",
+      "A model can train cleanly and still be unusable here if those IDs are wrong."
+    ],
+    "targets": [
+      "training.class_mapping"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics detection dataset guide",
+        "url": "https://docs.ultralytics.com/datasets/detect/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.training_family",
+    "title": "Training family",
+    "summary": "Training family keeps the studio scoped to the detector workflow that the app supports today.",
+    "body": [
+      "Right now the active family is detector fine-tuning only. That keeps the form, jobs view, and registry aligned with the current backend.",
+      "If more model families arrive later, they should be added as distinct workflows instead of overloading this one."
+    ],
+    "targets": [
+      "training.training_family"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.detector_finetuning",
+    "title": "Detector fine-tuning",
+    "summary": "Detector fine-tuning starts a local job from football base weights and writes a candidate checkpoint plus review artifacts.",
+    "body": [
+      "Each run captures the dataset scan, generated dataset manifest, logs, curves, metrics, and checkpoints under its training run directory.",
+      "A good run is one that improves the football overlay after activation, not one that simply finishes."
+    ],
+    "targets": [
+      "training.detector_finetuning"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.base_weights",
+    "title": "Base weights",
+    "summary": "Base weights choose the starting checkpoint for the fine-tune.",
+    "body": [
+      "Starting from `soccana` keeps the run anchored in football-specific player, ball, and referee behavior.",
+      "This choice is usually more important than small hyperparameter tweaks because it sets the model prior you are adapting."
+    ],
+    "targets": [
+      "training.base_weights"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Soccana football detection dataset",
+        "url": "https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1",
+        "kind": "dataset",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.run_name",
+    "title": "Run name",
+    "summary": "Run name should make jobs, registry entries, and artifact folders easy to recognize later.",
+    "body": [
+      "Use something that captures what changed, such as camera domain, dataset version, or experiment intent.",
+      "You will see the same label in the jobs view and registry, so make it useful to your future self."
+    ],
+    "targets": [
+      "training.run_name"
+    ],
+    "links": [
+      {
+        "label": "Broadcast to Minimap game-state reconstruction",
+        "url": "https://arxiv.org/abs/2504.06357",
+        "kind": "paper",
+        "published_at": "2025-04"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.hyperparameters",
+    "title": "Training hyperparameters",
+    "summary": "These controls shape how long the run trains, how much fits per step, and how aggressively the checkpoint adapts.",
+    "body": [
+      "Epochs, image size, batch, workers, patience, and freeze trade runtime cost against adaptation strength and stability.",
+      "Start with a smaller smoke run when you are validating a new dataset. It is cheaper to catch bad labels or class mapping early."
+    ],
+    "targets": [
+      "training.hyperparameters"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.device",
+    "title": "Training device",
+    "summary": "Device controls where the training job runs and what `auto` is likely to resolve to on this machine.",
+    "body": [
+      "On Apple Silicon, `auto` usually resolves to MPS and gives the best local throughput when the backend supports it. CPU remains the safe fallback.",
+      "If a run is unstable or memory-bound, changing device is often the fastest way to get a reliable baseline."
+    ],
+    "targets": [
+      "training.device"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Accelerated PyTorch training on Mac",
+        "url": "https://developer.apple.com/metal/pytorch/",
+        "kind": "docs"
+      },
+      {
+        "label": "PyTorch MPS backend notes",
+        "url": "https://pytorch.org/docs/stable/notes/mps.html",
+        "kind": "docs"
+      }
+    ]
+  },
+  {
+    "id": "training.runtime_behavior",
+    "title": "Runtime behavior",
+    "summary": "Runtime behavior covers what the worker writes while a job is running and what survives after it finishes.",
+    "body": [
+      "The worker stores status, logs, metrics, curves, a generated dataset manifest, and checkpoint artifacts inside the run directory.",
+      "Those files are the audit trail the Jobs and Registry views rely on, so they still matter after training stops."
+    ],
+    "targets": [
+      "training.runtime_behavior"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.jobs",
+    "title": "Training jobs",
+    "summary": "Jobs is the main review surface for live progress, resolved device, metrics, and promotion readiness.",
+    "body": [
+      "Use it to monitor queued or running work, inspect completed runs, and open the evidence behind a checkpoint before activation.",
+      "A finished job is only valuable if its logs, metrics, and artifacts explain what changed and whether the checkpoint is worth promoting."
+    ],
+    "targets": [
+      "training.jobs"
+    ],
+    "links": [
+      {
+        "label": "Broadcast to Minimap game-state reconstruction",
+        "url": "https://arxiv.org/abs/2504.06357",
+        "kind": "paper",
+        "published_at": "2025-04"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.job_artifacts",
+    "title": "Run artifacts",
+    "summary": "Run artifacts are the files that let you audit or reuse a training job after the process exits.",
+    "body": [
+      "Typical artifacts include the generated dataset manifest, plots, CSV outputs, logs, and checkpoint files.",
+      "If a run is worth keeping or promoting, these artifacts should be enough to reconstruct what data and settings produced it."
+    ],
+    "targets": [
+      "training.job_artifacts"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.registry",
+    "title": "Detector registry",
+    "summary": "The registry turns completed detector runs into selectable analysis behavior.",
+    "body": [
+      "Each entry records the checkpoint path, training run, base weights, resolved device, class mapping, and key metrics.",
+      "Activation here controls what the analysis workspace uses for `soccana`, so compare entries carefully before switching."
+    ],
+    "targets": [
+      "training.registry"
+    ],
+    "links": [
+      {
+        "label": "Broadcast to Minimap game-state reconstruction",
+        "url": "https://arxiv.org/abs/2504.06357",
+        "kind": "paper",
+        "published_at": "2025-04"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.runtime_profile",
+    "title": "Runtime profile",
+    "summary": "Runtime profile shows which backend and devices this machine can actually use for local detector training.",
+    "body": [
+      "It reflects the resolved training stack, the preferred device, and whether acceleration such as Apple Silicon MPS is available.",
+      "Use it to set expectations before you start a job. Device choice affects speed, memory pressure, and whether `auto` will resolve to MPS or CPU."
+    ],
+    "targets": [
+      "training.runtime_profile"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Accelerated PyTorch training on Mac",
+        "url": "https://developer.apple.com/metal/pytorch/",
+        "kind": "docs"
+      },
+      {
+        "label": "PyTorch MPS backend notes",
+        "url": "https://pytorch.org/docs/stable/notes/mps.html",
+        "kind": "docs"
+      }
+    ]
+  },
+  {
+    "id": "training.job_metrics",
+    "title": "Detector training metrics",
+    "summary": "These numbers tell you how the detector behaved on the validation split, and each one answers a different question.",
+    "body": [
+      "Precision asks: when the detector says a box is a player, ball, or referee, how often is it actually right? High precision usually means fewer false positives, but it can still hide a detector that simply stays too conservative and misses hard cases.",
+      "Recall asks: of the real objects that should have been found, how many did the detector actually catch? High recall is valuable in football because distant players and the ball are easy to miss, but recall can improve for the wrong reason if the model starts throwing too many loose boxes.",
+      "mAP50 is the easier quality score: it rewards detections that overlap the ground truth at a 0.50 IoU threshold. mAP50-95 is the stricter score across harder IoU thresholds, so it is better for judging box quality and localization sharpness, not just whether the detector vaguely found the object.",
+      "Use these four together. A checkpoint with better recall but collapsing precision may flood tracking with garbage. A checkpoint with higher mAP50 but weak mAP50-95 may find the right object class while still drawing sloppy boxes. And none of these numbers are worth much if the validation split is weak. After comparing them here, verify the winner in the actual analysis overlay before activating it."
+    ],
+    "targets": [
+      "training.job_metrics"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.epochs",
+    "title": "Epochs",
+    "summary": "Epochs control how many full passes the detector makes over the training set before stopping or early-stopping out.",
+    "body": [
+      "More epochs increase adaptation time, but they also increase the chance of spending compute on a dataset that was never worth trusting in the first place. In this studio, epochs should usually start small enough to prove the dataset contract and runtime path before you scale up.",
+      "Treat epochs as a cost-versus-evidence dial, not as a magical quality number. If a short smoke run already looks unstable, mis-mapped, or overconfident, raising epochs usually amplifies the wrong thing instead of fixing it."
+    ],
+    "targets": [
+      "training.epochs"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.imgsz",
+    "title": "Image size",
+    "summary": "Image size sets the detector training resolution, which changes how much small-player and ball detail is preserved versus how expensive each step becomes.",
+    "body": [
+      "Larger image sizes preserve more spatial detail, which matters in football because distant players and the ball are often tiny. The tradeoff is memory pressure, slower steps, and lower practical batch sizes on the same machine.",
+      "Use this control to match detector fidelity to your camera geometry. If your clips are wide-angle and distant, image size matters more than it would in a close-up sports dataset."
+    ],
+    "targets": [
+      "training.imgsz"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.batch",
+    "title": "Batch",
+    "summary": "Batch size controls how many training examples fit into each optimization step, which strongly affects memory use and training stability.",
+    "body": [
+      "Higher batch sizes can smooth optimization and improve throughput, but only if the device can actually hold them. On local hardware, batch is often the first place where ambitious settings collide with memory limits.",
+      "If image size goes up, the batch size you can sustain usually comes down. Read these two controls together, not independently."
+    ],
+    "targets": [
+      "training.batch"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.workers",
+    "title": "Workers",
+    "summary": "Workers control how much host-side parallelism the data loader uses to feed training batches into the runtime.",
+    "body": [
+      "This setting affects CPU load, disk access, and how smoothly the trainer can keep the accelerator fed. Too few workers can underutilize the training device. Too many can create unnecessary host contention on a local machine.",
+      "In practice, workers are part of the runtime profile, not just the model recipe. The best value depends on the dataset layout, storage speed, and what else the machine is doing while the run is active."
+    ],
+    "targets": [
+      "training.workers"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.patience",
+    "title": "Patience",
+    "summary": "Patience controls how long the run waits for improvement before early stopping decides that training is no longer paying off.",
+    "body": [
+      "This protects you from wasting time on flat or regressing runs, but it can also stop too early if the validation signal is noisy or the dataset is small. The right value depends on how trustworthy the validation path is and how long you are willing to keep a local run alive before giving up.",
+      "Patience is not a replacement for good dataset quality. If the validation contract is weak, early stopping logic can look precise while still reacting to bad evidence."
+    ],
+    "targets": [
+      "training.patience"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.freeze",
+    "title": "Freeze",
+    "summary": "Freeze determines how much of the pretrained detector stays fixed instead of adapting to the new dataset.",
+    "body": [
+      "Freezing more layers preserves the original football prior and reduces how much the run can drift, but it also limits how far the detector can adapt to a new camera domain. Freezing fewer layers gives the run more freedom, at the cost of greater instability and a higher chance of wrecking useful pretrained behavior.",
+      "Use freeze when you want to control how aggressive the fine-tune is. It is one of the clearest knobs for deciding whether this run is a cautious domain adjustment or a deeper model rewrite."
+    ],
+    "targets": [
+      "training.freeze"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "training.cache",
+    "title": "Cache images",
+    "summary": "Caching images trades extra local memory or disk pressure for faster data loading during the run.",
+    "body": [
+      "This setting changes runtime behavior more than detector semantics. On some local setups it can make iteration much smoother by reducing repeated file reads, but on constrained machines it can simply move the bottleneck elsewhere.",
+      "Use caching when the dataset and machine actually benefit from it, not because it sounds like a free speedup. The right answer depends on storage, memory headroom, and the size of the dataset in play."
+    ],
+    "targets": [
+      "training.cache"
+    ],
+    "links": [
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
+      },
+      {
+        "label": "Ultralytics train mode docs",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs"
+      },
+      {
+        "label": "Ultralytics repository",
+        "url": "https://github.com/ultralytics/ultralytics",
+        "kind": "repo"
+      }
+    ]
   }
 ]
