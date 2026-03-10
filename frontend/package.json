@@ -6,16 +6,23 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 4317",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4317"
+    "preview": "vite preview --host 0.0.0.0 --port 4317",
+    "generate:contracts": "python ../scripts/generate_contracts.py",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",
+    "openapi-fetch": "^0.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.8.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "openapi-typescript": "^7.8.0",
+    "typescript": "^5.8.2",
     "vite": "^5.4.14"
   }
 }

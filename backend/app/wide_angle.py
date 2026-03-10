@@ -29,6 +29,7 @@ from app.reid_tracker import (
     normalize_player_tracker_mode,
     tracker_mode_label,
 )
+from app.schemas import SUMMARY_SCHEMA_VERSION
 
 DEFAULT_TRACKER = BALL_TRACKER_NAME
 MODEL_CACHE_DIR = Path(__file__).resolve().parent.parent / "models"
@@ -3275,6 +3276,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     heuristic_diagnostics = diagnostics
 
     summary = {
+        "summary_version": SUMMARY_SCHEMA_VERSION,
         "job_id": job_id,
         "run_dir": str(run_dir),
         "input_video": str(source_video_path),

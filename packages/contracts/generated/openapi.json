@@ -1,0 +1,3259 @@
+{
+  "components": {
+    "schemas": {
+      "ActiveExperimentResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_state_version": {
+            "default": "2026.03.10",
+            "title": "Job State Version",
+            "type": "string"
+          },
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Logs",
+            "type": "array"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "run_dir": {
+            "default": "",
+            "title": "Run Dir",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ActiveExperimentSummary"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "created_at",
+          "progress",
+          "summary"
+        ],
+        "title": "ActiveExperimentResponse",
+        "type": "object"
+      },
+      "ActiveExperimentSummary": {
+        "additionalProperties": true,
+        "properties": {
+          "batch_name": {
+            "default": "",
+            "title": "Batch Name",
+            "type": "string"
+          },
+          "current_game": {
+            "default": "",
+            "title": "Current Game",
+            "type": "string"
+          },
+          "current_game_index": {
+            "default": 0,
+            "title": "Current Game Index",
+            "type": "integer"
+          },
+          "current_half_file": {
+            "default": "",
+            "title": "Current Half File",
+            "type": "string"
+          },
+          "current_half_tag": {
+            "default": "",
+            "title": "Current Half Tag",
+            "type": "string"
+          },
+          "current_label_path": {
+            "default": "",
+            "title": "Current Label Path",
+            "type": "string"
+          },
+          "current_source_video_path": {
+            "default": "",
+            "title": "Current Source Video Path",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "games_requested": {
+            "default": 0,
+            "title": "Games Requested",
+            "type": "integer"
+          },
+          "halves_processed": {
+            "default": 0,
+            "title": "Halves Processed",
+            "type": "integer"
+          },
+          "halves_total": {
+            "default": 0,
+            "title": "Halves Total",
+            "type": "integer"
+          }
+        },
+        "title": "ActiveExperimentSummary",
+        "type": "object"
+      },
+      "AnalyzeAcceptedResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "run_dir": {
+            "title": "Run Dir",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "run_id",
+          "run_dir"
+        ],
+        "title": "AnalyzeAcceptedResponse",
+        "type": "object"
+      },
+      "Body_analyze_api_analyze_post": {
+        "properties": {
+          "ball_conf": {
+            "default": 0.2,
+            "title": "Ball Conf",
+            "type": "number"
+          },
+          "detector_model": {
+            "default": "soccana",
+            "title": "Detector Model",
+            "type": "string"
+          },
+          "include_ball": {
+            "default": true,
+            "title": "Include Ball",
+            "type": "boolean"
+          },
+          "iou": {
+            "default": 0.5,
+            "title": "Iou",
+            "type": "number"
+          },
+          "label_path": {
+            "default": "",
+            "title": "Label Path",
+            "type": "string"
+          },
+          "local_video_path": {
+            "default": "",
+            "title": "Local Video Path",
+            "type": "string"
+          },
+          "player_conf": {
+            "default": 0.25,
+            "title": "Player Conf",
+            "type": "number"
+          },
+          "player_model": {
+            "default": "",
+            "title": "Player Model",
+            "type": "string"
+          },
+          "source_id": {
+            "default": "",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "tracker_mode": {
+            "default": "hybrid_reid",
+            "title": "Tracker Mode",
+            "type": "string"
+          },
+          "video_file": {
+            "anyOf": [
+              {
+                "format": "binary",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video File"
+          }
+        },
+        "title": "Body_analyze_api_analyze_post",
+        "type": "object"
+      },
+      "Body_prepare_source_api_source_post": {
+        "properties": {
+          "local_video_path": {
+            "default": "",
+            "title": "Local Video Path",
+            "type": "string"
+          },
+          "video_file": {
+            "anyOf": [
+              {
+                "format": "binary",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video File"
+          }
+        },
+        "title": "Body_prepare_source_api_source_post",
+        "type": "object"
+      },
+      "ConfigResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "active_detector": {
+            "title": "Active Detector",
+            "type": "string"
+          },
+          "active_detector_is_custom": {
+            "title": "Active Detector Is Custom",
+            "type": "boolean"
+          },
+          "active_detector_label": {
+            "title": "Active Detector Label",
+            "type": "string"
+          },
+          "contract_version": {
+            "default": "2026.03.10",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "default_player_tracker_mode": {
+            "title": "Default Player Tracker Mode",
+            "type": "string"
+          },
+          "detector_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Detector Models",
+            "type": "array"
+          },
+          "diagnostics_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Model"
+          },
+          "diagnostics_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Provider"
+          },
+          "field_calibration_mode": {
+            "title": "Field Calibration Mode",
+            "type": "string"
+          },
+          "field_calibration_refresh_frames": {
+            "title": "Field Calibration Refresh Frames",
+            "type": "integer"
+          },
+          "help_catalog": {
+            "title": "Help Catalog"
+          },
+          "learn_cards": {
+            "items": {
+              "$ref": "#/components/schemas/LearnCard"
+            },
+            "title": "Learn Cards",
+            "type": "array"
+          },
+          "player_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Player Models",
+            "type": "array"
+          },
+          "player_tracker_modes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Player Tracker Modes",
+            "type": "array"
+          },
+          "runtime_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeProfileResponse"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ],
+            "title": "Runtime Profile"
+          },
+          "soccernet_dataset_dir": {
+            "title": "Soccernet Dataset Dir",
+            "type": "string"
+          },
+          "soccernet_label_files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Soccernet Label Files",
+            "type": "array"
+          },
+          "soccernet_video_files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Soccernet Video Files",
+            "type": "array"
+          },
+          "tracker": {
+            "title": "Tracker",
+            "type": "string"
+          },
+          "training_available": {
+            "title": "Training Available",
+            "type": "boolean"
+          },
+          "training_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Error"
+          }
+        },
+        "required": [
+          "tracker",
+          "default_player_tracker_mode",
+          "field_calibration_refresh_frames",
+          "field_calibration_mode",
+          "soccernet_dataset_dir",
+          "training_available",
+          "active_detector",
+          "active_detector_label",
+          "active_detector_is_custom"
+        ],
+        "title": "ConfigResponse",
+        "type": "object"
+      },
+      "DiagnosticItem": {
+        "additionalProperties": true,
+        "properties": {
+          "code_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Code Refs",
+            "type": "array"
+          },
+          "evidence_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Keys",
+            "type": "array"
+          },
+          "implementation_diagnosis": {
+            "default": "",
+            "title": "Implementation Diagnosis",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "next_step": {
+            "default": "",
+            "title": "Next Step",
+            "type": "string"
+          },
+          "suggested_fix": {
+            "default": "",
+            "title": "Suggested Fix",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "title"
+        ],
+        "title": "DiagnosticItem",
+        "type": "object"
+      },
+      "ExperimentCard": {
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "default": "",
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentMetric"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ExperimentCard",
+        "type": "object"
+      },
+      "ExperimentMetric": {
+        "additionalProperties": true,
+        "properties": {
+          "hint": {
+            "default": "",
+            "title": "Hint",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "ExperimentMetric",
+        "type": "object"
+      },
+      "FolderScanRequest": {
+        "properties": {
+          "folder_path": {
+            "title": "Folder Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_path"
+        ],
+        "title": "FolderScanRequest",
+        "type": "object"
+      },
+      "FolderScanResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ScanFolderEntry"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "folder": {
+            "title": "Folder",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "videos": {
+            "items": {
+              "$ref": "#/components/schemas/ScanFolderEntry"
+            },
+            "title": "Videos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "folder"
+        ],
+        "title": "FolderScanResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JobStateResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "experiment_batch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Batch"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job_state_version": {
+            "default": "2026.03.10",
+            "title": "Job State Version",
+            "type": "string"
+          },
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Logs",
+            "type": "array"
+          },
+          "persisted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persisted"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "run_dir": {
+            "default": "",
+            "title": "Run Dir",
+            "type": "string"
+          },
+          "run_id": {
+            "default": "",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunSummary"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "created_at",
+          "progress"
+        ],
+        "title": "JobStateResponse",
+        "type": "object"
+      },
+      "LearnCard": {
+        "additionalProperties": true,
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "what_breaks": {
+            "title": "What Breaks",
+            "type": "string"
+          },
+          "what_it_does": {
+            "title": "What It Does",
+            "type": "string"
+          },
+          "what_to_try_next": {
+            "title": "What To Try Next",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "what_it_does",
+          "what_breaks",
+          "what_to_try_next"
+        ],
+        "title": "LearnCard",
+        "type": "object"
+      },
+      "RunSummary": {
+        "additionalProperties": true,
+        "properties": {
+          "all_outputs_zip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "All Outputs Zip"
+          },
+          "average_ball_detections_per_frame": {
+            "default": 0.0,
+            "title": "Average Ball Detections Per Frame",
+            "type": "number"
+          },
+          "average_player_detections_per_frame": {
+            "default": 0.0,
+            "title": "Average Player Detections Per Frame",
+            "type": "number"
+          },
+          "average_track_length": {
+            "default": 0.0,
+            "title": "Average Track Length",
+            "type": "number"
+          },
+          "average_visible_pitch_keypoints": {
+            "default": 0.0,
+            "title": "Average Visible Pitch Keypoints",
+            "type": "number"
+          },
+          "away_tracks": {
+            "default": 0,
+            "title": "Away Tracks",
+            "type": "integer"
+          },
+          "ball_conf": {
+            "default": 0.0,
+            "title": "Ball Conf",
+            "type": "number"
+          },
+          "ball_detector_class_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Ball Detector Class Ids",
+            "type": "array"
+          },
+          "ball_model": {
+            "default": "",
+            "title": "Ball Model",
+            "type": "string"
+          },
+          "ball_rows": {
+            "default": 0,
+            "title": "Ball Rows",
+            "type": "integer"
+          },
+          "ball_tracker_mode": {
+            "default": "",
+            "title": "Ball Tracker Mode",
+            "type": "string"
+          },
+          "calibration_debug_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Debug Csv"
+          },
+          "created_at": {
+            "default": "",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detections_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detections Csv"
+          },
+          "detector_class_names_source": {
+            "default": "",
+            "title": "Detector Class Names Source",
+            "type": "string"
+          },
+          "detector_debug_sample_frames": {
+            "default": 0,
+            "title": "Detector Debug Sample Frames",
+            "type": "integer"
+          },
+          "device": {
+            "default": "",
+            "title": "Device",
+            "type": "string"
+          },
+          "diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticItem"
+            },
+            "title": "Diagnostics",
+            "type": "array"
+          },
+          "diagnostics_current_prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Current Prompt Version"
+          },
+          "diagnostics_error": {
+            "default": "",
+            "title": "Diagnostics Error",
+            "type": "string"
+          },
+          "diagnostics_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Json"
+          },
+          "diagnostics_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Model"
+          },
+          "diagnostics_prompt_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Prompt Context"
+          },
+          "diagnostics_prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Prompt Version"
+          },
+          "diagnostics_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Provider"
+          },
+          "diagnostics_source": {
+            "default": "heuristic",
+            "title": "Diagnostics Source",
+            "type": "string"
+          },
+          "diagnostics_stale": {
+            "default": false,
+            "title": "Diagnostics Stale",
+            "type": "boolean"
+          },
+          "diagnostics_stale_reason": {
+            "default": "",
+            "title": "Diagnostics Stale Reason",
+            "type": "string"
+          },
+          "diagnostics_status": {
+            "default": "unknown",
+            "title": "Diagnostics Status",
+            "type": "string"
+          },
+          "diagnostics_summary_line": {
+            "default": "",
+            "title": "Diagnostics Summary Line",
+            "type": "string"
+          },
+          "entropy_timeseries_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entropy Timeseries Csv"
+          },
+          "experiments": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentCard"
+            },
+            "title": "Experiments",
+            "type": "array"
+          },
+          "field_calibration_device": {
+            "default": "",
+            "title": "Field Calibration Device",
+            "type": "string"
+          },
+          "field_calibration_min_visible_keypoints": {
+            "default": 0,
+            "title": "Field Calibration Min Visible Keypoints",
+            "type": "integer"
+          },
+          "field_calibration_model": {
+            "default": "",
+            "title": "Field Calibration Model",
+            "type": "string"
+          },
+          "field_calibration_primary_rejections_high_reprojection_error": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections High Reprojection Error",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_high_temporal_drift": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections High Temporal Drift",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_invalid_candidate": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections Invalid Candidate",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_low_inliers": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections Low Inliers",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_low_visible_count": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections Low Visible Count",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_low_visible_keypoints": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections Low Visible Keypoints",
+            "type": "integer"
+          },
+          "field_calibration_primary_rejections_no_candidate": {
+            "default": 0,
+            "title": "Field Calibration Primary Rejections No Candidate",
+            "type": "integer"
+          },
+          "field_calibration_refresh_attempts": {
+            "default": 0,
+            "title": "Field Calibration Refresh Attempts",
+            "type": "integer"
+          },
+          "field_calibration_refresh_frames": {
+            "default": 0,
+            "title": "Field Calibration Refresh Frames",
+            "type": "integer"
+          },
+          "field_calibration_refresh_rejections": {
+            "default": 0,
+            "title": "Field Calibration Refresh Rejections",
+            "type": "integer"
+          },
+          "field_calibration_refresh_successes": {
+            "default": 0,
+            "title": "Field Calibration Refresh Successes",
+            "type": "integer"
+          },
+          "field_calibration_rejections_high_reprojection_error": {
+            "default": 0,
+            "title": "Field Calibration Rejections High Reprojection Error",
+            "type": "integer"
+          },
+          "field_calibration_rejections_high_temporal_drift": {
+            "default": 0,
+            "title": "Field Calibration Rejections High Temporal Drift",
+            "type": "integer"
+          },
+          "field_calibration_rejections_invalid_candidate": {
+            "default": 0,
+            "title": "Field Calibration Rejections Invalid Candidate",
+            "type": "integer"
+          },
+          "field_calibration_rejections_low_inliers": {
+            "default": 0,
+            "title": "Field Calibration Rejections Low Inliers",
+            "type": "integer"
+          },
+          "field_calibration_rejections_low_visible_count": {
+            "default": 0,
+            "title": "Field Calibration Rejections Low Visible Count",
+            "type": "integer"
+          },
+          "field_calibration_rejections_low_visible_keypoints": {
+            "default": 0,
+            "title": "Field Calibration Rejections Low Visible Keypoints",
+            "type": "integer"
+          },
+          "field_calibration_rejections_no_candidate": {
+            "default": 0,
+            "title": "Field Calibration Rejections No Candidate",
+            "type": "integer"
+          },
+          "field_calibration_stale_recovery_attempts": {
+            "default": 0,
+            "title": "Field Calibration Stale Recovery Attempts",
+            "type": "integer"
+          },
+          "field_calibration_stale_recovery_min_visible_keypoints": {
+            "default": 0,
+            "title": "Field Calibration Stale Recovery Min Visible Keypoints",
+            "type": "integer"
+          },
+          "field_calibration_stale_recovery_rejections": {
+            "default": 0,
+            "title": "Field Calibration Stale Recovery Rejections",
+            "type": "integer"
+          },
+          "field_calibration_stale_recovery_successes": {
+            "default": 0,
+            "title": "Field Calibration Stale Recovery Successes",
+            "type": "integer"
+          },
+          "field_calibration_success_rate": {
+            "default": 0.0,
+            "title": "Field Calibration Success Rate",
+            "type": "number"
+          },
+          "field_keypoint_confidence_threshold": {
+            "default": 0.0,
+            "title": "Field Keypoint Confidence Threshold",
+            "type": "number"
+          },
+          "field_registered_frames": {
+            "default": 0,
+            "title": "Field Registered Frames",
+            "type": "integer"
+          },
+          "field_registered_ratio": {
+            "default": 0.0,
+            "title": "Field Registered Ratio",
+            "type": "number"
+          },
+          "fps": {
+            "default": 0.0,
+            "title": "Fps",
+            "type": "number"
+          },
+          "frames_processed": {
+            "default": 0,
+            "title": "Frames Processed",
+            "type": "integer"
+          },
+          "frames_projected_with_last_known_homography": {
+            "default": 0,
+            "title": "Frames Projected With Last Known Homography",
+            "type": "integer"
+          },
+          "frames_projection_blocked_by_stale": {
+            "default": 0,
+            "title": "Frames Projection Blocked By Stale",
+            "type": "integer"
+          },
+          "frames_with_field_homography": {
+            "default": 0,
+            "title": "Frames With Field Homography",
+            "type": "integer"
+          },
+          "frames_with_homography_but_no_player_anchors": {
+            "default": 0,
+            "title": "Frames With Homography But No Player Anchors",
+            "type": "integer"
+          },
+          "frames_with_nonstale_homography": {
+            "default": 0,
+            "title": "Frames With Nonstale Homography",
+            "type": "integer"
+          },
+          "frames_with_player_anchors": {
+            "default": 0,
+            "title": "Frames With Player Anchors",
+            "type": "integer"
+          },
+          "frames_with_projected_points": {
+            "default": 0,
+            "title": "Frames With Projected Points",
+            "type": "integer"
+          },
+          "frames_with_stale_homography": {
+            "default": 0,
+            "title": "Frames With Stale Homography",
+            "type": "integer"
+          },
+          "frames_with_usable_homography": {
+            "default": 0,
+            "title": "Frames With Usable Homography",
+            "type": "integer"
+          },
+          "goal_events_count": {
+            "default": 0,
+            "title": "Goal Events Count",
+            "type": "integer"
+          },
+          "goal_events_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Events Csv"
+          },
+          "goal_label_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Label Source"
+          },
+          "heuristic_diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticItem"
+            },
+            "title": "Heuristic Diagnostics",
+            "type": "array"
+          },
+          "home_tracks": {
+            "default": 0,
+            "title": "Home Tracks",
+            "type": "integer"
+          },
+          "homography_enabled": {
+            "default": false,
+            "title": "Homography Enabled",
+            "type": "boolean"
+          },
+          "identity_embedding_interval_frames": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Embedding Interval Frames"
+          },
+          "identity_embedding_updates": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Embedding Updates"
+          },
+          "include_ball": {
+            "default": true,
+            "title": "Include Ball",
+            "type": "boolean"
+          },
+          "input_video": {
+            "default": "",
+            "title": "Input Video",
+            "type": "string"
+          },
+          "iou": {
+            "default": 0.0,
+            "title": "Iou",
+            "type": "number"
+          },
+          "jersey_crops_used": {
+            "default": 0,
+            "title": "Jersey Crops Used",
+            "type": "integer"
+          },
+          "job_id": {
+            "default": "",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "last_good_calibration_frame": {
+            "default": -1,
+            "title": "Last Good Calibration Frame",
+            "type": "integer"
+          },
+          "learn_cards": {
+            "items": {
+              "$ref": "#/components/schemas/LearnCard"
+            },
+            "title": "Learn Cards",
+            "type": "array"
+          },
+          "legacy_summary": {
+            "default": false,
+            "title": "Legacy Summary",
+            "type": "boolean"
+          },
+          "longest_track_length": {
+            "default": 0,
+            "title": "Longest Track Length",
+            "type": "integer"
+          },
+          "overlay_video": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlay Video"
+          },
+          "player_conf": {
+            "default": 0.0,
+            "title": "Player Conf",
+            "type": "number"
+          },
+          "player_detector_class_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Player Detector Class Ids",
+            "type": "array"
+          },
+          "player_model": {
+            "default": "",
+            "title": "Player Model",
+            "type": "string"
+          },
+          "player_rows": {
+            "default": 0,
+            "title": "Player Rows",
+            "type": "integer"
+          },
+          "player_rows_while_calibration_fresh": {
+            "default": 0,
+            "title": "Player Rows While Calibration Fresh",
+            "type": "integer"
+          },
+          "player_rows_while_calibration_stale": {
+            "default": 0,
+            "title": "Player Rows While Calibration Stale",
+            "type": "integer"
+          },
+          "player_track_churn_ratio": {
+            "default": 0.0,
+            "title": "Player Track Churn Ratio",
+            "type": "number"
+          },
+          "player_tracker_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Tracker Backend"
+          },
+          "player_tracker_embedding_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Tracker Embedding Error"
+          },
+          "player_tracker_mode": {
+            "default": "",
+            "title": "Player Tracker Mode",
+            "type": "string"
+          },
+          "player_tracker_runtime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Tracker Runtime"
+          },
+          "player_tracker_stitching_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Tracker Stitching Enabled"
+          },
+          "projected_ball_points": {
+            "default": 0,
+            "title": "Projected Ball Points",
+            "type": "integer"
+          },
+          "projected_ball_points_fresh": {
+            "default": 0,
+            "title": "Projected Ball Points Fresh",
+            "type": "integer"
+          },
+          "projected_ball_points_stale": {
+            "default": 0,
+            "title": "Projected Ball Points Stale",
+            "type": "integer"
+          },
+          "projected_player_points": {
+            "default": 0,
+            "title": "Projected Player Points",
+            "type": "integer"
+          },
+          "projected_player_points_fresh": {
+            "default": 0,
+            "title": "Projected Player Points Fresh",
+            "type": "integer"
+          },
+          "projected_player_points_stale": {
+            "default": 0,
+            "title": "Projected Player Points Stale",
+            "type": "integer"
+          },
+          "projection_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection Csv"
+          },
+          "raw_average_track_length": {
+            "default": 0.0,
+            "title": "Raw Average Track Length",
+            "type": "number"
+          },
+          "raw_detector_boxes_sampled": {
+            "default": 0,
+            "title": "Raw Detector Boxes Sampled",
+            "type": "integer"
+          },
+          "raw_detector_class_histogram_sample": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Raw Detector Class Histogram Sample",
+            "type": "object"
+          },
+          "raw_longest_track_length": {
+            "default": 0,
+            "title": "Raw Longest Track Length",
+            "type": "integer"
+          },
+          "raw_player_track_churn_ratio": {
+            "default": 0.0,
+            "title": "Raw Player Track Churn Ratio",
+            "type": "number"
+          },
+          "raw_unique_player_track_ids": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Unique Player Track Ids"
+          },
+          "referee_detector_class_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Referee Detector Class Ids",
+            "type": "array"
+          },
+          "requested_player_tracker_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Player Tracker Mode"
+          },
+          "resolved_player_tracker_mode": {
+            "default": "",
+            "title": "Resolved Player Tracker Mode",
+            "type": "string"
+          },
+          "run_dir": {
+            "default": "",
+            "title": "Run Dir",
+            "type": "string"
+          },
+          "stitched_track_id_reduction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stitched Track Id Reduction"
+          },
+          "summary_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Json"
+          },
+          "summary_version": {
+            "default": "2026.03.10",
+            "title": "Summary Version",
+            "type": "string"
+          },
+          "team_cluster_distance": {
+            "default": 0.0,
+            "title": "Team Cluster Distance",
+            "type": "number"
+          },
+          "top_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/TopTrackRow"
+            },
+            "title": "Top Tracks",
+            "type": "array"
+          },
+          "track_summary_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Summary Csv"
+          },
+          "tracklet_merges_applied": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracklet Merges Applied"
+          },
+          "unassigned_tracks": {
+            "default": 0,
+            "title": "Unassigned Tracks",
+            "type": "integer"
+          },
+          "unique_ball_track_ids": {
+            "default": 0,
+            "title": "Unique Ball Track Ids",
+            "type": "integer"
+          },
+          "unique_player_track_ids": {
+            "default": 0,
+            "title": "Unique Player Track Ids",
+            "type": "integer"
+          }
+        },
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "RuntimeProfileResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "available_devices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Devices",
+            "type": "array"
+          },
+          "backend": {
+            "default": "",
+            "title": "Backend",
+            "type": "string"
+          },
+          "backend_label": {
+            "default": "",
+            "title": "Backend Label",
+            "type": "string"
+          },
+          "backend_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Version"
+          },
+          "detector_export_formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Detector Export Formats",
+            "type": "array"
+          },
+          "field_calibration_device_policy": {
+            "default": "",
+            "title": "Field Calibration Device Policy",
+            "type": "string"
+          },
+          "host_arch": {
+            "default": "",
+            "title": "Host Arch",
+            "type": "string"
+          },
+          "host_platform": {
+            "default": "",
+            "title": "Host Platform",
+            "type": "string"
+          },
+          "license_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "License Notes",
+            "type": "array"
+          },
+          "planned_backends": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Planned Backends",
+            "type": "array"
+          },
+          "preferred_device": {
+            "default": "",
+            "title": "Preferred Device",
+            "type": "string"
+          },
+          "runtime_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runtime Notes",
+            "type": "array"
+          }
+        },
+        "title": "RuntimeProfileResponse",
+        "type": "object"
+      },
+      "ScanFolderEntry": {
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Mb"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "ScanFolderEntry",
+        "type": "object"
+      },
+      "SoccerNetConfigResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "dataset_dir": {
+            "title": "Dataset Dir",
+            "type": "string"
+          },
+          "label_files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Label Files",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "split_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Split Counts",
+            "type": "object"
+          },
+          "splits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Splits",
+            "type": "array"
+          },
+          "video_files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Video Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dataset_dir"
+        ],
+        "title": "SoccerNetConfigResponse",
+        "type": "object"
+      },
+      "SoccerNetDownloadRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "game": {
+            "title": "Game",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "split": {
+            "title": "Split",
+            "type": "string"
+          }
+        },
+        "required": [
+          "split",
+          "game",
+          "password",
+          "files"
+        ],
+        "title": "SoccerNetDownloadRequest",
+        "type": "object"
+      },
+      "SoccerNetGamesResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "games": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Games",
+            "type": "array"
+          },
+          "split": {
+            "title": "Split",
+            "type": "string"
+          }
+        },
+        "required": [
+          "split",
+          "count"
+        ],
+        "title": "SoccerNetGamesResponse",
+        "type": "object"
+      },
+      "SourceResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "fps": {
+            "title": "Fps",
+            "type": "number"
+          },
+          "frame_count": {
+            "title": "Frame Count",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size_mb": {
+            "title": "Size Mb",
+            "type": "number"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_state_version": {
+            "default": "2026.03.10",
+            "title": "Source State Version",
+            "type": "string"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "boolean"
+          },
+          "video_url": {
+            "title": "Video Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fps",
+          "width",
+          "height",
+          "frame_count",
+          "duration_seconds",
+          "size_mb",
+          "source_id",
+          "path",
+          "display_name",
+          "created_at",
+          "uploaded",
+          "video_url"
+        ],
+        "title": "SourceResponse",
+        "type": "object"
+      },
+      "TopTrackRow": {
+        "additionalProperties": true,
+        "properties": {
+          "average_bbox_area": {
+            "default": 0.0,
+            "title": "Average Bbox Area",
+            "type": "number"
+          },
+          "average_confidence": {
+            "default": 0.0,
+            "title": "Average Confidence",
+            "type": "number"
+          },
+          "first_frame": {
+            "default": 0,
+            "title": "First Frame",
+            "type": "integer"
+          },
+          "frames": {
+            "default": 0,
+            "title": "Frames",
+            "type": "integer"
+          },
+          "last_frame": {
+            "default": 0,
+            "title": "Last Frame",
+            "type": "integer"
+          },
+          "projected_points": {
+            "default": 0,
+            "title": "Projected Points",
+            "type": "integer"
+          },
+          "team_label": {
+            "default": "unassigned",
+            "title": "Team Label",
+            "type": "string"
+          },
+          "team_vote_ratio": {
+            "default": 0.0,
+            "title": "Team Vote Ratio",
+            "type": "number"
+          },
+          "track_id": {
+            "title": "Track Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "track_id"
+        ],
+        "title": "TopTrackRow",
+        "type": "object"
+      },
+      "TrainDatasetScanRequest": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "TrainDatasetScanRequest",
+        "type": "object"
+      },
+      "TrainingDetectJobRequest": {
+        "properties": {
+          "base_weights": {
+            "default": "soccana",
+            "title": "Base Weights",
+            "type": "string"
+          },
+          "batch": {
+            "default": 16,
+            "title": "Batch",
+            "type": "integer"
+          },
+          "cache": {
+            "default": false,
+            "title": "Cache",
+            "type": "boolean"
+          },
+          "dataset_path": {
+            "title": "Dataset Path",
+            "type": "string"
+          },
+          "device": {
+            "default": "auto",
+            "title": "Device",
+            "type": "string"
+          },
+          "epochs": {
+            "default": 50,
+            "title": "Epochs",
+            "type": "integer"
+          },
+          "freeze": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freeze"
+          },
+          "imgsz": {
+            "default": 640,
+            "title": "Imgsz",
+            "type": "integer"
+          },
+          "patience": {
+            "default": 20,
+            "title": "Patience",
+            "type": "integer"
+          },
+          "run_name": {
+            "default": "",
+            "title": "Run Name",
+            "type": "string"
+          },
+          "workers": {
+            "default": 4,
+            "title": "Workers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset_path"
+        ],
+        "title": "TrainingDetectJobRequest",
+        "type": "object"
+      },
+      "TrainingRegistryActivateRequest": {
+        "properties": {
+          "detector_id": {
+            "title": "Detector Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detector_id"
+        ],
+        "title": "TrainingRegistryActivateRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Football Tactical Workbench API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/analyze": {
+      "post": {
+        "operationId": "analyze_api_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_api_analyze_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Analyze"
+      }
+    },
+    "/api/config": {
+      "get": {
+        "operationId": "config_api_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Config"
+      }
+    },
+    "/api/experiments/active": {
+      "get": {
+        "operationId": "active_experiment_api_experiments_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ActiveExperimentResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Active Experiment Api Experiments Active Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Active Experiment"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Api Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobStateResponse"
+                  },
+                  "title": "Response List Jobs Api Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Jobs"
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job"
+      }
+    },
+    "/api/jobs/{job_id}/pause": {
+      "post": {
+        "operationId": "pause_job_api_jobs__job_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Job"
+      }
+    },
+    "/api/jobs/{job_id}/resume": {
+      "post": {
+        "operationId": "resume_job_api_jobs__job_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Job"
+      }
+    },
+    "/api/jobs/{job_id}/stop": {
+      "post": {
+        "operationId": "stop_job_api_jobs__job_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Job"
+      }
+    },
+    "/api/live-preview": {
+      "get": {
+        "operationId": "live_preview_api_live_preview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "local_video_path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Local Video Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "detector_model",
+            "required": false,
+            "schema": {
+              "default": "soccana",
+              "title": "Detector Model",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "player_model",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Player Model",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tracker_mode",
+            "required": false,
+            "schema": {
+              "default": "hybrid_reid",
+              "title": "Tracker Mode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_ball",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Ball",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "player_conf",
+            "required": false,
+            "schema": {
+              "default": 0.25,
+              "title": "Player Conf",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ball_conf",
+            "required": false,
+            "schema": {
+              "default": 0.2,
+              "title": "Ball Conf",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "iou",
+            "required": false,
+            "schema": {
+              "default": 0.5,
+              "title": "Iou",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Preview"
+      }
+    },
+    "/api/runs/recent": {
+      "get": {
+        "operationId": "recent_runs_api_runs_recent_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobStateResponse"
+                  },
+                  "title": "Response Recent Runs Api Runs Recent Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recent Runs"
+      }
+    },
+    "/api/runs/{run_id}": {
+      "get": {
+        "operationId": "get_persisted_run_api_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Persisted Run"
+      }
+    },
+    "/api/runs/{run_id}/outputs/{filename}": {
+      "get": {
+        "operationId": "get_persisted_run_output_api_runs__run_id__outputs__filename__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "filename",
+            "required": true,
+            "schema": {
+              "title": "Filename",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Persisted Run Output"
+      }
+    },
+    "/api/runs/{run_id}/refresh-diagnostics": {
+      "post": {
+        "operationId": "refresh_persisted_run_diagnostics_api_runs__run_id__refresh_diagnostics_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Persisted Run Diagnostics"
+      }
+    },
+    "/api/scan-folder": {
+      "post": {
+        "operationId": "scan_folder_api_scan_folder_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderScanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Folder"
+      }
+    },
+    "/api/soccernet/config": {
+      "get": {
+        "operationId": "soccernet_config_api_soccernet_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SoccerNetConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Soccernet Config"
+      }
+    },
+    "/api/soccernet/download": {
+      "post": {
+        "operationId": "start_soccernet_download_api_soccernet_download_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SoccerNetDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Soccernet Download"
+      }
+    },
+    "/api/soccernet/downloads": {
+      "get": {
+        "operationId": "list_soccernet_downloads_api_soccernet_downloads_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Soccernet Downloads Api Soccernet Downloads Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Soccernet Downloads"
+      }
+    },
+    "/api/soccernet/downloads/{job_id}": {
+      "get": {
+        "operationId": "get_soccernet_download_api_soccernet_downloads__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Soccernet Download Api Soccernet Downloads  Job Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Soccernet Download"
+      }
+    },
+    "/api/soccernet/games": {
+      "get": {
+        "operationId": "soccernet_games_api_soccernet_games_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "split",
+            "required": false,
+            "schema": {
+              "default": "train",
+              "title": "Split",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SoccerNetGamesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Soccernet Games"
+      }
+    },
+    "/api/source": {
+      "post": {
+        "operationId": "prepare_source_api_source_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_prepare_source_api_source_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare Source"
+      }
+    },
+    "/api/source/{source_id}/video": {
+      "get": {
+        "operationId": "get_source_video_api_source__source_id__video_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Source Video"
+      }
+    },
+    "/api/train/config": {
+      "get": {
+        "operationId": "training_config_api_train_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Training Config Api Train Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Training Config"
+      }
+    },
+    "/api/train/datasets/scan": {
+      "post": {
+        "operationId": "scan_training_dataset_api_train_datasets_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainDatasetScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Scan Training Dataset Api Train Datasets Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Training Dataset"
+      }
+    },
+    "/api/train/jobs": {
+      "get": {
+        "operationId": "list_training_jobs_api_train_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Training Jobs Api Train Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Training Jobs"
+      }
+    },
+    "/api/train/jobs/detect": {
+      "post": {
+        "operationId": "start_training_job_api_train_jobs_detect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingDetectJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Training Job Api Train Jobs Detect Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Training Job"
+      }
+    },
+    "/api/train/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_training_job_api_train_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Training Job Api Train Jobs  Job Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Training Job"
+      }
+    },
+    "/api/train/jobs/{job_id}/stop": {
+      "post": {
+        "operationId": "stop_training_job_api_train_jobs__job_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stop Training Job Api Train Jobs  Job Id  Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Training Job"
+      }
+    },
+    "/api/train/registry": {
+      "get": {
+        "operationId": "get_training_registry_api_train_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Training Registry Api Train Registry Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Training Registry"
+      }
+    },
+    "/api/train/registry/activate": {
+      "post": {
+        "operationId": "activate_registered_detector_api_train_registry_activate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingRegistryActivateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Activate Registered Detector Api Train Registry Activate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate Registered Detector"
+      }
+    },
+    "/api/train/runs/recent": {
+      "get": {
+        "operationId": "recent_training_runs_api_train_runs_recent_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Recent Training Runs Api Train Runs Recent Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recent Training Runs"
+      }
+    },
+    "/api/train/runs/{run_id}": {
+      "get": {
+        "operationId": "get_training_run_api_train_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Training Run Api Train Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Training Run"
+      }
+    },
+    "/api/train/runs/{run_id}/activate": {
+      "post": {
+        "operationId": "activate_training_run_api_train_runs__run_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Activate Training Run Api Train Runs  Run Id  Activate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate Training Run"
+      }
+    }
+  }
+}

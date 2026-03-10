@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildHelpIndex, FieldLabel, HelpPopover, SectionTitleWithHelp } from './helpUi';
+import {
+  fetchActiveExperiment,
+  fetchAppConfig,
+  fetchBackendJobs,
+  fetchRecentRuns,
+  fetchRun,
+  fetchSoccerNetConfig,
+  refreshRunDiagnostics as refreshRunDiagnosticsContract,
+} from './lib/api/contracts';
 import TrainingStudio from './TrainingStudio';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -747,8 +756,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    apiFetch(`${API_BASE}/api/config`)
-      .then((response) => response.json())
+    fetchAppConfig(API_BASE, apiFetch)
       .then((data) => {
         setConfig(data);
         setForm((current) => ({
@@ -763,8 +771,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    apiFetch(`${API_BASE}/api/soccernet/config`)
-      .then((response) => response.json())
+    fetchSoccerNetConfig(API_BASE, apiFetch)
       .then((data) => {
         setSoccerNetConfig(data);
         setForm((current) => (
@@ -1496,9 +1503,8 @@ export default function App() {
 
   async function loadBackendJobs({ hydrateActive = false } = {}) {
     try {
-      const response = await apiFetch(`${API_BASE}/api/jobs`);
-      const data = await response.json();
-      if (!response.ok || !Array.isArray(data)) {
+      const data = await fetchBackendJobs(API_BASE, apiFetch);
+      if (!Array.isArray(data)) {
         throw new Error('Could not load backend jobs');
       }
 
@@ -1525,13 +1531,8 @@ export default function App() {
       setJob(null);
 
       try {
-        const experimentResponse = await apiFetch(`${API_BASE}/api/experiments/active`);
-        if (experimentResponse.ok) {
-          const experiment = await experimentResponse.json();
-          setActiveExperiment(experiment || null);
-        } else {
-          setActiveExperiment(null);
-        }
+        const experiment = await fetchActiveExperiment(API_BASE, apiFetch);
+        setActiveExperiment(experiment || null);
       } catch (error) {
         console.error(error);
         setActiveExperiment(null);
@@ -1573,11 +1574,7 @@ export default function App() {
   async function loadRecentRuns() {
     setRecentRunsError('');
     try {
-      const response = await apiFetch(`${API_BASE}/api/runs/recent?limit=1000`);
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error('Could not load recent runs');
-      }
+      const data = await fetchRecentRuns(API_BASE, 1000, apiFetch);
       setRecentRuns(data);
     } catch (error) {
       console.error(error);
@@ -1588,11 +1585,7 @@ export default function App() {
   async function handleLoadRun(runId) {
     setReviewError('');
     try {
-      const response = await apiFetch(`${API_BASE}/api/runs/${runId}`);
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || 'Could not load run');
-      }
+      const data = await fetchRun(API_BASE, runId, apiFetch);
       setSelectedRun(data);
       setWorkspaceMode('review');
       setReviewPanel('overview');
@@ -1606,13 +1599,7 @@ export default function App() {
     setReviewError('');
     setIsRefreshingDiagnostics(true);
     try {
-      const response = await apiFetch(`${API_BASE}/api/runs/${reviewedRunId}/refresh-diagnostics`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || 'Could not refresh diagnostics');
-      }
+      const data = await refreshRunDiagnosticsContract(API_BASE, reviewedRunId, apiFetch);
       setSelectedRun(data);
       setWorkspaceMode('review');
       setReviewPanel('overview');

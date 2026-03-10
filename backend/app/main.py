@@ -31,6 +31,20 @@ from pydantic import BaseModel
 
 from app.ai_diagnostics import PROMPT_VERSION as CURRENT_DIAGNOSTICS_PROMPT_VERSION, generate_run_diagnostics, resolve_provider_config
 from app.reid_tracker import DEFAULT_PLAYER_TRACKER_MODE, PLAYER_TRACKER_MODE_OPTIONS
+from app.schemas import (
+    ActiveExperimentResponse,
+    AnalyzeAcceptedResponse,
+    ConfigResponse,
+    FolderScanResponse,
+    JOB_STATE_SCHEMA_VERSION,
+    JobStateResponse,
+    RunSummary,
+    SOURCE_SCHEMA_VERSION,
+    SUMMARY_SCHEMA_VERSION,
+    SoccerNetConfigResponse,
+    SoccerNetGamesResponse,
+    SourceResponse,
+)
 from app.training import (
     build_training_backend_config,
     inspect_training_dataset,
@@ -127,6 +141,21 @@ class TrainingRegistryActivateRequest(BaseModel):
     detector_id: str
 
 
+def dump_json_model(instance: BaseModel) -> dict[str, Any]:
+    return instance.model_dump(mode="json", exclude_none=True)
+
+
+def serialize_run_summary(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    if summary is None:
+        return None
+    normalized = dict(summary)
+    normalize_fn = globals().get("normalize_persisted_summary")
+    if callable(normalize_fn):
+        normalized = normalize_fn(normalized)
+    normalized["summary_version"] = normalized.get("summary_version", SUMMARY_SCHEMA_VERSION)
+    return dump_json_model(RunSummary.model_validate(normalized))
+
+
 @dataclass
 class SourceState:
     source_id: str
@@ -137,16 +166,16 @@ class SourceState:
 
     def as_dict(self, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = {
+            "source_state_version": SOURCE_SCHEMA_VERSION,
             "source_id": self.source_id,
             "path": self.path,
             "display_name": self.display_name,
             "created_at": self.created_at,
             "uploaded": self.uploaded,
             "video_url": f"/api/source/{self.source_id}/video",
+            **(metadata or {}),
         }
-        if metadata:
-            payload.update(metadata)
-        return payload
+        return dump_json_model(SourceResponse.model_validate(payload))
 
 
 @dataclass
@@ -163,17 +192,20 @@ class JobState:
 
     def as_dict(self) -> dict[str, Any]:
         run_id = Path(self.run_dir).name if self.run_dir else ""
-        return {
-            "job_id": self.job_id,
-            "run_id": run_id,
-            "status": self.status,
-            "created_at": self.created_at,
-            "progress": round(self.progress, 2),
-            "logs": self.logs[-250:],
-            "run_dir": self.run_dir,
-            "summary": self.summary,
-            "error": self.error,
-        }
+        return dump_json_model(
+            JobStateResponse(
+                job_state_version=JOB_STATE_SCHEMA_VERSION,
+                job_id=self.job_id,
+                run_id=run_id,
+                status=self.status,
+                created_at=self.created_at,
+                progress=round(self.progress, 2),
+                logs=self.logs[-250:],
+                run_dir=self.run_dir,
+                summary=serialize_run_summary(self.summary),
+                error=self.error,
+            )
+        )
 
     def persistence_dict(self) -> dict[str, Any]:
         payload = self.as_dict()
@@ -696,11 +728,11 @@ def build_training_device_guidance(runtime_profile: dict[str, Any]) -> str:
 
 
 @app.get("/api/config")
-def config() -> dict[str, Any]:
+def config() -> ConfigResponse:
     diagnostics_config = resolve_provider_config()
     active_detector_entry = training_registry.get_active_entry() if training_available() else {"id": "soccana", "label": "soccana (football-pretrained)"}
     runtime_profile = build_runtime_profile()
-    return {
+    return ConfigResponse.model_validate({
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
         "tracker": DEFAULT_PLAYER_TRACKER_MODE,
@@ -721,7 +753,7 @@ def config() -> dict[str, Any]:
         "active_detector_label": active_detector_entry.get("label", "soccana (football-pretrained)"),
         "active_detector_is_custom": str(active_detector_entry.get("id", "soccana")) != "soccana",
         "runtime_profile": runtime_profile,
-    }
+    })
 
 
 @app.get("/api/train/config")
@@ -905,21 +937,21 @@ def activate_registered_detector(request: TrainingRegistryActivateRequest) -> di
 
 
 @app.get("/api/jobs")
-def list_jobs() -> list[dict[str, Any]]:
-    return job_manager.list()
+def list_jobs() -> list[JobStateResponse]:
+    return [JobStateResponse.model_validate(item) for item in job_manager.list()]
 
 
 @app.get("/api/experiments/active")
-def active_experiment() -> dict[str, Any] | None:
+def active_experiment() -> ActiveExperimentResponse | None:
     experiment = load_active_batch_experiment()
-    return experiment or None
+    return ActiveExperimentResponse.model_validate(experiment) if experiment else None
 
 
 @app.get("/api/soccernet/config")
-def soccernet_config() -> dict[str, Any]:
+def soccernet_config() -> SoccerNetConfigResponse:
     split_names = ["train", "valid", "test", "challenge"]
     split_counts = {split: len(getListGames(split, task="spotting", dataset="SoccerNet")) for split in split_names}
-    return {
+    return SoccerNetConfigResponse.model_validate({
         "dataset_dir": str(SOCCERNET_DIR),
         "splits": split_names,
         "split_counts": split_counts,
@@ -930,11 +962,11 @@ def soccernet_config() -> dict[str, Any]:
             "720p halves are best for actual model runs. 224p halves are smaller for quick inspection.",
             "For experimental goal-timestamp work, prefer Labels-v2.json.",
         ],
-    }
+    })
 
 
 @app.get("/api/soccernet/games")
-def soccernet_games(split: str = Query(default="train"), query: str = Query(default=""), limit: int = Query(default=200)) -> dict[str, Any]:
+def soccernet_games(split: str = Query(default="train"), query: str = Query(default=""), limit: int = Query(default=200)) -> SoccerNetGamesResponse:
     normalized_split = split.strip().lower()
     if normalized_split not in {"train", "valid", "test", "challenge"}:
         raise HTTPException(status_code=400, detail="Split must be train, valid, test, or challenge")
@@ -945,11 +977,11 @@ def soccernet_games(split: str = Query(default="train"), query: str = Query(defa
         games = [game for game in games if query_text in game.lower()]
 
     bounded_limit = min(max(limit, 1), 500)
-    return {
+    return SoccerNetGamesResponse.model_validate({
         "split": normalized_split,
         "count": len(games),
         "games": games[:bounded_limit],
-    }
+    })
 
 
 @app.get("/api/soccernet/downloads")
@@ -991,11 +1023,11 @@ def start_soccernet_download(request: SoccerNetDownloadRequest) -> JSONResponse:
 
 
 @app.get("/api/jobs/{job_id}")
-def get_job(job_id: str) -> dict[str, Any]:
+def get_job(job_id: str) -> JobStateResponse:
     job = job_manager.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job.as_dict()
+    return JobStateResponse.model_validate(job.as_dict())
 
 
 def require_job_control(job_id: str) -> tuple[JobState, JobControl]:
@@ -1009,7 +1041,7 @@ def require_job_control(job_id: str) -> tuple[JobState, JobControl]:
 
 
 @app.post("/api/jobs/{job_id}/pause")
-def pause_job(job_id: str) -> dict[str, Any]:
+def pause_job(job_id: str) -> JobStateResponse:
     job, control = require_job_control(job_id)
     if job.status not in {"queued", "running", "paused"}:
         raise HTTPException(status_code=409, detail="Only queued or running jobs can be paused")
@@ -1017,22 +1049,22 @@ def pause_job(job_id: str) -> dict[str, Any]:
         control.request_pause()
         job_manager.update(job_id, status="paused")
         job_manager.log(job_id, "Pause requested")
-    return job_manager.get(job_id).as_dict()
+    return JobStateResponse.model_validate(job_manager.get(job_id).as_dict())
 
 
 @app.post("/api/jobs/{job_id}/resume")
-def resume_job(job_id: str) -> dict[str, Any]:
+def resume_job(job_id: str) -> JobStateResponse:
     job, control = require_job_control(job_id)
     if job.status != "paused":
         raise HTTPException(status_code=409, detail="Only paused jobs can be resumed")
     control.request_resume()
     job_manager.update(job_id, status="running")
     job_manager.log(job_id, "Resume requested")
-    return job_manager.get(job_id).as_dict()
+    return JobStateResponse.model_validate(job_manager.get(job_id).as_dict())
 
 
 @app.post("/api/jobs/{job_id}/stop")
-def stop_job(job_id: str) -> dict[str, Any]:
+def stop_job(job_id: str) -> JobStateResponse:
     job, control = require_job_control(job_id)
     if job.status not in {"queued", "running", "paused", "stopping"}:
         raise HTTPException(status_code=409, detail="Only active jobs can be stopped")
@@ -1040,7 +1072,7 @@ def stop_job(job_id: str) -> dict[str, Any]:
     if job.status != "stopping":
         job_manager.update(job_id, status="stopping")
         job_manager.log(job_id, "Stop requested")
-    return job_manager.get(job_id).as_dict()
+    return JobStateResponse.model_validate(job_manager.get(job_id).as_dict())
 
 
 def load_persisted_run(run_dir: Path) -> dict[str, Any]:
@@ -1057,6 +1089,7 @@ def load_persisted_run(run_dir: Path) -> dict[str, Any]:
         logs.append(f"Overlay video available: {overlay_path.name}")
 
     return {
+        "job_state_version": JOB_STATE_SCHEMA_VERSION,
         "job_id": f"persisted-{run_dir.name}",
         "run_id": run_dir.name,
         "status": "completed",
@@ -1167,6 +1200,7 @@ def resolve_persisted_run_dir(run_id: str) -> Path:
 
 def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(summary)
+    normalized["summary_version"] = normalized.get("summary_version", SUMMARY_SCHEMA_VERSION)
     normalized["learn_cards"] = TACTICAL_LEARN_CARDS
     normalized["experiments"] = list(normalized.get("experiments") or [])
     normalized["entropy_timeseries_csv"] = normalized.get("entropy_timeseries_csv")
@@ -1592,6 +1626,7 @@ def load_active_batch_experiment() -> dict[str, Any] | None:
 
     logs = lines[-250:] if lines else [f"Batch {experiment_dir.name} is active."]
     return {
+        "job_state_version": JOB_STATE_SCHEMA_VERSION,
         "job_id": f"batch-{experiment_dir.name}",
         "status": "running",
         "created_at": str(manifest.get("created_at") or datetime.utcfromtimestamp((experiment_dir / "manifest.json").stat().st_mtime).isoformat() + "Z"),
@@ -1653,16 +1688,16 @@ def build_training_registry_snapshot() -> dict[str, Any]:
 
 
 @app.get("/api/runs/recent")
-def recent_runs(limit: int = 8) -> list[dict[str, Any]]:
+def recent_runs(limit: int = 8) -> list[JobStateResponse]:
     bounded_limit = min(max(limit, 1), 1000)
-    return list_persisted_runs(limit=bounded_limit)
+    return [JobStateResponse.model_validate(item) for item in list_persisted_runs(limit=bounded_limit)]
 
 
 @app.post("/api/source")
 async def prepare_source(
     video_file: UploadFile | None = File(default=None),
     local_video_path: str = Form(default=""),
-) -> JSONResponse:
+) -> SourceResponse:
     if video_file is None and not local_video_path.strip():
         raise HTTPException(status_code=400, detail="Provide either a file upload or a local video path")
 
@@ -1677,7 +1712,7 @@ async def prepare_source(
         source = source_manager.register(source_path, source_path.name, uploaded=False)
 
     metadata = inspect_video(Path(source.path))
-    return JSONResponse(source.as_dict(metadata))
+    return SourceResponse.model_validate(source.as_dict(metadata))
 
 
 @app.get("/api/source/{source_id}/video")
@@ -1695,13 +1730,13 @@ def get_source_video(source_id: str) -> FileResponse:
 
 
 @app.get("/api/runs/{run_id}")
-def get_persisted_run(run_id: str) -> dict[str, Any]:
+def get_persisted_run(run_id: str) -> JobStateResponse:
     run_dir = resolve_persisted_run_dir(run_id)
     if not run_dir.exists() or not run_dir.is_dir():
         raise HTTPException(status_code=404, detail="Run not found")
 
     try:
-        return hydrate_persisted_run(run_dir)
+        return JobStateResponse.model_validate(hydrate_persisted_run(run_dir))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run summary not found") from exc
     except json.JSONDecodeError as exc:
@@ -1730,14 +1765,14 @@ def get_persisted_run_output(run_id: str, filename: str) -> FileResponse:
 
 
 @app.post("/api/runs/{run_id}/refresh-diagnostics")
-def refresh_persisted_run_diagnostics(run_id: str) -> dict[str, Any]:
+def refresh_persisted_run_diagnostics(run_id: str) -> JobStateResponse:
     run_dir = resolve_persisted_run_dir(run_id)
     if not run_dir.exists() or not run_dir.is_dir():
         raise HTTPException(status_code=404, detail="Run not found")
 
     try:
         refresh_run_diagnostics(run_dir)
-        return hydrate_persisted_run(run_dir)
+        return JobStateResponse.model_validate(hydrate_persisted_run(run_dir))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Run summary not found") from exc
     except json.JSONDecodeError as exc:
@@ -1777,7 +1812,7 @@ def live_preview(
 
 
 @app.post("/api/scan-folder")
-def scan_folder(request: FolderScanRequest) -> dict[str, Any]:
+def scan_folder(request: FolderScanRequest) -> FolderScanResponse:
     folder = Path(request.folder_path).expanduser().resolve()
     if not folder.exists() or not folder.is_dir():
         raise HTTPException(status_code=400, detail="Folder does not exist")
@@ -1796,7 +1831,7 @@ def scan_folder(request: FolderScanRequest) -> dict[str, Any]:
         elif suffix in annotation_suffixes:
             annotations.append({"name": item.name, "path": str(item)})
 
-    return {
+    return FolderScanResponse.model_validate({
         "folder": str(folder),
         "videos": videos[:200],
         "annotations": annotations[:200],
@@ -1804,7 +1839,7 @@ def scan_folder(request: FolderScanRequest) -> dict[str, Any]:
             "Useful for extracted Kaggle clips or a local SoccerNet checkout.",
             "Click a video path in the UI to load it into the analyze form.",
         ],
-    }
+    })
 
 
 @app.post("/api/analyze")
@@ -1820,7 +1855,7 @@ async def analyze(
     player_conf: float = Form(default=0.25),
     ball_conf: float = Form(default=0.20),
     iou: float = Form(default=0.50),
-) -> JSONResponse:
+) -> AnalyzeAcceptedResponse:
     if video_file is None and not local_video_path.strip() and not source_id.strip():
         raise HTTPException(status_code=400, detail="Provide a source id, file upload, or local video path")
 
@@ -1867,7 +1902,7 @@ async def analyze(
     )
     thread.start()
 
-    return JSONResponse({"job_id": job.job_id, "run_id": run_id, "run_dir": str(run_dir)})
+    return AnalyzeAcceptedResponse(job_id=job.job_id, run_id=run_id, run_dir=str(run_dir))
 
 
 def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]) -> None:
