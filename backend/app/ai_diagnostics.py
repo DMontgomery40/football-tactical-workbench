@@ -185,6 +185,13 @@ def _normalize_openai_compatible_base_url(raw_value: str) -> str:
     return normalized
 
 
+def resolve_orchestrator_preference() -> str:
+    value = _env("AI_DIAGNOSTICS_ORCHESTRATOR", "auto").lower()
+    if value in {"auto", "pydantic_ai", "legacy"}:
+        return value
+    return "auto"
+
+
 def resolve_provider_config() -> ProviderConfig | None:
     provider_pref = _env("AI_DIAGNOSTICS_PROVIDER", "auto").lower()
     timeout_seconds = float(_env("AI_DIAGNOSTICS_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)) or DEFAULT_TIMEOUT_SECONDS)
@@ -931,33 +938,35 @@ def _build_openai_client(config: ProviderConfig) -> Any:
     )
 
 
-def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
-    from pydantic_ai import Agent, ModelRetry, RunContext
+def _build_diagnostics_model(config: ProviderConfig) -> Any:
     from pydantic_ai.models.anthropic import AnthropicModel
     from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
     from pydantic_ai.providers.anthropic import AnthropicProvider
     from pydantic_ai.providers.openai import OpenAIProvider
 
     if config.provider == "openai":
-        model = OpenAIResponsesModel(
+        return OpenAIResponsesModel(
             config.model,
             provider=OpenAIProvider(api_key=config.api_key, base_url=config.base_url),
         )
-    elif config.provider in {"openrouter", "local"}:
-        model = OpenAIChatModel(
+    if config.provider in {"openrouter", "local"}:
+        return OpenAIChatModel(
             config.model,
             provider=OpenAIProvider(openai_client=_build_openai_client(config)),
         )
-    elif config.provider == "anthropic":
-        model = AnthropicModel(
+    if config.provider == "anthropic":
+        return AnthropicModel(
             config.model,
             provider=AnthropicProvider(
                 api_key=config.api_key,
                 base_url=config.base_url,
             ),
         )
-    else:
-        raise RuntimeError(f"Unsupported diagnostics provider: {config.provider}")
+    raise RuntimeError(f"Unsupported diagnostics provider: {config.provider}")
+
+
+def build_diagnostics_agent(model: Any, system_prompt: str, *, max_output_tokens: int, timeout_seconds: float) -> Any:
+    from pydantic_ai import Agent, ModelRetry, RunContext
 
     agent = Agent(
         model=model,
@@ -965,8 +974,8 @@ def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, co
         instructions=system_prompt,
         model_settings={
             "temperature": 0.1,
-            "max_tokens": config.max_output_tokens,
-            "timeout": config.timeout_seconds,
+            "max_tokens": max_output_tokens,
+            "timeout": timeout_seconds,
         },
         output_retries=2,
     )
@@ -978,6 +987,17 @@ def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, co
         except ValueError as exc:
             raise ModelRetry(str(exc)) from exc
 
+    return agent
+
+
+def call_provider_via_pydantic_ai(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> str:
+    model = _build_diagnostics_model(config)
+    agent = build_diagnostics_agent(
+        model,
+        system_prompt,
+        max_output_tokens=config.max_output_tokens,
+        timeout_seconds=config.timeout_seconds,
+    )
     result = agent.run_sync(render_context_for_provider(context))
     normalized_output = _normalize_diagnostics_agent_output(result.output)
     return json.dumps(normalized_output.model_dump(mode="json"), ensure_ascii=True)
@@ -1054,9 +1074,14 @@ def call_provider_legacy(config: ProviderConfig, system_prompt: str, context: di
 
 
 def call_provider(config: ProviderConfig, system_prompt: str, context: dict[str, Any]) -> tuple[str, str, str | None]:
+    orchestrator_preference = resolve_orchestrator_preference()
+    if orchestrator_preference == "legacy":
+        return call_provider_legacy(config, system_prompt, context), "legacy", None
     try:
         return call_provider_via_pydantic_ai(config, system_prompt, context), "pydantic_ai", None
     except Exception as exc:
+        if orchestrator_preference == "pydantic_ai":
+            raise RuntimeError(f"PydanticAI diagnostics path failed while forced on: {exc}") from exc
         fallback_reason = f"PydanticAI diagnostics path failed for {config.provider}:{config.model}; falling back to legacy provider call. {exc}"
         raw_text = call_provider_legacy(config, system_prompt, context)
         return raw_text, "legacy", fallback_reason

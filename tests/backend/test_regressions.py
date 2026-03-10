@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 from fastapi import HTTPException
+from pydantic_ai.models.test import TestModel
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT_DIR / "backend"
@@ -150,6 +151,7 @@ def test_serialize_run_summary_stays_pydantic_v2_compatible_for_nested_review_da
             "resolved_player_tracker_mode": "hybrid_reid",
             "raw_unique_player_track_ids": 9,
             "tracklet_merges_applied": 2,
+            "diagnostics_orchestrator": "pydantic_ai",
             "diagnostics": [
                 {
                     "level": "warn",
@@ -191,6 +193,7 @@ def test_serialize_run_summary_stays_pydantic_v2_compatible_for_nested_review_da
     )
 
     assert validated.summary_version == main.SUMMARY_SCHEMA_VERSION
+    assert validated.diagnostics_orchestrator == "pydantic_ai"
     assert validated.diagnostics[0].title == "Detector drift"
     assert validated.top_tracks[0].track_id == 7
     assert isinstance(job_state.summary, RunSummary)
@@ -226,6 +229,49 @@ def test_pydantic_ai_output_validator_requires_warn_items_to_include_code_level_
                 ],
             )
         )
+
+
+def test_build_diagnostics_agent_accepts_structured_testmodel_output() -> None:
+    agent = ai_diagnostics.build_diagnostics_agent(
+        TestModel(
+            custom_output_args={
+                "summary_line": "Calibration and tracking both need attention.",
+                "diagnostics": [
+                    {
+                        "level": "warn",
+                        "title": "Detector class mapping drift",
+                        "message": "Player classes do not line up with the emitted labels.",
+                        "next_step": "Inspect the resolved class ids before touching tracker settings.",
+                        "implementation_diagnosis": "The runtime filter is pointing at the wrong classes.",
+                        "suggested_fix": "Resolve ids from checkpoint metadata or dataset YAML.",
+                        "code_refs": ["backend/app/wide_angle.py::resolve_detector_spec"],
+                        "evidence_keys": ["player_rows"],
+                    },
+                    {
+                        "level": "good",
+                        "title": "Tracker fallback",
+                        "message": "Tracker wiring still initialized.",
+                        "next_step": "Leave it unchanged until detections recover.",
+                    },
+                    {
+                        "level": "good",
+                        "title": "Projection context",
+                        "message": "Projection stayed downstream-empty.",
+                        "next_step": "Revisit projection only after detections recover.",
+                    },
+                ],
+            }
+        ),
+        "prompt",
+        max_output_tokens=3000,
+        timeout_seconds=75.0,
+    )
+
+    result = agent.run_sync("context")
+
+    assert isinstance(result.output, DiagnosticsAgentOutput)
+    assert result.output.summary_line == "Calibration and tracking both need attention."
+    assert result.output.diagnostics[0].code_refs == ["backend/app/wide_angle.py::resolve_detector_spec"]
 
 
 def test_call_provider_falls_back_to_legacy_if_pydantic_ai_path_breaks(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -282,3 +328,68 @@ def test_call_provider_falls_back_to_legacy_if_pydantic_ai_path_breaks(monkeypat
     assert orchestrator == "legacy"
     assert fallback_note is not None
     assert "PydanticAI diagnostics path failed" in fallback_note
+
+
+def test_call_provider_respects_legacy_orchestrator_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = ai_diagnostics.ProviderConfig(
+        provider="openai",
+        model="gpt-5.4",
+        endpoint="https://api.openai.com/v1/responses",
+        base_url="https://api.openai.com/v1",
+        api_key="test-key",
+        timeout_seconds=30.0,
+        extra_headers={},
+        max_output_tokens=1200,
+    )
+
+    legacy_json = json.dumps({"summary_line": "Legacy only.", "diagnostics": []})
+    legacy_mock = Mock(return_value=legacy_json)
+    pydantic_mock = Mock(side_effect=AssertionError("PydanticAI path should not run when legacy is forced"))
+
+    monkeypatch.setenv("AI_DIAGNOSTICS_ORCHESTRATOR", "legacy")
+    monkeypatch.setattr(ai_diagnostics, "call_provider_legacy", legacy_mock)
+    monkeypatch.setattr(ai_diagnostics, "call_provider_via_pydantic_ai", pydantic_mock)
+
+    raw_text, orchestrator, fallback_note = ai_diagnostics.call_provider(
+        config,
+        system_prompt="prompt",
+        context={"run_metrics": {}},
+    )
+
+    assert json.loads(raw_text)["summary_line"] == "Legacy only."
+    assert orchestrator == "legacy"
+    assert fallback_note is None
+    legacy_mock.assert_called_once()
+    pydantic_mock.assert_not_called()
+
+
+def test_call_provider_can_force_pydantic_ai_without_legacy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = ai_diagnostics.ProviderConfig(
+        provider="openai",
+        model="gpt-5.4",
+        endpoint="https://api.openai.com/v1/responses",
+        base_url="https://api.openai.com/v1",
+        api_key="test-key",
+        timeout_seconds=30.0,
+        extra_headers={},
+        max_output_tokens=1200,
+    )
+
+    legacy_mock = Mock(return_value='{"summary_line":"legacy","diagnostics":[]}')
+
+    monkeypatch.setenv("AI_DIAGNOSTICS_ORCHESTRATOR", "pydantic_ai")
+    monkeypatch.setattr(
+        ai_diagnostics,
+        "call_provider_via_pydantic_ai",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("adapter import broke")),
+    )
+    monkeypatch.setattr(ai_diagnostics, "call_provider_legacy", legacy_mock)
+
+    with pytest.raises(RuntimeError, match="forced on"):
+        ai_diagnostics.call_provider(
+            config,
+            system_prompt="prompt",
+            context={"run_metrics": {}},
+        )
+
+    legacy_mock.assert_not_called()

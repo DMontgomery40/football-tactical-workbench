@@ -171,6 +171,7 @@ class RunSummary(BoundaryModel):
     team_cluster_distance: float = 0.0
     jersey_crops_used: int = 0
     diagnostics_source: str = "heuristic"
+    diagnostics_orchestrator: str | None = None
     diagnostics_provider: str | None = None
     diagnostics_model: str | None = None
     diagnostics_status: str = "unknown"

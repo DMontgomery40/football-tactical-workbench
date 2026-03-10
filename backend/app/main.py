@@ -1216,6 +1216,7 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["experiments"] = list(normalized.get("experiments") or [])
     normalized["entropy_timeseries_csv"] = normalized.get("entropy_timeseries_csv")
     normalized["diagnostics_source"] = normalized.get("diagnostics_source", "heuristic")
+    normalized["diagnostics_orchestrator"] = normalized.get("diagnostics_orchestrator")
     normalized["diagnostics_provider"] = normalized.get("diagnostics_provider")
     normalized["diagnostics_model"] = normalized.get("diagnostics_model")
     normalized["diagnostics_status"] = normalized.get("diagnostics_status", "unknown")
@@ -1224,15 +1225,20 @@ def normalize_persisted_summary(summary: dict[str, Any]) -> dict[str, Any]:
     normalized["diagnostics_json"] = normalized.get("diagnostics_json")
     normalized["diagnostics_prompt_context"] = normalized.get("diagnostics_prompt_context")
     diagnostics_prompt_version = normalized.get("diagnostics_prompt_version")
-    if not diagnostics_prompt_version:
+    diagnostics_orchestrator = normalized.get("diagnostics_orchestrator")
+    if not diagnostics_prompt_version or diagnostics_orchestrator is None:
         run_dir_value = normalized.get("run_dir")
         if run_dir_value:
             artifact_path = Path(str(run_dir_value)) / "outputs" / "diagnostics_ai.json"
             if artifact_path.exists():
                 try:
-                    diagnostics_prompt_version = json.loads(artifact_path.read_text(encoding="utf-8")).get("prompt_version")
+                    artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+                    diagnostics_prompt_version = artifact_payload.get("prompt_version")
+                    if diagnostics_orchestrator is None:
+                        diagnostics_orchestrator = artifact_payload.get("orchestrator")
                 except Exception:
                     diagnostics_prompt_version = None
+    normalized["diagnostics_orchestrator"] = diagnostics_orchestrator
     normalized["diagnostics_prompt_version"] = diagnostics_prompt_version
     normalized["diagnostics_current_prompt_version"] = CURRENT_DIAGNOSTICS_PROMPT_VERSION
     normalized["diagnostics_stale"] = bool(
@@ -1451,6 +1457,7 @@ def refresh_run_diagnostics(run_dir: Path) -> dict[str, Any]:
     summary["diagnostics"] = diagnostics
     summary["heuristic_diagnostics"] = heuristic_diagnostics
     summary["diagnostics_source"] = "ai" if artifact.get("status") == "completed" else "heuristic"
+    summary["diagnostics_orchestrator"] = artifact.get("orchestrator")
     summary["diagnostics_provider"] = artifact.get("provider")
     summary["diagnostics_model"] = artifact.get("model")
     summary["diagnostics_status"] = artifact.get("status")

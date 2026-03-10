@@ -848,6 +848,17 @@
             ],
             "title": "Diagnostics Model"
           },
+          "diagnostics_orchestrator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics Orchestrator"
+          },
           "diagnostics_prompt_context": {
             "anyOf": [
               {

@@ -1022,6 +1022,8 @@ export interface components {
             diagnostics_json?: string | null;
             /** Diagnostics Model */
             diagnostics_model?: string | null;
+            /** Diagnostics Orchestrator */
+            diagnostics_orchestrator?: string | null;
             /** Diagnostics Prompt Context */
             diagnostics_prompt_context?: {
                 [key: string]: unknown;

@@ -8,9 +8,21 @@ if [ ! -x "$BACKEND_VENV_PY" ]; then
   python3 -m venv "$ROOT_DIR/backend/.venv"
 fi
 
-if ! "$BACKEND_VENV_PY" -c "import fastapi, pytest, pydantic_ai" >/dev/null 2>&1; then
+if ! "$BACKEND_VENV_PY" - <<'PY' >/dev/null 2>&1
+from importlib.metadata import version
+
+assert version("fastapi")
+assert version("pytest")
+assert version("pydantic-ai-slim") == "1.41.0"
+assert version("pydantic-evals") == "1.41.0"
+PY
+then
   "$BACKEND_VENV_PY" -m pip install --upgrade pip
   "$BACKEND_VENV_PY" -m pip install -r "$ROOT_DIR/backend/requirements.txt"
+fi
+
+if [ ! -d "$ROOT_DIR/frontend/node_modules" ]; then
+  (cd "$ROOT_DIR/frontend" && npm ci)
 fi
 
 cd "$ROOT_DIR"

@@ -3414,6 +3414,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     summary["diagnostics"] = ai_diagnostics
     summary["heuristic_diagnostics"] = heuristic_diagnostics
     summary["diagnostics_source"] = "ai" if diagnostics_artifact.get("status") == "completed" else "heuristic"
+    summary["diagnostics_orchestrator"] = diagnostics_artifact.get("orchestrator")
     summary["diagnostics_provider"] = diagnostics_artifact.get("provider")
     summary["diagnostics_model"] = diagnostics_artifact.get("model")
     summary["diagnostics_status"] = diagnostics_artifact.get("status")

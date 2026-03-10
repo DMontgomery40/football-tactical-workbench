@@ -160,6 +160,13 @@ function friendlyProviderName(value) {
   return value || 'provider';
 }
 
+function friendlyDiagnosticsOrchestrator(value) {
+  const orchestrator = String(value || '').toLowerCase();
+  if (orchestrator === 'pydantic_ai') return 'PydanticAI orchestration';
+  if (orchestrator === 'legacy') return 'legacy provider fallback';
+  return value || '';
+}
+
 function formatPercent(value, digits = 1) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return '0%';
@@ -2472,7 +2479,7 @@ export default function App() {
                       ) : null}
                       <div className="diagnostics-meta">
                         {summary.diagnostics_source === 'ai'
-                          ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}.`
+                          ? `AI-curated for this run via ${friendlyProviderName(summary.diagnostics_provider)}${summary.diagnostics_model ? ` · ${summary.diagnostics_model}` : ''}${summary.diagnostics_orchestrator ? ` · ${friendlyDiagnosticsOrchestrator(summary.diagnostics_orchestrator)}` : ''}.`
                           : 'Heuristic run diagnostics are showing for this run.'}
                         {summary.diagnostics_error ? ` Last generation error: ${summary.diagnostics_error}` : ''}
                       </div>
