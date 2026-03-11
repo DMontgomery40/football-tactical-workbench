@@ -647,6 +647,8 @@ textarea {
   border: 1px solid color-mix(in srgb, #ca5b4c 40%, var(--line));
   background: color-mix(in srgb, #f3d7d3 60%, var(--surface));
   color: #7c3428;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .row-between {
@@ -913,6 +915,8 @@ textarea {
   border-radius: 14px;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 90%, var(--surface-muted));
+  min-width: 0;
+  width: 100%;
 }
 
 .studio-license-note {
@@ -967,6 +971,7 @@ textarea {
 .studio-panel {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .studio-family-strip {
@@ -1045,14 +1050,17 @@ textarea {
 
 .studio-meta-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .studio-meta-value {
   margin-top: 4px;
   color: var(--text-strong);
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .class-chip-row {
@@ -1306,12 +1314,14 @@ textarea {
   gap: 12px;
   color: var(--text-muted);
   font-size: 0.9rem;
+  min-width: 0;
 }
 
 .studio-metric-cluster {
   display: grid;
   justify-items: end;
   gap: 6px;
+  min-width: 0;
 }
 
 .studio-chart-grid {
@@ -1371,6 +1381,18 @@ textarea {
 
 .studio-detail-panel {
   min-width: 0;
+  overflow-x: clip;
+}
+
+.studio-detail-panel > .row-between,
+.studio-selection-item .row-between {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.studio-detail-panel > .row-between > *,
+.studio-selection-item .row-between > * {
+  min-width: 0;
 }
 
 .studio-selection-list {
@@ -1427,6 +1449,232 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+.training-analysis-stack {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.training-analysis-overview {
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 56%, transparent) 0%, transparent 48%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--surface-muted)) 0%, color-mix(in srgb, var(--surface) 86%, var(--page-panel)) 100%);
+}
+
+.training-analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.training-analysis-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.training-analysis-summary-line.good {
+  border-color: var(--good-line);
+  background: color-mix(in srgb, var(--good-bg) 68%, var(--surface));
+}
+
+.training-analysis-summary-line.blocked {
+  border-color: color-mix(in srgb, #ca5b4c 55%, var(--warn-line));
+  background: color-mix(in srgb, #f3d7d3 55%, var(--surface));
+}
+
+.training-analysis-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.training-analysis-pill,
+.training-analysis-path-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 90%, var(--page-panel));
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.training-analysis-pill.good {
+  border-color: var(--good-line);
+  background: color-mix(in srgb, var(--good-bg) 74%, var(--surface));
+  color: var(--good-text);
+}
+
+.training-analysis-pill.neutral,
+.training-analysis-pill.mixed,
+.training-analysis-pill.hold {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.training-analysis-pill.warn,
+.training-analysis-pill.blocked,
+.training-analysis-pill.reject {
+  border-color: var(--warn-line);
+  background: color-mix(in srgb, var(--warn-bg) 72%, var(--surface));
+  color: var(--warn-text);
+}
+
+.training-analysis-pill.activate {
+  border-color: var(--good-line);
+  background: color-mix(in srgb, var(--good-bg) 78%, var(--surface));
+  color: var(--good-text);
+}
+
+.training-analysis-path-chip {
+  max-width: 100%;
+  font-weight: 700;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.training-analysis-sections {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.training-analysis-section {
+  padding: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.training-analysis-section.good {
+  border-color: var(--good-line);
+}
+
+.training-analysis-section.warn {
+  border-color: var(--warn-line);
+}
+
+.training-analysis-summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px;
+  cursor: pointer;
+}
+
+.training-analysis-summary::-webkit-details-marker {
+  display: none;
+}
+
+.training-analysis-summary-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.training-analysis-section-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.training-analysis-section-summary {
+  color: var(--text);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.training-analysis-section-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+
+.training-analysis-details,
+.training-analysis-drilldown-text,
+.training-analysis-artifact-value {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.training-analysis-list-block,
+.training-analysis-chip-block {
+  display: grid;
+  gap: 8px;
+}
+
+.training-analysis-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.training-analysis-list li {
+  line-height: 1.55;
+}
+
+.training-analysis-drilldown-grid,
+.training-analysis-artifact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.training-analysis-drilldown-card,
+.training-analysis-artifact-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, var(--page-panel));
+  min-width: 0;
+}
+
+.training-analysis-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.training-analysis-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface));
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.training-analysis-chip.subtle {
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--surface) 90%, var(--page-panel));
+  color: var(--text-muted);
 }
 
 .train-job-logs summary {
@@ -1509,16 +1757,23 @@ textarea {
   display: grid;
   gap: 14px;
   margin-top: 12px;
+  min-width: 0;
+  width: 100%;
+  overflow-x: clip;
 }
 
 .studio-dataset-review {
   display: grid;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .studio-artifact-list {
   display: grid;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .studio-artifact-row {
@@ -1528,11 +1783,24 @@ textarea {
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--surface);
+  min-width: 0;
+  width: 100%;
+  overflow-x: clip;
 }
 
 .studio-artifact-values {
   display: grid;
   gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.studio-runtime-note .label-with-help,
+.studio-dataset-review .micro-label-with-help,
+.studio-artifact-row .label-with-help {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .compact-note {
@@ -1910,6 +2178,8 @@ textarea {
   background: color-mix(in srgb, var(--warn-bg) 40%, var(--surface));
   border: 1px solid var(--warn-line);
   color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .diagnostics-meta {
@@ -2480,7 +2750,9 @@ textarea {
 
   .studio-form-header,
   .studio-form-context-head,
-  .studio-detail-toolbar {
+  .studio-detail-toolbar,
+  .training-analysis-header,
+  .training-analysis-summary {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -2512,6 +2784,11 @@ textarea {
   }
 
   .trajectory-stage-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .training-analysis-drilldown-grid,
+  .training-analysis-artifact-grid {
     grid-template-columns: 1fr;
   }
 

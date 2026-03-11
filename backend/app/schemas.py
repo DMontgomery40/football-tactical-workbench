@@ -61,6 +61,7 @@ class TopTrackRow(BoundaryModel):
 
 class RunSummary(BoundaryModel):
     summary_version: str = SUMMARY_SCHEMA_VERSION
+    pipeline: str = "classic"
     job_id: str = ""
     run_dir: str = ""
     input_video: str = ""
@@ -287,6 +288,8 @@ class RuntimeProfileResponse(BoundaryModel):
 
 class ConfigResponse(BoundaryModel):
     contract_version: str = CONTRACT_SCHEMA_VERSION
+    pipeline_options: list[str] = Field(default_factory=list)
+    default_pipeline: str = "classic"
     detector_models: list[str] = Field(default_factory=list)
     player_models: list[str] = Field(default_factory=list)
     tracker: str
@@ -294,6 +297,8 @@ class ConfigResponse(BoundaryModel):
     default_player_tracker_mode: str
     learn_cards: list[LearnCard] = Field(default_factory=list)
     help_catalog: Any = None
+    keypoint_models: list[str] = Field(default_factory=list)
+    default_keypoint_model: str = "soccana_keypoint"
     field_calibration_refresh_frames: int
     field_calibration_mode: str
     soccernet_dataset_dir: str

@@ -54,15 +54,22 @@ const API_BASE = resolveApiBase();
 const SOCCERNET_AUTO_EXPAND_LIMIT = 8;
 
 const defaultForm = {
+  pipeline: 'classic',
   localVideoPath: '',
   labelPath: '',
   folderPath: '',
   detectorModel: 'soccana',
+  keypointModel: 'soccermaster',
   trackerMode: 'hybrid_reid',
   includeBall: true,
   playerConf: '0.25',
   ballConf: '0.20',
   iou: '0.50',
+};
+
+const PIPELINE_LABELS = {
+  classic: 'Classic (soccana)',
+  soccermaster: 'SoccerMaster (unified)',
 };
 
 const DEFAULT_SOCCERNET_FILES = ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
@@ -1475,7 +1482,9 @@ export default function App() {
     }
     const params = new URLSearchParams({
       source_id: source.source_id,
+      pipeline: form.pipeline || 'classic',
       detector_model: form.detectorModel,
+      keypoint_model: form.keypointModel || 'soccana_keypoint',
       tracker_mode: form.trackerMode,
       include_ball: String(form.includeBall),
       player_conf: form.playerConf,
@@ -1641,7 +1650,9 @@ export default function App() {
     }
     payload.append('local_video_path', source?.source_id ? '' : localVideoPath);
     payload.append('label_path', form.labelPath);
+    payload.append('pipeline', form.pipeline || 'classic');
     payload.append('detector_model', form.detectorModel);
+    payload.append('keypoint_model', form.keypointModel || 'soccana_keypoint');
     payload.append('tracker_mode', form.trackerMode);
     payload.append('include_ball', String(form.includeBall));
     payload.append('player_conf', form.playerConf);
@@ -1778,7 +1789,7 @@ export default function App() {
           onClick={() => setAppSpace('training')}
         >
           Training Studio
-          {activeDetectorIsCustom ? <span className="switcher-status-badge">custom detector active</span> : null}
+          {activeDetectorIsCustom && form.pipeline !== 'soccermaster' ? <span className="switcher-status-badge">custom detector active</span> : null}
         </button>
       </section>
 
@@ -1841,23 +1852,40 @@ export default function App() {
             </label>
 
             <label>
-              <FieldLabel label="Detector weights" entry={helpIndex.get('analysis.detector_weights')} />
-              <input
-                list="detector-models"
-                type="text"
-                value={form.detectorModel}
-                onChange={(event) => updateForm('detectorModel', event.target.value)}
-              />
+              <FieldLabel label="Pipeline" entry={helpIndex.get('analysis.pipeline')} />
+              <select value={form.pipeline || 'classic'} onChange={(event) => updateForm('pipeline', event.target.value)}>
+                {(config.pipeline_options || ['classic']).map((item) => (
+                  <option key={item} value={item}>
+                    {PIPELINE_LABELS[item] || item}
+                  </option>
+                ))}
+              </select>
             </label>
-            {activeDetectorIsCustom ? (
-              <div className="active-detector-banner">
-                <div className="micro-label">Active detector override</div>
-                <div className="active-detector-name">{activeDetectorLabel}</div>
-                <div className="field-note">
-                  Live preview and analysis runs will use this activated checkpoint while the selector remains on `soccana`.
-                </div>
-              </div>
-            ) : null}
+            {form.pipeline !== 'soccermaster' && (
+              <>
+                <label>
+                  <FieldLabel label="Detector weights" entry={helpIndex.get('analysis.detector_weights')} />
+                  <input
+                    list="detector-models"
+                    type="text"
+                    value={form.detectorModel}
+                    onChange={(event) => updateForm('detectorModel', event.target.value)}
+                  />
+                </label>
+                <datalist id="detector-models">
+                  {detectorModelOptions.map((item) => <option key={item} value={item} />)}
+                </datalist>
+                {activeDetectorIsCustom ? (
+                  <div className="active-detector-banner">
+                    <div className="micro-label">Active detector override</div>
+                    <div className="active-detector-name">{activeDetectorLabel}</div>
+                    <div className="field-note">
+                      Live preview and analysis runs will use this activated checkpoint while the selector remains on `soccana`.
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
 
             <label>
               <FieldLabel label="Player tracker" entry={helpIndex.get('analysis.player_tracker')} />
@@ -1869,10 +1897,6 @@ export default function App() {
                 ))}
               </select>
             </label>
-
-            <datalist id="detector-models">
-              {detectorModelOptions.map((item) => <option key={item} value={item} />)}
-            </datalist>
 
             <div className="checkbox-row">
               <label className="checkbox-item">

@@ -140,6 +140,7 @@ Use this tab to inspect detector fine-tuning jobs:
 
 - queued / running / completed / failed status
 - progress
+- AI training review with collapsible sections for run outcome, dataset contract, training dynamics, validation signal, and artifact readiness
 - logs
 - metrics
 - generated dataset manifest path

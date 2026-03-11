@@ -22,6 +22,7 @@ function createState(overrides = {}) {
       stopJobId: '',
       activateRunId: '',
       activateDetectorId: '',
+      refreshAnalysisRunId: '',
     },
     errors: {
       global: '',
@@ -77,4 +78,19 @@ test('operation errors clear when the operator starts a fresh activation flow', 
 
   assert.equal(nextState.errors.operation, '');
   assert.equal(nextState.pending.activateRunId, 'run-1');
+});
+
+test('training analysis refresh tracks the pending run without clearing unrelated selection state', () => {
+  const refreshState = trainingStudioReducer(
+    createState({ selectedJobId: 'job-7' }),
+    { type: 'analysis/refresh/start', runId: 'run-7' },
+  );
+
+  const finishedState = trainingStudioReducer(refreshState, {
+    type: 'analysis/refresh/end',
+  });
+
+  assert.equal(refreshState.pending.refreshAnalysisRunId, 'run-7');
+  assert.equal(refreshState.selectedJobId, 'job-7');
+  assert.equal(finishedState.pending.refreshAnalysisRunId, '');
 });

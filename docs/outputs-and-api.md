@@ -26,6 +26,7 @@ backend/training_runs/<run_id>/
   dataset_runtime.yaml
   progress.json
   summary.json
+  training_analysis_ai.json
   training_provenance.json
   train.log
   job_state.json
@@ -59,6 +60,7 @@ The Training Studio reads job state from the persisted run folder and surfaces t
 | `dataset_runtime.yaml` | always for a started run | Run-local training manifest handed to Ultralytics |
 | `progress.json` | during and after worker execution | Structured progress handoff from worker to manager |
 | `summary.json` | always after run creation | Main training contract used by Training Studio |
+| `training_analysis_ai.json` | after terminal-status AI review generation | Persisted AI or heuristic training-review artifact with prompt context |
 | `training_provenance.json` | after dataset inputs are prepared | Compact lineage record for dataset path, promoted checkpoint, and DVC-tracked state |
 | `train.log` | always after worker launch | Full training subprocess log |
 | `weights/best.pt` | on successful run | Best detector checkpoint |
@@ -220,6 +222,20 @@ The saved training summary is the main contract between backend and Training Stu
 - `best_checkpoint`
 - `training_provenance_path`
 - `training_provenance`
+- `training_analysis_source`
+- `training_analysis_provider`
+- `training_analysis_model`
+- `training_analysis_status`
+- `training_analysis_summary_line`
+- `training_analysis_error`
+- `training_analysis_json`
+- `training_analysis_prompt_version`
+- `training_analysis_current_prompt_version`
+- `training_analysis_stale`
+- `training_analysis_stale_reason`
+- `training_analysis_overall_status`
+- `training_analysis_activation_recommendation`
+- `training_analysis_sections`
 
 ### Artifact paths
 
@@ -228,6 +244,7 @@ The saved training summary is the main contract between backend and Training Stu
 - `artifacts.dataset_scan`
 - `artifacts.generated_dataset_yaml`
 - `artifacts.training_provenance`
+- `artifacts.training_analysis`
 - `artifacts.train_log`
 - `artifacts.progress`
 - `artifacts.weights_dir`

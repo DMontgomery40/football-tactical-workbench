@@ -22,6 +22,11 @@ This repository is a browser-first football analysis tool. Keep the UI and the b
 
 Do not reintroduce the earlier manual homography-point workflow unless the user explicitly asks for it.
 
+## Read First
+
+- Read `README.md` first for the current product surface, startup flow, and doc links before making broad repo assumptions.
+- For training durability or registry changes, also read `docs/workflows.md` and `docs/outputs-and-api.md`.
+
 ## Repository map
 
 - `backend/app/main.py`
@@ -43,15 +48,36 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
   - sparse appearance embedding extraction
   - field-aware player association
   - post-pass tracklet stitching
+- `backend/app/training.py`
+  - Training Studio dataset scan
+  - runtime dataset manifest generation
+  - training artifact collection
+- `backend/app/training_manager.py`
+  - detector fine-tuning job lifecycle
+  - persisted training summaries and logs
+- `backend/app/training_registry.py`
+  - local detector registry
+  - active-detector activation and validation
+- `backend/app/training_provenance.py`
+  - DVC runtime probing
+  - compact training lineage artifacts
+  - promoted detector checkpoint staging
 - `backend/models/`
   - local model cache
   - active detector: `backend/models/soccana/Model/weights/best.pt`
   - active field model: `backend/models/soccana_keypoint/Model/weights/best.pt`
+- `backend/models/promoted/`
+  - activated custom detector checkpoints copied from completed training runs
+  - paired `training_provenance.json` files for durable lineage
 - `backend/runs/<run_id>/outputs/`
   - generated overlays, CSVs, and summaries
+- `backend/training_runs/<run_id>/`
+  - persisted training configs, logs, summaries, manifests, checkpoints, and provenance
 - `frontend/src/App.jsx`
   - primary app UI
   - if the backend contract changes, this file usually needs to change too
+- `frontend/src/trainingStudio/`
+  - Training Studio shell, jobs, registry, and durable-artifact review UI
 - `frontend/src/styles.css`
   - styling for the single-page UI
 
@@ -69,6 +95,10 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Warn-level AI diagnostics should identify the exact function / condition / fallback most likely responsible and propose a concrete code change, not just tell the user to inspect an area.
 - When tracking changes, keep `raw_*` and stitched identity metrics both available in `summary.json` so regression review can compare them.
 - If you change the exported summary shape, update the frontend in the same turn.
+- Training Studio is detector-fine-tuning only right now. Do not add inactive training-family toggles just to hint at future work.
+- Activated custom detectors should resolve from `backend/models/promoted/custom_<run_id>/best.pt`, not only from the transient training run folder.
+- `training_provenance.json` is the compact lineage artifact for dataset path, generated manifest, promoted checkpoint, activation metadata, and DVC tracked/untracked state. Keep it aligned with the registry and Training Studio UI.
+- DVC is an optional durability layer, not a silent requirement for local training. Surface whether DVC is ready, configured-without-CLI, or absent rather than hiding that state.
 
 ## Frontend rules
 
@@ -95,6 +125,8 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Do not add controls that the backend no longer uses.
 - Avoid stale or duplicate controls. If a workflow is removed backend-side, remove its UI.
 - If the UI starts getting worse from incremental patches, prefer a coherent refactor over more local fixes.
+- In Training Studio, durable-artifact state belongs in the product surface. Do not hide training provenance, promoted checkpoint paths, or DVC tracked/untracked state behind logs alone.
+- Pretrained `soccana` and activated custom detectors are not the same thing. Preserve that distinction visually in the registry.
 
 ## Error handling rules
 

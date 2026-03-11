@@ -76,6 +76,9 @@ KEYPOINT_MODEL_SOURCES = {
         "repo_id": "Adit-jain/Soccana_Keypoint",
         "filename": "Model/weights/best.pt",
     },
+    "soccermaster": {
+        "local": True,  # weights managed by soccermaster_adapter, not HF download
+    },
 }
 
 PLAYER_MODEL_OPTIONS = [
@@ -85,6 +88,20 @@ PLAYER_MODEL_OPTIONS = [
 BALL_MODEL_OPTIONS = [
     "shared-detector",
 ]
+
+PIPELINE_OPTIONS = {
+    "classic": {
+        "label": "Classic (soccana + soccana_keypoint)",
+        "detector": "yolo",
+        "calibration": "yolo_keypoint",
+    },
+    "soccermaster": {
+        "label": "SoccerMaster (unified detection + calibration)",
+        "detector": "soccermaster",
+        "calibration": "soccermaster",
+    },
+}
+DEFAULT_PIPELINE = "classic"
 
 PITCH_LENGTH_CM = 12000.0
 PITCH_WIDTH_CM = 7000.0
@@ -1126,10 +1143,15 @@ def checkpoint_job_control(job_control: Any, job_id: str, job_manager: Any) -> N
 
 def detect_pitch_homography(
     frame: np.ndarray,
-    keypoint_model: YOLO,
+    keypoint_model: YOLO | str,
     device: str,
     confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE,
 ) -> tuple[np.ndarray | None, np.ndarray | None, int, int, float]:
+    # Dispatch to SoccerMaster adapter when using that model
+    if isinstance(keypoint_model, str) and keypoint_model == "soccermaster":
+        from app.soccermaster_adapter import detect_pitch_homography_soccermaster
+        return detect_pitch_homography_soccermaster(frame, device=device, confidence_threshold=0.15)
+
     results = keypoint_model(source=frame, conf=0.05, device=device, verbose=False)
     if not results:
         return None, None, 0, 0, float("inf")
@@ -1680,7 +1702,106 @@ def detect_players_for_frame(
     return detections
 
 
+# ---------------------------------------------------------------------------
+# SoccerMaster pipeline helpers (shared by live-preview and analyze)
+# ---------------------------------------------------------------------------
+
+
+def _homography_from_soccermaster_keypoints(
+    kp_arr: np.ndarray,
+    frame_width: int,
+    frame_height: int,
+    confidence_threshold: float = 0.15,
+) -> tuple[np.ndarray | None, np.ndarray | None, int, int, float]:
+    """Compute homography from SoccerMaster keypoints array (57,3).
+
+    Returns the same 5-tuple as detect_pitch_homography:
+        (homography_matrix, keypoints, visible_count, inlier_count, reprojection_error)
+    """
+    from app.soccermaster_adapter import SOCCERMASTER_WORLD_COORDS_PIPELINE
+
+    valid_mask = kp_arr[:, 2] >= confidence_threshold
+    visible_count = int(valid_mask.sum())
+    if visible_count < 4:
+        return None, kp_arr, visible_count, 0, float("inf")
+
+    image_points = kp_arr[valid_mask, :2].astype(np.float32)
+    field_points = SOCCERMASTER_WORLD_COORDS_PIPELINE[valid_mask].astype(np.float32)
+
+    homography_matrix, inlier_mask = cv2.findHomography(image_points, field_points, cv2.RANSAC, 35.0)
+    inlier_count = int(inlier_mask.sum()) if inlier_mask is not None else visible_count
+    if homography_matrix is None or inlier_count < 4:
+        return None, kp_arr, visible_count, inlier_count, float("inf")
+
+    projected = cv2.perspectiveTransform(
+        image_points.reshape(-1, 1, 2), homography_matrix.astype(np.float32)
+    ).reshape(-1, 2)
+    errors = np.linalg.norm(projected - field_points, axis=1)
+    reprojection_error = float(errors.mean())
+
+    return homography_matrix.astype(np.float32), kp_arr, visible_count, inlier_count, reprojection_error
+
+
+def _soccermaster_player_detections(
+    sm_detections: list[dict[str, Any]],
+    frame_width: int,
+    frame_height: int,
+    field_homography: np.ndarray | None,
+    frame_index: int,
+    tracker_mode: str,
+    player_tracker: HybridReIDTracker | None,
+    frame: np.ndarray,
+) -> list[dict[str, Any]]:
+    """Convert SoccerMaster detections (players + goalkeepers) into the pipeline
+    detection format and optionally run the HybridReIDTracker."""
+    detections: list[dict[str, Any]] = []
+    for det in sm_detections:
+        role = det.get("role", "")
+        if role not in ("player", "goalkeeper"):
+            continue
+        x1, y1, x2, y2 = det["bbox"]
+        x1, y1, x2, y2 = clamp_box((x1, y1, x2, y2), frame_width, frame_height)
+        anchor = (float((x1 + x2) / 2.0), float(y2))
+        detections.append({
+            "track_id": -1,
+            "confidence": float(det["confidence"]),
+            "bbox": (x1, y1, x2, y2),
+            "anchor": anchor,
+            "field_point": project_point(anchor, field_homography),
+            "identity_feature": None,
+        })
+    if tracker_mode != BYTETRACK_PLAYER_TRACKER_MODE and player_tracker is not None:
+        assigned_track_ids = player_tracker.update(frame, detections, frame_index)
+        for detection, track_id in zip(detections, assigned_track_ids):
+            detection["track_id"] = int(track_id)
+    return detections
+
+
+def _soccermaster_best_ball(
+    sm_detections: list[dict[str, Any]],
+    frame_width: int,
+    frame_height: int,
+) -> dict[str, Any] | None:
+    """Extract the highest-confidence ball detection from SoccerMaster output."""
+    ball_dets = [d for d in sm_detections if d.get("role") == "ball"]
+    if not ball_dets:
+        return None
+    best = max(ball_dets, key=lambda d: d["confidence"])
+    x1, y1, x2, y2 = best["bbox"]
+    x1, y1, x2, y2 = clamp_box((x1, y1, x2, y2), frame_width, frame_height)
+    return {
+        "track_id": -1,
+        "confidence": float(best["confidence"]),
+        "bbox": (x1, y1, x2, y2),
+        "anchor": (float((x1 + x2) / 2.0), float((y1 + y2) / 2.0)),
+        "pitch_point": None,
+    }
+
+
 def generate_live_preview_stream(source_video_path: Path, config_payload: dict[str, Any]):
+    pipeline = str(config_payload.get("pipeline") or DEFAULT_PIPELINE)
+    use_soccermaster = pipeline == "soccermaster"
+
     detector_spec = resolve_detector_spec(str(config_payload.get("player_model") or DETECTOR_MODEL_DEFAULT))
     include_ball = bool(config_payload["include_ball"])
     player_conf = float(config_payload["player_conf"])
@@ -1690,9 +1811,25 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
 
     detector_device = choose_device()
     keypoint_device = choose_keypoint_device(detector_device)
-    player_model = YOLO(detector_spec["weights_path"])
-    ball_model: YOLO | None = YOLO(detector_spec["weights_path"]) if include_ball else None
-    keypoint_model = YOLO(resolve_model_path(KEYPOINT_MODEL_DEFAULT, "keypoint"))
+
+    # --- Model loading: soccermaster uses unified pipeline, classic uses YOLO ---
+    sm_pipeline = None
+    player_model = None
+    ball_model: YOLO | None = None
+    keypoint_model: YOLO | str = "soccermaster"
+
+    if use_soccermaster:
+        from app.soccermaster_adapter import get_soccermaster_pipeline
+        sm_pipeline = get_soccermaster_pipeline(device=detector_device)
+        sm_pipeline.load()
+    else:
+        player_model = YOLO(detector_spec["weights_path"])
+        ball_model = YOLO(detector_spec["weights_path"]) if include_ball else None
+        keypoint_model_name = str(config_payload.get("keypoint_model") or KEYPOINT_MODEL_DEFAULT)
+        if keypoint_model_name == "soccermaster":
+            keypoint_model = "soccermaster"
+        else:
+            keypoint_model = YOLO(resolve_model_path(keypoint_model_name, "keypoint"))
 
     cap = cv2.VideoCapture(str(source_video_path))
     if not cap.isOpened():
@@ -1738,8 +1875,16 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             if not ok:
                 break
 
+            # --- SoccerMaster unified path: one forward pass for detection + calibration ---
+            sm_frame_result = None
+            if use_soccermaster:
+                sm_frame_result = sm_pipeline.detect_frame(frame, det_confidence=player_conf, nms_iou=iou)
+
             if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:
-                homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
+                if use_soccermaster and sm_frame_result is not None:
+                    homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = _homography_from_soccermaster_keypoints(sm_frame_result["keypoints"], frame_width, frame_height)
+                else:
+                    homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
                 calibration_was_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)
                 stale_recovery_mode = calibration_was_stale and field_homography is not None
                 min_visible_count = calibration_visible_keypoint_minimum(stale_recovery_mode)
@@ -1776,20 +1921,26 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
             current_players: list[dict[str, Any]] = []
             current_ball: dict[str, Any] | None = None
 
-            player_detections = detect_players_for_frame(
-                frame=frame,
-                player_model=player_model,
-                detector_spec=detector_spec,
-                detector_device=detector_device,
-                player_conf=player_conf,
-                iou=iou,
-                frame_width=frame_width,
-                frame_height=frame_height,
-                field_homography=projection_homography,
-                frame_index=frame_index,
-                tracker_mode=tracker_mode,
-                player_tracker=player_tracker,
-            )
+            if use_soccermaster and sm_frame_result is not None:
+                player_detections = _soccermaster_player_detections(
+                    sm_frame_result["detections"], frame_width, frame_height, projection_homography,
+                    frame_index, tracker_mode, player_tracker, frame,
+                )
+            else:
+                player_detections = detect_players_for_frame(
+                    frame=frame,
+                    player_model=player_model,
+                    detector_spec=detector_spec,
+                    detector_device=detector_device,
+                    player_conf=player_conf,
+                    iou=iou,
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    field_homography=projection_homography,
+                    frame_index=frame_index,
+                    tracker_mode=tracker_mode,
+                    player_tracker=player_tracker,
+                )
             for detection in player_detections:
                 x1, y1, x2, y2 = detection["bbox"]
                 track_id = int(detection["track_id"])
@@ -1810,7 +1961,11 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
                     }
                 )
 
-            if include_ball and ball_model is not None:
+            if use_soccermaster and sm_frame_result is not None:
+                # Ball from SoccerMaster detections (role == "ball")
+                if include_ball:
+                    current_ball = _soccermaster_best_ball(sm_frame_result["detections"], frame_width, frame_height)
+            elif include_ball and ball_model is not None:
                 ball_results = ball_model.track(
                     source=frame,
                     persist=True,
@@ -1978,6 +2133,9 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
 
 
 def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], job_manager: Any, job_control: Any | None = None) -> dict[str, Any]:
+    pipeline = str(config_payload.get("pipeline") or DEFAULT_PIPELINE)
+    use_soccermaster = pipeline == "soccermaster"
+
     source_video_path = Path(config_payload["source_video_path"])
     label_path = str(config_payload.get("label_path") or "").strip()
     player_model_name = str(config_payload["player_model"])
@@ -2006,6 +2164,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     full_outputs_zip_path = outputs_dir / "all_outputs.zip"
 
     job_manager.log(job_id, f"Opening video: {source_video_path}")
+    if use_soccermaster:
+        job_manager.log(job_id, "Pipeline: SoccerMaster (unified detection + calibration)")
     detector_device = choose_device()
     keypoint_device = choose_keypoint_device(detector_device)
     job_manager.log(job_id, f"Detector device chosen: {detector_device}")
@@ -2028,11 +2188,28 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     manual_homography_matrix, _ = compute_homography_matrix(homography_points, minimap_width, minimap_height)
     detector_spec = resolve_detector_spec(player_model_name)
     detector_path = detector_spec["weights_path"]
-    keypoint_model_path = resolve_model_path(KEYPOINT_MODEL_DEFAULT, "keypoint")
-    job_manager.log(job_id, f"Loading detector weights: {detector_spec['name']}")
-    job_manager.log(job_id, f"Loading field calibration weights: {KEYPOINT_MODEL_DEFAULT}")
-    keypoint_model = YOLO(keypoint_model_path)
-    player_model = YOLO(detector_path)
+    keypoint_model_name = str(config_payload.get("keypoint_model") or KEYPOINT_MODEL_DEFAULT)
+
+    # --- Model loading: soccermaster vs classic ---
+    sm_pipeline = None
+    player_model = None
+    keypoint_model: YOLO | str = "soccermaster"
+    ball_model: YOLO | None = None
+
+    if use_soccermaster:
+        from app.soccermaster_adapter import get_soccermaster_pipeline
+        sm_pipeline = get_soccermaster_pipeline(device=detector_device)
+        sm_pipeline.load()
+        job_manager.log(job_id, "SoccerMaster unified pipeline loaded")
+    else:
+        job_manager.log(job_id, f"Loading detector weights: {detector_spec['name']}")
+        job_manager.log(job_id, f"Loading field calibration weights: {keypoint_model_name}")
+        if keypoint_model_name == "soccermaster":
+            keypoint_model = "soccermaster"
+        else:
+            keypoint_model = YOLO(resolve_model_path(keypoint_model_name, "keypoint"))
+        player_model = YOLO(detector_path)
+
     player_tracker = (
         HybridReIDTracker(
             fps=fps,
@@ -2049,24 +2226,25 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         f"Player tracker mode resolved to {tracker_mode_name} ({tracker_runtime_label})"
         + (f" from requested '{requested_tracker_mode}'" if requested_tracker_mode else " from default"),
     )
-    job_manager.log(
-        job_id,
-        "Detector class ids: "
-        f"players [{format_class_id_list(detector_spec['player_class_ids'], detector_spec['class_names'])}] · "
-        f"ball [{format_class_id_list(detector_spec['ball_class_ids'], detector_spec['class_names'])}] · "
-        f"referee [{format_class_id_list(detector_spec['referee_class_ids'], detector_spec['class_names'])}] "
-        f"from {detector_spec['class_names_source']}",
-    )
+    if not use_soccermaster:
+        job_manager.log(
+            job_id,
+            "Detector class ids: "
+            f"players [{format_class_id_list(detector_spec['player_class_ids'], detector_spec['class_names'])}] · "
+            f"ball [{format_class_id_list(detector_spec['ball_class_ids'], detector_spec['class_names'])}] · "
+            f"referee [{format_class_id_list(detector_spec['referee_class_ids'], detector_spec['class_names'])}] "
+            f"from {detector_spec['class_names_source']}",
+        )
     if player_tracker is not None:
         job_manager.log(job_id, f"Identity embedding source: {tracker_backend['embedding_source']}")
         if tracker_backend.get("embedding_error"):
             job_manager.log(job_id, f"Identity embedding fallback active: {tracker_backend['embedding_error']}")
-    ball_model: YOLO | None = None
-    if include_ball:
-        job_manager.log(job_id, "Ball tracking enabled through the shared football detector")
-        ball_model = YOLO(detector_path)
-    else:
-        job_manager.log(job_id, "Ball stage disabled")
+    if not use_soccermaster:
+        if include_ball:
+            job_manager.log(job_id, "Ball tracking enabled through the shared football detector")
+            ball_model = YOLO(detector_path)
+        else:
+            job_manager.log(job_id, "Ball stage disabled")
 
     frame_records: list[dict[str, Any]] = []
     player_rows_by_track: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -2122,7 +2300,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         if not ok:
             break
 
-        if raw_detector_debug_sample_frames < DETECTOR_DEBUG_SAMPLE_FRAMES:
+        # --- SoccerMaster unified path: one forward pass for detection + calibration ---
+        sm_frame_result = None
+        if use_soccermaster:
+            sm_frame_result = sm_pipeline.detect_frame(frame, det_confidence=player_conf, nms_iou=iou)
+
+        if not use_soccermaster and raw_detector_debug_sample_frames < DETECTOR_DEBUG_SAMPLE_FRAMES:
             raw_box_count, raw_class_histogram = sample_detector_class_histogram(
                 frame=frame,
                 detector_model=player_model,
@@ -2142,7 +2325,10 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         calibration_refresh_debug: dict[str, Any] | None = None
         if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or active_field_homography is None:
             calibration_refresh_attempts += 1
-            homography_candidate, _detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
+            if use_soccermaster and sm_frame_result is not None:
+                homography_candidate, _detected_keypoints, visible_count, inlier_count, reprojection_error = _homography_from_soccermaster_keypoints(sm_frame_result["keypoints"], frame_width, frame_height)
+            else:
+                homography_candidate, _detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)
             calibration_visible_counts.append(visible_count)
             calibration_inlier_counts.append(inlier_count)
             calibration_was_stale = calibration_stale_for_frame(active_field_homography, last_good_calibration_frame, frame_index)
@@ -2298,20 +2484,26 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         current_inlier_count = calibration_inlier_counts[-1] if calibration_inlier_counts else 0
         projected_player_in_frame = False
 
-        player_detections = detect_players_for_frame(
-            frame=frame,
-            player_model=player_model,
-            detector_spec=detector_spec,
-            detector_device=detector_device,
-            player_conf=player_conf,
-            iou=iou,
-            frame_width=frame_width,
-            frame_height=frame_height,
-            field_homography=projection_homography,
-            frame_index=frame_index,
-            tracker_mode=tracker_mode,
-            player_tracker=player_tracker,
-        )
+        if use_soccermaster and sm_frame_result is not None:
+            player_detections = _soccermaster_player_detections(
+                sm_frame_result["detections"], frame_width, frame_height, projection_homography,
+                frame_index, tracker_mode, player_tracker, frame,
+            )
+        else:
+            player_detections = detect_players_for_frame(
+                frame=frame,
+                player_model=player_model,
+                detector_spec=detector_spec,
+                detector_device=detector_device,
+                player_conf=player_conf,
+                iou=iou,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                field_homography=projection_homography,
+                frame_index=frame_index,
+                tracker_mode=tracker_mode,
+                player_tracker=player_tracker,
+            )
         if player_detections:
             frames_with_player_anchors += 1
         elif projection_homography is not None:
@@ -2361,7 +2553,38 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         if projected_player_in_frame:
             frames_with_projected_points += 1
 
-        if include_ball and ball_model is not None:
+        if use_soccermaster and sm_frame_result is not None and include_ball:
+            sm_ball = _soccermaster_best_ball(sm_frame_result["detections"], frame_width, frame_height)
+            if sm_ball is not None:
+                x1, y1, x2, y2 = sm_ball["bbox"]
+                track_id = sm_ball["track_id"]
+                confidence = float(sm_ball["confidence"])
+                anchor_x, anchor_y = sm_ball["anchor"]
+                field_point = project_point((anchor_x, anchor_y), projection_homography)
+                pitch_point = field_point_to_minimap(field_point, minimap_width, minimap_height)
+                frame_ball = {
+                    "frame_index": frame_index,
+                    "row_type": "ball",
+                    "track_id": track_id,
+                    "class_name": "ball",
+                    "confidence": confidence,
+                    "bbox": (x1, y1, x2, y2),
+                    "anchor": (anchor_x, anchor_y),
+                    "team_label": "",
+                    "team_vote_ratio": 0.0,
+                    "field_point": field_point,
+                    "pitch_point": pitch_point,
+                }
+                if track_id >= 0:
+                    ball_track_ids_seen.add(track_id)
+                if field_point is not None:
+                    if calibration_is_stale:
+                        projected_ball_points_stale += 1
+                    else:
+                        projected_ball_points_fresh += 1
+                ball_detection_count = 1
+                ball_row_count += 1
+        elif include_ball and ball_model is not None:
             ball_results = ball_model.track(
                 source=frame,
                 persist=True,
@@ -3277,6 +3500,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
 
     summary = {
         "summary_version": SUMMARY_SCHEMA_VERSION,
+        "pipeline": pipeline,
         "job_id": job_id,
         "run_dir": str(run_dir),
         "input_video": str(source_video_path),
@@ -3305,7 +3529,7 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         "referee_detector_class_ids": list(detector_spec["referee_class_ids"]),
         "ball_model": detector_spec["name"] if include_ball else "off",
         "ball_tracker_mode": DEFAULT_TRACKER,
-        "field_calibration_model": KEYPOINT_MODEL_DEFAULT,
+        "field_calibration_model": keypoint_model_name,
         "include_ball": include_ball,
         "player_conf": player_conf,
         "ball_conf": ball_conf,

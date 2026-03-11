@@ -11,6 +11,12 @@ function resolveArtifactHelpEntry(key, helpIndex, fallbackEntry) {
   if (normalized.includes('dataset') && (normalized.includes('yaml') || normalized.includes('manifest'))) {
     return helpIndex?.get('training.dataset_yaml') || fallbackEntry;
   }
+  if (normalized.includes('provenance') || normalized.includes('promoted')) {
+    return helpIndex?.get('training.training_provenance') || fallbackEntry;
+  }
+  if (normalized.includes('analysis')) {
+    return helpIndex?.get('training.ai_review') || fallbackEntry;
+  }
   if (normalized.includes('metric') || normalized.includes('result')) {
     return helpIndex?.get('training.job_metrics') || fallbackEntry;
   }

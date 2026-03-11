@@ -7,7 +7,8 @@ export const STUDIO_TABS = [
   { id: 'registry', label: 'Registry' },
 ];
 
-export const ACTIVE_JOB_STATUSES = new Set(['queued', 'running', 'stopping']);
+export const POLLING_JOB_STATUSES = new Set(['queued', 'running', 'stopping', 'finalizing']);
+export const STOPPABLE_JOB_STATUSES = new Set(['queued', 'running', 'stopping']);
 
 export const STORAGE_KEYS = {
   datasetPath: 'fpw.trainingDatasetPath',
@@ -49,7 +50,7 @@ function resolveSelectedJobId(currentId, jobs) {
   if (currentId && jobs.some((job) => job.job_id === currentId)) {
     return currentId;
   }
-  const activeJob = jobs.find((job) => ACTIVE_JOB_STATUSES.has(String(job?.status || '')));
+  const activeJob = jobs.find((job) => POLLING_JOB_STATUSES.has(String(job?.status || '')));
   return activeJob?.job_id || jobs[0]?.job_id || '';
 }
 
@@ -84,6 +85,7 @@ export function createInitialStudioState() {
       stopJobId: '',
       activateRunId: '',
       activateDetectorId: '',
+      refreshAnalysisRunId: '',
     },
     errors: {
       global: '',
@@ -264,6 +266,17 @@ export function trainingStudioReducer(state, action) {
       return {
         ...state,
         pending: { ...state.pending, activateDetectorId: '' },
+      };
+    case 'analysis/refresh/start':
+      return {
+        ...state,
+        pending: { ...state.pending, refreshAnalysisRunId: action.runId },
+        errors: { ...state.errors, jobs: '', operation: '' },
+      };
+    case 'analysis/refresh/end':
+      return {
+        ...state,
+        pending: { ...state.pending, refreshAnalysisRunId: '' },
       };
     default:
       return state;
