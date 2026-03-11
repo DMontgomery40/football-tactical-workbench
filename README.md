@@ -42,7 +42,7 @@ The current training V1 is deliberately narrower:
 - detector fine-tuning only
 - base weights default to `soccana`
 - local YOLO-style datasets only
-- on-disk JSON manifests and local run folders only
+- on-disk JSON manifests, local run folders, and optional DVC-backed durable pointers
 - no cloud training
 - no database
 - keypoint / ReID / team-classifier training are future families, not part of V1
@@ -130,7 +130,7 @@ The full UI walk-through lives in [Workflows](docs/workflows.md).
 - Backend startup prewarms the default detector and field-calibration models from the local cache or model source.
 - On Apple Silicon, detector inference prefers MPS while field calibration still falls back to CPU.
 - Training jobs run in isolated Python subprocesses and persist their own `config.json`, `dataset_scan.json`, `dataset_runtime.yaml`, `train.log`, `summary.json`, and artifacts inside `backend/training_runs/<run_id>/`.
-- Completed detector runs are added to the local detector registry, and a promoted checkpoint becomes the active detector for analysis whenever the analysis selector remains on `soccana`.
+- Completed detector runs are added to the local detector registry, and an activated checkpoint is copied into `backend/models/promoted/custom_<run_id>/` with `training_provenance.json` before it becomes the active detector for analysis whenever the analysis selector remains on `soccana`.
 - The app stores analysis sources, analysis job snapshots, and training job snapshots on disk so restarts do not silently wipe state.
 - AI diagnostics remain a real post-run path. If a provider is configured, completed analysis runs get AI-curated run briefs and diagnostics; otherwise they fall back to heuristic diagnostics.
 - Warn-level diagnostics include a collapsed code drilldown in review with the likely failing function and a concrete code change to try next.

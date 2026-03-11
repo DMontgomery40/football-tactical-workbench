@@ -1,0 +1,2 @@
+/private/tmp/fpw_train_valid_v1/images/val/val_00.jpg
+/private/tmp/fpw_train_valid_v1/images/val/val_01.jpg

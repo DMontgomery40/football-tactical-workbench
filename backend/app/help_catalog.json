@@ -727,8 +727,8 @@
     "title": "Runtime behavior",
     "summary": "This explains what the worker writes while the run is active and why those files matter after training ends.",
     "body": [
-      "Each run gets its own folder under `backend/training_runs/<run_id>/`. The worker writes a generated `dataset_runtime.yaml`, split text files, `progress.json`, `train.log`, Ultralytics output under `yolo_output/train/`, a copied `weights/best.pt`, and a top-level `summary.json`.",
-      "Those files are the audit trail for Jobs and Registry. They let the studio reconstruct what was trained, with which device, against which dataset contract, without touching the original dataset folder."
+      "Each run gets its own folder under `backend/training_runs/<run_id>/`. The worker writes a generated `dataset_runtime.yaml`, split text files, `progress.json`, `train.log`, Ultralytics output under `yolo_output/train/`, a copied `weights/best.pt`, a top-level `summary.json`, and a compact `training_provenance.json`.",
+      "When you activate a detector, the studio also copies the checkpoint into `backend/models/promoted/custom_<run_id>/` and writes matching provenance there. That gives Registry a stable promotion target instead of relying only on the transient run folder."
     ],
     "targets": [
       "training.runtime_behavior"
@@ -803,7 +803,7 @@
     "summary": "Run artifacts are the files that let you audit or reuse a training job after the process exits.",
     "body": [
       "Different artifact rows answer different questions. A generated dataset manifest tells you what `data=` contract the worker really trained on. Curves, CSVs, and plots show how optimization moved. Logs explain runtime decisions and failures. Checkpoints are the files you can actually promote.",
-      "If a run is worth keeping or activating, the artifact set should be enough to reconstruct what was trained, with what evidence, without guessing from folder names alone."
+      "The provenance artifact matters because it ties the dataset path, run-local manifest, promoted checkpoint, and DVC-tracked or non-tracked state into one compact record. If a run is worth keeping, the artifact set should be enough to reconstruct what happened without guessing from folder names alone."
     ],
     "targets": [
       "training.job_artifacts"
@@ -833,9 +833,9 @@
     "title": "Detector registry",
     "summary": "The registry is the promotion layer that decides which detector the analysis workspace actually trusts.",
     "body": [
-      "A completed run becomes a registry candidate, not an automatic default. The registry is where the operator compares lineage, runtime, metrics, class compatibility, and artifact trail before changing the detector that analysis will use.",
+      "A completed run becomes a registry candidate, not an automatic default. The registry is where the operator compares lineage, runtime, metrics, class compatibility, promotion path, and artifact trail before changing the detector that analysis will use.",
       "This matters because activation is a product decision, not just a training outcome. A detector can finish training cleanly and still be the wrong default if its metrics are misleading or its football behavior regresses in the overlay.",
-      "Read the registry as a shortlist of candidates plus one active choice. The quality bar is not just whether the checkpoint exists, but whether it is the right checkpoint to push into day-to-day analysis."
+      "Read the registry as a shortlist of candidates plus one active choice. The quality bar is not just whether the checkpoint exists, but whether it is the right checkpoint to push into day-to-day analysis and whether its provenance is durable enough to trust later."
     ],
     "targets": [
       "training.registry"
@@ -1448,7 +1448,7 @@
     "summary": "This is the machine-readable record of the training run that the studio reopens later instead of scraping raw logs.",
     "body": [
       "`summary.json` ties together config, dataset scan snapshot, generated dataset manifest, validation strategy, resolved device, metrics, curves, artifact paths, and checkpoint outcome.",
-      "That file is why the Jobs and Registry surfaces can stay product-like. It gives the UI one durable place to read what happened and what should be promoted."
+      "The summary is the broad run contract. `training_provenance.json` is the narrower lineage contract for durable artifacts. Together they let Jobs and Registry stay product-like without scraping logs or inferring promotion history from paths."
     ],
     "targets": [
       "training.run_summary_artifact"
@@ -1470,6 +1470,68 @@
         "label": "Ultralytics repository",
         "url": "https://github.com/ultralytics/ultralytics",
         "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.durable_artifacts",
+    "title": "Durable training artifacts",
+    "summary": "Durable artifacts are the files that should still make sense after the original training process and local shell session are long gone.",
+    "body": [
+      "A local run folder is useful, but activation is where the artifact needs to become trustworthy for the product. In this studio, that means copying the active checkpoint into `backend/models/promoted/custom_<run_id>/` and writing a compact provenance file beside it.",
+      "DVC is the optional durability layer around that. When a dataset folder or promoted checkpoint has a `.dvc` pointer, the studio can show whether the artifact is just a local path or a versioned asset you can restore and compare later."
+    ],
+    "targets": [
+      "training.durable_artifacts"
+    ],
+    "links": [
+      {
+        "label": "DVC get started",
+        "url": "https://dvc.org/doc/start",
+        "kind": "docs"
+      },
+      {
+        "label": "DVC data management",
+        "url": "https://dvc.org/doc/use-cases/data-pipelines/data-management",
+        "kind": "docs"
+      }
+    ]
+  },
+  {
+    "id": "training.dvc_status",
+    "title": "DVC runtime status",
+    "summary": "This tells you whether the repository is configured for DVC and whether the local CLI is available to restore or inspect tracked artifacts.",
+    "body": [
+      "A `ready` state means both sides exist: the repo has `.dvc/` metadata and the local machine has a usable DVC binary. `repo configured` means the repo is prepared, but the local CLI is missing. `CLI only` means DVC exists on the machine, but this repo has not been initialized for it.",
+      "This matters because a missing CLI changes what the studio can guarantee. The run can still train, but the post-checkout restore hook and any DVC-backed artifact recovery will not actually execute on that machine."
+    ],
+    "targets": [
+      "training.dvc_status"
+    ],
+    "links": [
+      {
+        "label": "DVC command reference",
+        "url": "https://dvc.org/doc/command-reference",
+        "kind": "docs"
+      }
+    ]
+  },
+  {
+    "id": "training.training_provenance",
+    "title": "Training provenance",
+    "summary": "Training provenance is the compact lineage record that says which dataset, manifest, checkpoint, and promotion action produced the detector you are looking at.",
+    "body": [
+      "The provenance file is intentionally narrower than the full summary. It keeps the exact dataset path, generated runtime manifest, checkpoint path, activation metadata, and DVC-tracked or non-tracked state together so the operator can audit lineage quickly.",
+      "Use it to answer the uncomfortable but important questions: was this checkpoint promoted from the run I think it was, is the dataset path the expected one, and are these assets durable or just local leftovers on one machine."
+    ],
+    "targets": [
+      "training.training_provenance"
+    ],
+    "links": [
+      {
+        "label": "DVC glossary",
+        "url": "https://dvc.org/doc/user-guide/project-structure/dvc-files-and-directories",
+        "kind": "docs"
       }
     ]
   }

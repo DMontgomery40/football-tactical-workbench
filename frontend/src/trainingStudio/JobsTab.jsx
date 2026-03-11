@@ -1,5 +1,6 @@
 import { HelpPopover, MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
 import ArtifactList from './ArtifactList';
+import DurableArtifactsPanel from './DurableArtifactsPanel';
 import TrainingCurvesPanel from './TrainingCurvesPanel';
 import { ACTIVE_JOB_STATUSES } from './state';
 import { formatClassIds, formatMetric, formatTimestamp } from './formatters';
@@ -94,6 +95,12 @@ function JobDetail({
       </div>
 
       {job.error ? <div className="error-box">{job.error}</div> : null}
+
+      <DurableArtifactsPanel
+        helpIndex={helpIndex}
+        trainingProvenancePath={job.training_provenance_path}
+        trainingProvenance={job.training_provenance}
+      />
 
       <TrainingCurvesPanel trainingCurves={job.training_curves} />
 

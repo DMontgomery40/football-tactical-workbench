@@ -2307,6 +2307,8 @@
   },
   "best_checkpoint": null,
   "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_174019_20469a/training_provenance.json",
+  "training_provenance": null,
   "error": "Training process exited with code 1.     gt_boxes = gt_bboxes.unsqueeze(2).expand(-1, -1, na, -1)[mask_gt]                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^ torch.AcceleratorError: index 2048 is out of bounds: 0, range 0 to 16",
   "pid": null
 }

@@ -510,5 +510,7 @@
   },
   "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/weights/best.pt",
   "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/training_provenance.json",
+  "training_provenance": null,
   "error": null
 }

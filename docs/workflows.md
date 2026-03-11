@@ -132,6 +132,7 @@ Use this tab to launch a detector fine-tune:
 - base weights default to `soccana`
 - device can stay on `auto` or be pinned to `mps`, `cpu`, or `cuda` when available
 - the worker writes a run-local `dataset_runtime.yaml` and does not mutate the source dataset
+- the tab also shows whether DVC is ready for durable dataset or promoted-checkpoint tracking on this machine
 
 ### `Jobs`
 
@@ -144,6 +145,7 @@ Use this tab to inspect detector fine-tuning jobs:
 - generated dataset manifest path
 - artifact paths
 - best checkpoint path
+- training provenance and DVC tracked/untracked state
 
 ### `Registry`
 
@@ -155,9 +157,10 @@ Use this tab to inspect detector checkpoints that are available to analysis:
 - metrics summary
 - class ID mapping
 - checkpoint path
+- training provenance and DVC tracked/untracked state
 - activation control
 
-When a custom detector is activated here, analysis uses it whenever the analysis selector remains on `soccana`.
+When a custom detector is activated here, analysis uses it whenever the analysis selector remains on `soccana`. Activation also copies the checkpoint into `backend/models/promoted/custom_<run_id>/` and writes `training_provenance.json` beside it.
 
 ## Workflow 5: Use SoccerNet In The UI
 
@@ -196,6 +199,7 @@ You can click a discovered video chip to:
 - completed analysis runs under `backend/runs/`
 - completed detector training runs under `backend/training_runs/`
 - downloaded model weights under `backend/models/`
+- activated detector promotions under `backend/models/promoted/`
 - detector registry under `backend/models/registry.json`
 - downloaded SoccerNet files under `backend/datasets/soccernet/`
 - source registry under `backend/uploads/sources.json`

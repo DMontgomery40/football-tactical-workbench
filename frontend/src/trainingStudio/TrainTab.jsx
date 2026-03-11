@@ -1,5 +1,5 @@
 import { FieldLabel, HelpPopover, MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
-import { formatPathTail } from './formatters';
+import { formatDvcRuntime, formatPathTail } from './formatters';
 
 function resolveWorkspaceStatus(datasetPath, datasetScan, scanMatchesCurrentPath) {
   if (!datasetPath) {
@@ -190,7 +190,23 @@ export default function TrainTab({
           </div>
           <div>
             The worker gets a run-local <code>dataset_runtime.yaml</code>, writes <code>summary.json</code>, <code>train.log</code>,
-            plot artifacts, and the best checkpoint under <code>backend/training_runs/&lt;run_id&gt;/</code>.
+            plot artifacts, and the best checkpoint under <code>backend/training_runs/&lt;run_id&gt;/</code>. When you activate a run,
+            the checkpoint is also copied into <code>backend/models/promoted/custom_&lt;run_id&gt;/</code> with a matching
+            <code>training_provenance.json</code>.
+          </div>
+          <div className="studio-meta-grid compact-form-context-grid">
+            <div className="studio-context-stat">
+              <MicroLabelWithHelp label="DVC runtime" entry={helpIndex.get('training.dvc_status')} />
+              <div className="studio-meta-value">{formatDvcRuntime(trainingConfig?.dvc)}</div>
+            </div>
+            <div className="studio-context-stat">
+              <MicroLabelWithHelp label="Repo config" entry={helpIndex.get('training.durable_artifacts')} />
+              <div className="studio-meta-value">{trainingConfig?.dvc?.repo_enabled ? 'initialized' : 'not initialized'}</div>
+            </div>
+          </div>
+          <div className="muted">
+            DVC is optional for local runs, but when it is available the promoted detector folder and dataset pointers can become durable,
+            reviewable artifacts instead of one-off local paths.
           </div>
           {trainingConfig?.device_guidance ? <div className="muted">{trainingConfig.device_guidance}</div> : null}
         </div>

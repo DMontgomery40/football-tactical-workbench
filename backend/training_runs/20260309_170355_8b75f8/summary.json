@@ -2007,5 +2007,7 @@
   },
   "best_checkpoint": null,
   "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_170355_8b75f8/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_170355_8b75f8/training_provenance.json",
+  "training_provenance": null,
   "error": "Training process exited with code 1.     overlaps[mask_gt] = self.iou_calculation(gt_boxes, pd_boxes)     ~~~~~~~~^^^^^^^^^ RuntimeError: shape mismatch: value tensor of shape [1433] cannot be broadcast to indexing result of shape [1746]"
 }

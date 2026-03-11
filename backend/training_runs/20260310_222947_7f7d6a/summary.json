@@ -1,0 +1,2022 @@
+{
+  "job_id": "40724cf5aaec",
+  "run_id": "20260310_222947_7f7d6a",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a",
+  "status": "completed",
+  "progress": 100.0,
+  "current_epoch": 50,
+  "total_epochs": 50,
+  "logs": [
+    "[22:30:29]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:29]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 13.20it/s]",
+    "[22:30:29]                    all          2          4      0.976        0.5      0.521      0.457",
+    "[22:30:32] Epoch 27/50 - mAP50 0.5740",
+    "[22:30:32]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:32]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]       25/50      1.28G      1.058       3.03      1.394         15        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]       25/50      1.28G      1.058       3.03      1.394         15        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.15it/s]",
+    "[22:30:32]       25/50      1.28G      1.058       3.03      1.394         15        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.15it/s]",
+    "[22:30:32]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.58it/s]",
+    "[22:30:32]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.58it/s]",
+    "[22:30:32]                    all          2          4      0.983        0.5      0.574      0.478",
+    "[22:30:32]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:32]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]       26/50      1.26G     0.8792      2.669      1.257         17        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]       26/50      1.26G     0.8792      2.669      1.257         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.69it/s]",
+    "[22:30:32]       26/50      1.26G     0.8792      2.669      1.257         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.69it/s]",
+    "[22:30:32]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:32]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 13.24it/s]",
+    "[22:30:32]                    all          2          4      0.983        0.5      0.574      0.478",
+    "[22:30:32]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:33]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:33]       27/50       1.3G      1.036      2.812      1.355         11        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:33]       27/50       1.3G      1.036      2.812      1.355         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.25it/s]",
+    "[22:30:33]       27/50       1.3G      1.036      2.812      1.355         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.24it/s]",
+    "[22:30:33]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:33]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  8.82it/s]",
+    "[22:30:33]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  8.81it/s]",
+    "[22:30:33]                    all          2          4      0.986        0.5      0.663      0.514",
+    "[22:30:33]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:33]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36] Epoch 31/50 - mAP50 0.7462",
+    "[22:30:36]       28/50      1.24G      1.169      2.872        1.2         17        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       28/50      1.24G      1.169      2.872        1.2         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.32it/s]",
+    "[22:30:36]       28/50      1.24G      1.169      2.872        1.2         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.32it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 12.10it/s]",
+    "[22:30:36]                    all          2          4      0.986        0.5      0.663      0.514",
+    "[22:30:36]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:36]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       29/50      1.27G      1.056      2.699      1.269         18        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       29/50      1.27G      1.056      2.699      1.269         18        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.03it/s]",
+    "[22:30:36]       29/50      1.27G      1.056      2.699      1.269         18        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.03it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  7.68it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  7.67it/s]",
+    "[22:30:36]                    all          2          4      0.988        0.5      0.746      0.548",
+    "[22:30:36]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:36]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       30/50      1.24G     0.9402      2.782      1.198         17        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       30/50      1.24G     0.9402      2.782      1.198         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.09it/s]",
+    "[22:30:36]       30/50      1.24G     0.9402      2.782      1.198         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.08it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 13.64it/s]",
+    "[22:30:36]                    all          2          4      0.988        0.5      0.746      0.548",
+    "[22:30:36]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:36]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       31/50      1.31G      1.112      2.667      1.553         12        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]       31/50      1.31G      1.112      2.667      1.553         12        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.07it/s]",
+    "[22:30:36]       31/50      1.31G      1.112      2.667      1.553         12        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.07it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.27it/s]",
+    "[22:30:36]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.26it/s]",
+    "[22:30:36]                    all          2          4      0.989        0.5      0.746      0.556",
+    "[22:30:36]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:36]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39] Epoch 35/50 - mAP50 0.8700",
+    "[22:30:39]       32/50      1.24G     0.7579       2.62       1.16         17        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       32/50      1.24G     0.7579       2.62       1.16         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.20it/s]",
+    "[22:30:39]       32/50      1.24G     0.7579       2.62       1.16         17        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.20it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  8.43it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  8.42it/s]",
+    "[22:30:39]                    all          2          4      0.989        0.5      0.746      0.556",
+    "[22:30:39]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:39]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       33/50      1.28G     0.8048      2.887      1.144         13        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       33/50      1.28G     0.8048      2.887      1.144         13        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.12it/s]",
+    "[22:30:39]       33/50      1.28G     0.8048      2.887      1.144         13        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.12it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  7.45it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  7.44it/s]",
+    "[22:30:39]                    all          2          4       0.99        0.5       0.87      0.634",
+    "[22:30:39]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:39]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       34/50      1.24G      0.766      2.695      1.174         16        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       34/50      1.24G      0.766      2.695      1.174         16        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.97it/s]",
+    "[22:30:39]       34/50      1.24G      0.766      2.695      1.174         16        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.97it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.04it/s]",
+    "[22:30:39]                    all          2          4       0.99        0.5       0.87      0.634",
+    "[22:30:39]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:39]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       35/50      1.28G     0.7755      2.595      1.248         15        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]       35/50      1.28G     0.7755      2.595      1.248         15        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.26it/s]",
+    "[22:30:39]       35/50      1.28G     0.7755      2.595      1.248         15        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.26it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.74it/s]",
+    "[22:30:39]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.74it/s]",
+    "[22:30:39]                    all          2          4      0.843        0.5      0.995      0.697",
+    "[22:30:39]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:39]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42] Epoch 39/50 - mAP50 0.9950",
+    "[22:30:42]       36/50      1.24G      0.732      2.612      1.097         13        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       36/50      1.24G      0.732      2.612      1.097         13        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.27it/s]",
+    "[22:30:42]       36/50      1.24G      0.732      2.612      1.097         13        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.27it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.78it/s]",
+    "[22:30:42]                    all          2          4      0.843        0.5      0.995      0.697",
+    "[22:30:42]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:42]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       37/50      1.31G     0.9279      2.889      1.305         11        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       37/50      1.31G     0.9279      2.889      1.305         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.66it/s]",
+    "[22:30:42]       37/50      1.31G     0.9279      2.889      1.305         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.66it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.07it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  6.06it/s]",
+    "[22:30:42]                    all          2          4      0.825      0.779      0.995      0.659",
+    "[22:30:42]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:42]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       38/50      1.24G     0.7642       2.68      1.276         11        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       38/50      1.24G     0.7642       2.68      1.276         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.23it/s]",
+    "[22:30:42]       38/50      1.24G     0.7642       2.68      1.276         11        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.23it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.19it/s]",
+    "[22:30:42]                    all          2          4      0.825      0.779      0.995      0.659",
+    "[22:30:42]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:42]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       39/50      1.28G     0.8881      2.527      1.132         19        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]       39/50      1.28G     0.8881      2.527      1.132         19        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.06it/s]",
+    "[22:30:42]       39/50      1.28G     0.8881      2.527      1.132         19        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.06it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.54it/s]",
+    "[22:30:42]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.54it/s]",
+    "[22:30:42]                    all          2          4       0.82      0.959      0.995      0.668",
+    "[22:30:42]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:42]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45] Epoch 43/50 - mAP50 0.9950",
+    "[22:30:45]       40/50      1.24G     0.8984      2.493      1.302         16        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       40/50      1.24G     0.8984      2.493      1.302         16        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.30it/s]",
+    "[22:30:45]       40/50      1.24G     0.8984      2.493      1.302         16        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.30it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.71it/s]",
+    "[22:30:45]                    all          2          4       0.82      0.959      0.995      0.668",
+    "[22:30:45] Closing dataloader mosaic",
+    "[22:30:45] /Users/davidmontgomery/football_pose_workbench/backend/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.",
+    "[22:30:45]   super().__init__(loader)",
+    "[22:30:45]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:45]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       41/50       1.3G     0.7897      2.645      1.375          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       41/50       1.3G     0.7897      2.645      1.375          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.68it/s]",
+    "[22:30:45]       41/50       1.3G     0.7897      2.645      1.375          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.67it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.39it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  3.39it/s]",
+    "[22:30:45]                    all          2          4      0.821          1      0.995      0.659",
+    "[22:30:45]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:45]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       42/50      1.23G     0.9079      2.589      1.447          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       42/50      1.23G     0.9079      2.589      1.447          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.85it/s]",
+    "[22:30:45]       42/50      1.23G     0.9079      2.589      1.447          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.84it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 12.22it/s]",
+    "[22:30:45]                    all          2          4      0.821          1      0.995      0.659",
+    "[22:30:45]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:45]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       43/50       1.3G     0.8707      2.598      1.273          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]       43/50       1.3G     0.8707      2.598      1.273          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.28it/s]",
+    "[22:30:45]       43/50       1.3G     0.8707      2.598      1.273          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.28it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.52it/s]",
+    "[22:30:45]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.52it/s]",
+    "[22:30:45]                    all          2          4       0.83          1      0.995      0.697",
+    "[22:30:48] Epoch 47/50 - mAP50 0.9950",
+    "[22:30:48]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:48]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       44/50      1.23G     0.8611       2.55       1.46          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       44/50      1.23G     0.8611       2.55       1.46          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.05it/s]",
+    "[22:30:48]       44/50      1.23G     0.8611       2.55       1.46          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.04it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 15.24it/s]",
+    "[22:30:48]                    all          2          4       0.83          1      0.995      0.697",
+    "[22:30:48]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:48]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       45/50      1.27G     0.8166      2.523      1.257          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       45/50      1.27G     0.8166      2.523      1.257          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.33it/s]",
+    "[22:30:48]       45/50      1.27G     0.8166      2.523      1.257          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.33it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.73it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.73it/s]",
+    "[22:30:48]                    all          2          4      0.846          1      0.995      0.699",
+    "[22:30:48]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:48]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       46/50      1.23G     0.8056      2.525      1.288          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       46/50      1.23G     0.8056      2.525      1.288          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.38it/s]",
+    "[22:30:48]       46/50      1.23G     0.8056      2.525      1.288          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.37it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.66it/s]",
+    "[22:30:48]                    all          2          4      0.846          1      0.995      0.699",
+    "[22:30:48]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:48]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       47/50      1.27G     0.9317      2.548      1.596          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]       47/50      1.27G     0.9317      2.548      1.596          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.17it/s]",
+    "[22:30:48]       47/50      1.27G     0.9317      2.548      1.596          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.17it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.21it/s]",
+    "[22:30:48]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.21it/s]",
+    "[22:30:48]                    all          2          4      0.862          1      0.995        0.7",
+    "[22:30:51] Epoch 50/50 - mAP50 0.9950",
+    "[22:30:51]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:51]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       48/50      1.23G     0.7557       2.14      1.248          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       48/50      1.23G     0.7557       2.14      1.248          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.42it/s]",
+    "[22:30:51]       48/50      1.23G     0.7557       2.14      1.248          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.42it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.87it/s]",
+    "[22:30:51]                    all          2          4      0.862          1      0.995        0.7",
+    "[22:30:51]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:51]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       49/50      1.27G     0.8418      2.497      1.437          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       49/50      1.27G     0.8418      2.497      1.437          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.23it/s]",
+    "[22:30:51]       49/50      1.27G     0.8418      2.497      1.437          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  4.23it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.83it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.83it/s]",
+    "[22:30:51]                    all          2          4      0.877          1      0.995        0.7",
+    "[22:30:51]       Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size",
+    "[22:30:51]   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       50/50      1.23G      0.935      2.381      1.272          8        640:   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]       50/50      1.23G      0.935      2.381      1.272          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.40it/s]",
+    "[22:30:51]       50/50      1.23G      0.935      2.381      1.272          8        640: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  5.40it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:51]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 14.94it/s]",
+    "[22:30:51]                    all          2          4      0.877          1      0.995        0.7",
+    "[22:30:51] 50 epochs completed in 0.013 hours.",
+    "[22:30:51] Optimizer stripped from /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/weights/last.pt, 5.5MB",
+    "[22:30:51] Optimizer stripped from /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/weights/best.pt, 5.5MB",
+    "[22:30:51] Validating /Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/weights/best.pt...",
+    "[22:30:51] Ultralytics 8.3.81 \ud83d\ude80 Python-3.12.7 torch-2.10.0 MPS (Apple M4 Pro)",
+    "[22:30:54] YOLO11n summary (fused): 100 layers, 2,582,932 parameters, 0 gradients, 6.3 GFLOPs",
+    "[22:30:54]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95):   0%|          | 0/1 [00:00<?, ?it/s]",
+    "[22:30:54]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.32it/s]",
+    "[22:30:54]                  Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.32it/s]",
+    "[22:30:54]                    all          2          4      0.879          1      0.995        0.7",
+    "[22:30:54]                 player          2          2      0.787          1      0.995      0.895",
+    "[22:30:54]                   ball          2          2      0.971          1      0.995      0.505",
+    "[22:30:57] Speed: 0.5ms preprocess, 263.0ms inference, 0.0ms loss, 40.5ms postprocess per image",
+    "[22:30:57] Results saved to \u001b[1m/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train\u001b[0m",
+    "[22:30:57] Training completed"
+  ],
+  "created_at": "2026-03-10T22:29:47.570409Z",
+  "started_at": "2026-03-10T22:29:47.622168Z",
+  "finished_at": "2026-03-10T22:30:57.412446Z",
+  "config": {
+    "base_weights": "soccana",
+    "dataset_path": "/private/tmp/fpw_train_valid_v1",
+    "run_name": "20260310_222947_7f7d6a",
+    "epochs": 50,
+    "imgsz": 640,
+    "batch": 16,
+    "device": "auto",
+    "workers": 4,
+    "patience": 20,
+    "freeze": null,
+    "cache": false,
+    "backend": "ultralytics",
+    "backend_version": "8.3.81",
+    "dataset_scan": {
+      "path": "/private/tmp/fpw_train_valid_v1",
+      "tier": "valid",
+      "has_yaml": true,
+      "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "classes": [
+        "player",
+        "goalkeeper",
+        "referee",
+        "ball"
+      ],
+      "class_count": 4,
+      "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "player_class_id": 0,
+        "ball_class_id": 3,
+        "referee_class_id": 2
+      },
+      "split_paths": {
+        "train": "/private/tmp/fpw_train_valid_v1/images/train",
+        "val": "/private/tmp/fpw_train_valid_v1/images/val",
+        "test": null
+      },
+      "splits": {
+        "train": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/train",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/train"
+          ],
+          "images": 4,
+          "label_files": 4,
+          "labeled_images": 4,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 8,
+          "warnings": [],
+          "errors": []
+        },
+        "val": {
+          "source": "dataset_yaml",
+          "path": "/private/tmp/fpw_train_valid_v1/images/val",
+          "refs": [
+            "/private/tmp/fpw_train_valid_v1/images/val"
+          ],
+          "images": 2,
+          "label_files": 2,
+          "labeled_images": 2,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 4,
+          "warnings": [],
+          "errors": []
+        },
+        "test": {
+          "source": "missing",
+          "path": null,
+          "refs": [],
+          "images": 0,
+          "label_files": 0,
+          "labeled_images": 0,
+          "empty_label_files": 0,
+          "missing_labels": 0,
+          "invalid_label_files": 0,
+          "invalid_label_rows": 0,
+          "instances": 0,
+          "warnings": [],
+          "errors": []
+        }
+      },
+      "warnings": [],
+      "errors": [],
+      "can_start": true,
+      "suggested_validation_strategy": "existing_split",
+      "detected_format": "yolo_detection"
+    },
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/dataset_runtime.yaml",
+    "generated_split_lists": {
+      "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/train.txt",
+      "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/val.txt"
+    },
+    "validation_strategy": "existing_split"
+  },
+  "dataset_scan": {
+    "path": "/private/tmp/fpw_train_valid_v1",
+    "tier": "valid",
+    "has_yaml": true,
+    "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "classes": [
+      "player",
+      "goalkeeper",
+      "referee",
+      "ball"
+    ],
+    "class_count": 4,
+    "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "class_mapping": {
+      "player_class_ids": [
+        0,
+        1
+      ],
+      "ball_class_ids": [
+        3
+      ],
+      "referee_class_ids": [
+        2
+      ],
+      "player_class_id": 0,
+      "ball_class_id": 3,
+      "referee_class_id": 2
+    },
+    "split_paths": {
+      "train": "/private/tmp/fpw_train_valid_v1/images/train",
+      "val": "/private/tmp/fpw_train_valid_v1/images/val",
+      "test": null
+    },
+    "splits": {
+      "train": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/train",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/train"
+        ],
+        "images": 4,
+        "label_files": 4,
+        "labeled_images": 4,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 8,
+        "warnings": [],
+        "errors": []
+      },
+      "val": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/val",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/val"
+        ],
+        "images": 2,
+        "label_files": 2,
+        "labeled_images": 2,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 4,
+        "warnings": [],
+        "errors": []
+      },
+      "test": {
+        "source": "missing",
+        "path": null,
+        "refs": [],
+        "images": 0,
+        "label_files": 0,
+        "labeled_images": 0,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 0,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    "warnings": [],
+    "errors": [],
+    "can_start": true,
+    "suggested_validation_strategy": "existing_split",
+    "detected_format": "yolo_detection"
+  },
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/dataset_runtime.yaml",
+  "generated_split_lists": {
+    "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/train.txt",
+    "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/val.txt"
+  },
+  "resolved_device": "mps",
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "validation_strategy": "existing_split",
+  "metrics": {
+    "mAP50": 0.995,
+    "mAP50_95": 0.7001,
+    "precision": 0.87679,
+    "recall": 1.0
+  },
+  "training_curves": {
+    "loss": [
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 1.0,
+        "box_loss": 1.54555,
+        "cls_loss": 3.64084,
+        "dfl_loss": 2.12731
+      },
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 1.0,
+        "box_loss": 1.54555,
+        "cls_loss": 3.64084,
+        "dfl_loss": 2.12731
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 2.0,
+        "box_loss": 1.9556,
+        "cls_loss": 3.79982,
+        "dfl_loss": 2.71602
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 2.0,
+        "box_loss": 1.9556,
+        "cls_loss": 3.79982,
+        "dfl_loss": 2.71602
+      },
+      {
+        "epoch": 3,
+        "step": 1,
+        "epoch_progress": 3.0,
+        "box_loss": 1.89071,
+        "cls_loss": 3.65183,
+        "dfl_loss": 2.36372
+      },
+      {
+        "epoch": 3,
+        "step": 1,
+        "epoch_progress": 3.0,
+        "box_loss": 1.89071,
+        "cls_loss": 3.65183,
+        "dfl_loss": 2.36372
+      },
+      {
+        "epoch": 4,
+        "step": 1,
+        "epoch_progress": 4.0,
+        "box_loss": 2.41096,
+        "cls_loss": 3.3926,
+        "dfl_loss": 2.57249
+      },
+      {
+        "epoch": 4,
+        "step": 1,
+        "epoch_progress": 4.0,
+        "box_loss": 2.41096,
+        "cls_loss": 3.3926,
+        "dfl_loss": 2.57249
+      },
+      {
+        "epoch": 5,
+        "step": 1,
+        "epoch_progress": 5.0,
+        "box_loss": 1.34661,
+        "cls_loss": 3.58911,
+        "dfl_loss": 1.99976
+      },
+      {
+        "epoch": 5,
+        "step": 1,
+        "epoch_progress": 5.0,
+        "box_loss": 1.34661,
+        "cls_loss": 3.58911,
+        "dfl_loss": 1.99976
+      },
+      {
+        "epoch": 6,
+        "step": 1,
+        "epoch_progress": 6.0,
+        "box_loss": 1.6247,
+        "cls_loss": 3.20192,
+        "dfl_loss": 2.28894
+      },
+      {
+        "epoch": 6,
+        "step": 1,
+        "epoch_progress": 6.0,
+        "box_loss": 1.6247,
+        "cls_loss": 3.20192,
+        "dfl_loss": 2.28894
+      },
+      {
+        "epoch": 7,
+        "step": 1,
+        "epoch_progress": 7.0,
+        "box_loss": 1.64824,
+        "cls_loss": 3.89853,
+        "dfl_loss": 2.46122
+      },
+      {
+        "epoch": 7,
+        "step": 1,
+        "epoch_progress": 7.0,
+        "box_loss": 1.64824,
+        "cls_loss": 3.89853,
+        "dfl_loss": 2.46122
+      },
+      {
+        "epoch": 8,
+        "step": 1,
+        "epoch_progress": 8.0,
+        "box_loss": 1.55817,
+        "cls_loss": 3.15524,
+        "dfl_loss": 2.02464
+      },
+      {
+        "epoch": 8,
+        "step": 1,
+        "epoch_progress": 8.0,
+        "box_loss": 1.55817,
+        "cls_loss": 3.15524,
+        "dfl_loss": 2.02464
+      },
+      {
+        "epoch": 9,
+        "step": 1,
+        "epoch_progress": 9.0,
+        "box_loss": 1.47361,
+        "cls_loss": 3.71182,
+        "dfl_loss": 1.93338
+      },
+      {
+        "epoch": 9,
+        "step": 1,
+        "epoch_progress": 9.0,
+        "box_loss": 1.47361,
+        "cls_loss": 3.71182,
+        "dfl_loss": 1.93338
+      },
+      {
+        "epoch": 10,
+        "step": 1,
+        "epoch_progress": 10.0,
+        "box_loss": 1.66054,
+        "cls_loss": 3.45615,
+        "dfl_loss": 1.98394
+      },
+      {
+        "epoch": 10,
+        "step": 1,
+        "epoch_progress": 10.0,
+        "box_loss": 1.66054,
+        "cls_loss": 3.45615,
+        "dfl_loss": 1.98394
+      },
+      {
+        "epoch": 11,
+        "step": 1,
+        "epoch_progress": 11.0,
+        "box_loss": 1.11568,
+        "cls_loss": 3.27309,
+        "dfl_loss": 1.66675
+      },
+      {
+        "epoch": 11,
+        "step": 1,
+        "epoch_progress": 11.0,
+        "box_loss": 1.11568,
+        "cls_loss": 3.27309,
+        "dfl_loss": 1.66675
+      },
+      {
+        "epoch": 12,
+        "step": 1,
+        "epoch_progress": 12.0,
+        "box_loss": 1.775,
+        "cls_loss": 3.44826,
+        "dfl_loss": 1.78019
+      },
+      {
+        "epoch": 12,
+        "step": 1,
+        "epoch_progress": 12.0,
+        "box_loss": 1.775,
+        "cls_loss": 3.44826,
+        "dfl_loss": 1.78019
+      },
+      {
+        "epoch": 13,
+        "step": 1,
+        "epoch_progress": 13.0,
+        "box_loss": 1.6718,
+        "cls_loss": 3.12169,
+        "dfl_loss": 1.85501
+      },
+      {
+        "epoch": 13,
+        "step": 1,
+        "epoch_progress": 13.0,
+        "box_loss": 1.6718,
+        "cls_loss": 3.12169,
+        "dfl_loss": 1.85501
+      },
+      {
+        "epoch": 14,
+        "step": 1,
+        "epoch_progress": 14.0,
+        "box_loss": 1.17933,
+        "cls_loss": 3.23246,
+        "dfl_loss": 1.60266
+      },
+      {
+        "epoch": 14,
+        "step": 1,
+        "epoch_progress": 14.0,
+        "box_loss": 1.17933,
+        "cls_loss": 3.23246,
+        "dfl_loss": 1.60266
+      },
+      {
+        "epoch": 15,
+        "step": 1,
+        "epoch_progress": 15.0,
+        "box_loss": 0.92239,
+        "cls_loss": 3.01064,
+        "dfl_loss": 1.50606
+      },
+      {
+        "epoch": 15,
+        "step": 1,
+        "epoch_progress": 15.0,
+        "box_loss": 0.92239,
+        "cls_loss": 3.01064,
+        "dfl_loss": 1.50606
+      },
+      {
+        "epoch": 16,
+        "step": 1,
+        "epoch_progress": 16.0,
+        "box_loss": 1.5624,
+        "cls_loss": 3.04933,
+        "dfl_loss": 1.66844
+      },
+      {
+        "epoch": 16,
+        "step": 1,
+        "epoch_progress": 16.0,
+        "box_loss": 1.5624,
+        "cls_loss": 3.04933,
+        "dfl_loss": 1.66844
+      },
+      {
+        "epoch": 17,
+        "step": 1,
+        "epoch_progress": 17.0,
+        "box_loss": 1.25104,
+        "cls_loss": 3.18981,
+        "dfl_loss": 1.44643
+      },
+      {
+        "epoch": 17,
+        "step": 1,
+        "epoch_progress": 17.0,
+        "box_loss": 1.25104,
+        "cls_loss": 3.18981,
+        "dfl_loss": 1.44643
+      },
+      {
+        "epoch": 18,
+        "step": 1,
+        "epoch_progress": 18.0,
+        "box_loss": 0.92506,
+        "cls_loss": 3.09723,
+        "dfl_loss": 1.45293
+      },
+      {
+        "epoch": 18,
+        "step": 1,
+        "epoch_progress": 18.0,
+        "box_loss": 0.92506,
+        "cls_loss": 3.09723,
+        "dfl_loss": 1.45293
+      },
+      {
+        "epoch": 19,
+        "step": 1,
+        "epoch_progress": 19.0,
+        "box_loss": 1.25876,
+        "cls_loss": 3.28788,
+        "dfl_loss": 1.60585
+      },
+      {
+        "epoch": 19,
+        "step": 1,
+        "epoch_progress": 19.0,
+        "box_loss": 1.25876,
+        "cls_loss": 3.28788,
+        "dfl_loss": 1.60585
+      },
+      {
+        "epoch": 20,
+        "step": 1,
+        "epoch_progress": 20.0,
+        "box_loss": 1.10216,
+        "cls_loss": 2.82332,
+        "dfl_loss": 1.34092
+      },
+      {
+        "epoch": 20,
+        "step": 1,
+        "epoch_progress": 20.0,
+        "box_loss": 1.10216,
+        "cls_loss": 2.82332,
+        "dfl_loss": 1.34092
+      },
+      {
+        "epoch": 21,
+        "step": 1,
+        "epoch_progress": 21.0,
+        "box_loss": 1.4011,
+        "cls_loss": 3.00019,
+        "dfl_loss": 1.59704
+      },
+      {
+        "epoch": 21,
+        "step": 1,
+        "epoch_progress": 21.0,
+        "box_loss": 1.4011,
+        "cls_loss": 3.00019,
+        "dfl_loss": 1.59704
+      },
+      {
+        "epoch": 22,
+        "step": 1,
+        "epoch_progress": 22.0,
+        "box_loss": 0.94714,
+        "cls_loss": 2.91286,
+        "dfl_loss": 1.42426
+      },
+      {
+        "epoch": 22,
+        "step": 1,
+        "epoch_progress": 22.0,
+        "box_loss": 0.94714,
+        "cls_loss": 2.91286,
+        "dfl_loss": 1.42426
+      },
+      {
+        "epoch": 23,
+        "step": 1,
+        "epoch_progress": 23.0,
+        "box_loss": 0.83941,
+        "cls_loss": 2.93408,
+        "dfl_loss": 1.30856
+      },
+      {
+        "epoch": 23,
+        "step": 1,
+        "epoch_progress": 23.0,
+        "box_loss": 0.83941,
+        "cls_loss": 2.93408,
+        "dfl_loss": 1.30856
+      },
+      {
+        "epoch": 24,
+        "step": 1,
+        "epoch_progress": 24.0,
+        "box_loss": 1.07176,
+        "cls_loss": 2.69976,
+        "dfl_loss": 1.40487
+      },
+      {
+        "epoch": 24,
+        "step": 1,
+        "epoch_progress": 24.0,
+        "box_loss": 1.07176,
+        "cls_loss": 2.69976,
+        "dfl_loss": 1.40487
+      },
+      {
+        "epoch": 25,
+        "step": 1,
+        "epoch_progress": 25.0,
+        "box_loss": 1.05821,
+        "cls_loss": 3.0298,
+        "dfl_loss": 1.39409
+      },
+      {
+        "epoch": 25,
+        "step": 1,
+        "epoch_progress": 25.0,
+        "box_loss": 1.05821,
+        "cls_loss": 3.0298,
+        "dfl_loss": 1.39409
+      },
+      {
+        "epoch": 26,
+        "step": 1,
+        "epoch_progress": 26.0,
+        "box_loss": 0.87916,
+        "cls_loss": 2.66862,
+        "dfl_loss": 1.25737
+      },
+      {
+        "epoch": 26,
+        "step": 1,
+        "epoch_progress": 26.0,
+        "box_loss": 0.87916,
+        "cls_loss": 2.66862,
+        "dfl_loss": 1.25737
+      },
+      {
+        "epoch": 27,
+        "step": 1,
+        "epoch_progress": 27.0,
+        "box_loss": 1.03558,
+        "cls_loss": 2.8119,
+        "dfl_loss": 1.3555
+      },
+      {
+        "epoch": 27,
+        "step": 1,
+        "epoch_progress": 27.0,
+        "box_loss": 1.03558,
+        "cls_loss": 2.8119,
+        "dfl_loss": 1.3555
+      },
+      {
+        "epoch": 28,
+        "step": 1,
+        "epoch_progress": 28.0,
+        "box_loss": 1.16864,
+        "cls_loss": 2.87242,
+        "dfl_loss": 1.20042
+      },
+      {
+        "epoch": 28,
+        "step": 1,
+        "epoch_progress": 28.0,
+        "box_loss": 1.16864,
+        "cls_loss": 2.87242,
+        "dfl_loss": 1.20042
+      },
+      {
+        "epoch": 29,
+        "step": 1,
+        "epoch_progress": 29.0,
+        "box_loss": 1.05563,
+        "cls_loss": 2.69917,
+        "dfl_loss": 1.26946
+      },
+      {
+        "epoch": 29,
+        "step": 1,
+        "epoch_progress": 29.0,
+        "box_loss": 1.05563,
+        "cls_loss": 2.69917,
+        "dfl_loss": 1.26946
+      },
+      {
+        "epoch": 30,
+        "step": 1,
+        "epoch_progress": 30.0,
+        "box_loss": 0.94017,
+        "cls_loss": 2.78201,
+        "dfl_loss": 1.19763
+      },
+      {
+        "epoch": 30,
+        "step": 1,
+        "epoch_progress": 30.0,
+        "box_loss": 0.94017,
+        "cls_loss": 2.78201,
+        "dfl_loss": 1.19763
+      },
+      {
+        "epoch": 31,
+        "step": 1,
+        "epoch_progress": 31.0,
+        "box_loss": 1.11159,
+        "cls_loss": 2.66708,
+        "dfl_loss": 1.55301
+      },
+      {
+        "epoch": 31,
+        "step": 1,
+        "epoch_progress": 31.0,
+        "box_loss": 1.11159,
+        "cls_loss": 2.66708,
+        "dfl_loss": 1.55301
+      },
+      {
+        "epoch": 32,
+        "step": 1,
+        "epoch_progress": 32.0,
+        "box_loss": 0.75794,
+        "cls_loss": 2.61981,
+        "dfl_loss": 1.16026
+      },
+      {
+        "epoch": 32,
+        "step": 1,
+        "epoch_progress": 32.0,
+        "box_loss": 0.75794,
+        "cls_loss": 2.61981,
+        "dfl_loss": 1.16026
+      },
+      {
+        "epoch": 33,
+        "step": 1,
+        "epoch_progress": 33.0,
+        "box_loss": 0.80483,
+        "cls_loss": 2.88718,
+        "dfl_loss": 1.14385
+      },
+      {
+        "epoch": 33,
+        "step": 1,
+        "epoch_progress": 33.0,
+        "box_loss": 0.80483,
+        "cls_loss": 2.88718,
+        "dfl_loss": 1.14385
+      },
+      {
+        "epoch": 34,
+        "step": 1,
+        "epoch_progress": 34.0,
+        "box_loss": 0.76601,
+        "cls_loss": 2.6949,
+        "dfl_loss": 1.17373
+      },
+      {
+        "epoch": 34,
+        "step": 1,
+        "epoch_progress": 34.0,
+        "box_loss": 0.76601,
+        "cls_loss": 2.6949,
+        "dfl_loss": 1.17373
+      },
+      {
+        "epoch": 35,
+        "step": 1,
+        "epoch_progress": 35.0,
+        "box_loss": 0.77548,
+        "cls_loss": 2.59491,
+        "dfl_loss": 1.24768
+      },
+      {
+        "epoch": 35,
+        "step": 1,
+        "epoch_progress": 35.0,
+        "box_loss": 0.77548,
+        "cls_loss": 2.59491,
+        "dfl_loss": 1.24768
+      },
+      {
+        "epoch": 36,
+        "step": 1,
+        "epoch_progress": 36.0,
+        "box_loss": 0.73201,
+        "cls_loss": 2.6123,
+        "dfl_loss": 1.09705
+      },
+      {
+        "epoch": 36,
+        "step": 1,
+        "epoch_progress": 36.0,
+        "box_loss": 0.73201,
+        "cls_loss": 2.6123,
+        "dfl_loss": 1.09705
+      },
+      {
+        "epoch": 37,
+        "step": 1,
+        "epoch_progress": 37.0,
+        "box_loss": 0.92795,
+        "cls_loss": 2.88925,
+        "dfl_loss": 1.3053
+      },
+      {
+        "epoch": 37,
+        "step": 1,
+        "epoch_progress": 37.0,
+        "box_loss": 0.92795,
+        "cls_loss": 2.88925,
+        "dfl_loss": 1.3053
+      },
+      {
+        "epoch": 38,
+        "step": 1,
+        "epoch_progress": 38.0,
+        "box_loss": 0.76423,
+        "cls_loss": 2.68017,
+        "dfl_loss": 1.27628
+      },
+      {
+        "epoch": 38,
+        "step": 1,
+        "epoch_progress": 38.0,
+        "box_loss": 0.76423,
+        "cls_loss": 2.68017,
+        "dfl_loss": 1.27628
+      },
+      {
+        "epoch": 39,
+        "step": 1,
+        "epoch_progress": 39.0,
+        "box_loss": 0.88808,
+        "cls_loss": 2.52659,
+        "dfl_loss": 1.13178
+      },
+      {
+        "epoch": 39,
+        "step": 1,
+        "epoch_progress": 39.0,
+        "box_loss": 0.88808,
+        "cls_loss": 2.52659,
+        "dfl_loss": 1.13178
+      },
+      {
+        "epoch": 40,
+        "step": 1,
+        "epoch_progress": 40.0,
+        "box_loss": 0.89837,
+        "cls_loss": 2.49283,
+        "dfl_loss": 1.30247
+      },
+      {
+        "epoch": 40,
+        "step": 1,
+        "epoch_progress": 40.0,
+        "box_loss": 0.89837,
+        "cls_loss": 2.49283,
+        "dfl_loss": 1.30247
+      },
+      {
+        "epoch": 41,
+        "step": 1,
+        "epoch_progress": 41.0,
+        "box_loss": 0.78968,
+        "cls_loss": 2.64541,
+        "dfl_loss": 1.37507
+      },
+      {
+        "epoch": 41,
+        "step": 1,
+        "epoch_progress": 41.0,
+        "box_loss": 0.78968,
+        "cls_loss": 2.64541,
+        "dfl_loss": 1.37507
+      },
+      {
+        "epoch": 42,
+        "step": 1,
+        "epoch_progress": 42.0,
+        "box_loss": 0.90787,
+        "cls_loss": 2.58855,
+        "dfl_loss": 1.44741
+      },
+      {
+        "epoch": 42,
+        "step": 1,
+        "epoch_progress": 42.0,
+        "box_loss": 0.90787,
+        "cls_loss": 2.58855,
+        "dfl_loss": 1.44741
+      },
+      {
+        "epoch": 43,
+        "step": 1,
+        "epoch_progress": 43.0,
+        "box_loss": 0.87067,
+        "cls_loss": 2.59752,
+        "dfl_loss": 1.27291
+      },
+      {
+        "epoch": 43,
+        "step": 1,
+        "epoch_progress": 43.0,
+        "box_loss": 0.87067,
+        "cls_loss": 2.59752,
+        "dfl_loss": 1.27291
+      },
+      {
+        "epoch": 44,
+        "step": 1,
+        "epoch_progress": 44.0,
+        "box_loss": 0.8611,
+        "cls_loss": 2.54988,
+        "dfl_loss": 1.46032
+      },
+      {
+        "epoch": 44,
+        "step": 1,
+        "epoch_progress": 44.0,
+        "box_loss": 0.8611,
+        "cls_loss": 2.54988,
+        "dfl_loss": 1.46032
+      },
+      {
+        "epoch": 45,
+        "step": 1,
+        "epoch_progress": 45.0,
+        "box_loss": 0.81656,
+        "cls_loss": 2.52321,
+        "dfl_loss": 1.25707
+      },
+      {
+        "epoch": 45,
+        "step": 1,
+        "epoch_progress": 45.0,
+        "box_loss": 0.81656,
+        "cls_loss": 2.52321,
+        "dfl_loss": 1.25707
+      },
+      {
+        "epoch": 46,
+        "step": 1,
+        "epoch_progress": 46.0,
+        "box_loss": 0.80556,
+        "cls_loss": 2.52493,
+        "dfl_loss": 1.28831
+      },
+      {
+        "epoch": 46,
+        "step": 1,
+        "epoch_progress": 46.0,
+        "box_loss": 0.80556,
+        "cls_loss": 2.52493,
+        "dfl_loss": 1.28831
+      },
+      {
+        "epoch": 47,
+        "step": 1,
+        "epoch_progress": 47.0,
+        "box_loss": 0.93174,
+        "cls_loss": 2.54801,
+        "dfl_loss": 1.59587
+      },
+      {
+        "epoch": 47,
+        "step": 1,
+        "epoch_progress": 47.0,
+        "box_loss": 0.93174,
+        "cls_loss": 2.54801,
+        "dfl_loss": 1.59587
+      },
+      {
+        "epoch": 48,
+        "step": 1,
+        "epoch_progress": 48.0,
+        "box_loss": 0.75572,
+        "cls_loss": 2.14025,
+        "dfl_loss": 1.24805
+      },
+      {
+        "epoch": 48,
+        "step": 1,
+        "epoch_progress": 48.0,
+        "box_loss": 0.75572,
+        "cls_loss": 2.14025,
+        "dfl_loss": 1.24805
+      },
+      {
+        "epoch": 49,
+        "step": 1,
+        "epoch_progress": 49.0,
+        "box_loss": 0.84181,
+        "cls_loss": 2.49734,
+        "dfl_loss": 1.43701
+      },
+      {
+        "epoch": 49,
+        "step": 1,
+        "epoch_progress": 49.0,
+        "box_loss": 0.84181,
+        "cls_loss": 2.49734,
+        "dfl_loss": 1.43701
+      },
+      {
+        "epoch": 50,
+        "step": 1,
+        "epoch_progress": 50.0,
+        "box_loss": 0.93496,
+        "cls_loss": 2.3811,
+        "dfl_loss": 1.27197
+      },
+      {
+        "epoch": 50,
+        "step": 1,
+        "epoch_progress": 50.0,
+        "box_loss": 0.93496,
+        "cls_loss": 2.3811,
+        "dfl_loss": 1.27197
+      }
+    ],
+    "optimizer": [
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 1.0,
+        "grad_norm": 80.52629852294922,
+        "lr": 0.0
+      },
+      {
+        "epoch": 1,
+        "step": 1,
+        "epoch_progress": 1.0,
+        "grad_norm": 80.52629852294922,
+        "lr": 0.0
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 2.0,
+        "grad_norm": 164.0440673828125,
+        "lr": 1.22525e-05
+      },
+      {
+        "epoch": 2,
+        "step": 1,
+        "epoch_progress": 2.0,
+        "grad_norm": 164.0440673828125,
+        "lr": 1.22525e-05
+      },
+      {
+        "epoch": 3,
+        "step": 1,
+        "epoch_progress": 3.0,
+        "grad_norm": 104.41642761230469,
+        "lr": 2.401e-05
+      },
+      {
+        "epoch": 3,
+        "step": 1,
+        "epoch_progress": 3.0,
+        "grad_norm": 104.41642761230469,
+        "lr": 2.401e-05
+      },
+      {
+        "epoch": 4,
+        "step": 1,
+        "epoch_progress": 4.0,
+        "grad_norm": 114.36981201171875,
+        "lr": 3.52725e-05
+      },
+      {
+        "epoch": 4,
+        "step": 1,
+        "epoch_progress": 4.0,
+        "grad_norm": 114.36981201171875,
+        "lr": 3.52725e-05
+      },
+      {
+        "epoch": 5,
+        "step": 1,
+        "epoch_progress": 5.0,
+        "grad_norm": 109.84529876708984,
+        "lr": 4.6040000000000006e-05
+      },
+      {
+        "epoch": 5,
+        "step": 1,
+        "epoch_progress": 5.0,
+        "grad_norm": 109.84529876708984,
+        "lr": 4.6040000000000006e-05
+      },
+      {
+        "epoch": 6,
+        "step": 1,
+        "epoch_progress": 6.0,
+        "grad_norm": 74.08445739746094,
+        "lr": 5.631250000000001e-05
+      },
+      {
+        "epoch": 6,
+        "step": 1,
+        "epoch_progress": 6.0,
+        "grad_norm": 74.08445739746094,
+        "lr": 5.631250000000001e-05
+      },
+      {
+        "epoch": 7,
+        "step": 1,
+        "epoch_progress": 7.0,
+        "grad_norm": 168.40274047851562,
+        "lr": 6.609e-05
+      },
+      {
+        "epoch": 7,
+        "step": 1,
+        "epoch_progress": 7.0,
+        "grad_norm": 168.40274047851562,
+        "lr": 6.609e-05
+      },
+      {
+        "epoch": 8,
+        "step": 1,
+        "epoch_progress": 8.0,
+        "grad_norm": 86.68289184570312,
+        "lr": 7.53725e-05
+      },
+      {
+        "epoch": 8,
+        "step": 1,
+        "epoch_progress": 8.0,
+        "grad_norm": 86.68289184570312,
+        "lr": 7.53725e-05
+      },
+      {
+        "epoch": 9,
+        "step": 1,
+        "epoch_progress": 9.0,
+        "grad_norm": 164.2907257080078,
+        "lr": 8.416e-05
+      },
+      {
+        "epoch": 9,
+        "step": 1,
+        "epoch_progress": 9.0,
+        "grad_norm": 164.2907257080078,
+        "lr": 8.416e-05
+      },
+      {
+        "epoch": 10,
+        "step": 1,
+        "epoch_progress": 10.0,
+        "grad_norm": 90.45447540283203,
+        "lr": 9.245250000000002e-05
+      },
+      {
+        "epoch": 10,
+        "step": 1,
+        "epoch_progress": 10.0,
+        "grad_norm": 90.45447540283203,
+        "lr": 9.245250000000002e-05
+      },
+      {
+        "epoch": 11,
+        "step": 1,
+        "epoch_progress": 11.0,
+        "grad_norm": 88.16365814208984,
+        "lr": 0.00010025000000000001
+      },
+      {
+        "epoch": 11,
+        "step": 1,
+        "epoch_progress": 11.0,
+        "grad_norm": 88.16365814208984,
+        "lr": 0.00010025000000000001
+      },
+      {
+        "epoch": 12,
+        "step": 1,
+        "epoch_progress": 12.0,
+        "grad_norm": 68.21067810058594,
+        "lr": 0.00010755250000000001
+      },
+      {
+        "epoch": 12,
+        "step": 1,
+        "epoch_progress": 12.0,
+        "grad_norm": 68.21067810058594,
+        "lr": 0.00010755250000000001
+      },
+      {
+        "epoch": 13,
+        "step": 1,
+        "epoch_progress": 13.0,
+        "grad_norm": 75.49791717529297,
+        "lr": 0.00011436000000000001
+      },
+      {
+        "epoch": 13,
+        "step": 1,
+        "epoch_progress": 13.0,
+        "grad_norm": 75.49791717529297,
+        "lr": 0.00011436000000000001
+      },
+      {
+        "epoch": 14,
+        "step": 1,
+        "epoch_progress": 14.0,
+        "grad_norm": 68.76492309570312,
+        "lr": 0.0001206725
+      },
+      {
+        "epoch": 14,
+        "step": 1,
+        "epoch_progress": 14.0,
+        "grad_norm": 68.76492309570312,
+        "lr": 0.0001206725
+      },
+      {
+        "epoch": 15,
+        "step": 1,
+        "epoch_progress": 15.0,
+        "grad_norm": 56.684486389160156,
+        "lr": 0.00012649000000000002
+      },
+      {
+        "epoch": 15,
+        "step": 1,
+        "epoch_progress": 15.0,
+        "grad_norm": 56.684486389160156,
+        "lr": 0.00012649000000000002
+      },
+      {
+        "epoch": 16,
+        "step": 1,
+        "epoch_progress": 16.0,
+        "grad_norm": 71.76219940185547,
+        "lr": 0.0001318125
+      },
+      {
+        "epoch": 16,
+        "step": 1,
+        "epoch_progress": 16.0,
+        "grad_norm": 71.76219940185547,
+        "lr": 0.0001318125
+      },
+      {
+        "epoch": 17,
+        "step": 1,
+        "epoch_progress": 17.0,
+        "grad_norm": 82.46344757080078,
+        "lr": 0.00013664
+      },
+      {
+        "epoch": 17,
+        "step": 1,
+        "epoch_progress": 17.0,
+        "grad_norm": 82.46344757080078,
+        "lr": 0.00013664
+      },
+      {
+        "epoch": 18,
+        "step": 1,
+        "epoch_progress": 18.0,
+        "grad_norm": 82.46344757080078,
+        "lr": 0.00014097249999999999
+      },
+      {
+        "epoch": 18,
+        "step": 1,
+        "epoch_progress": 18.0,
+        "grad_norm": 82.46344757080078,
+        "lr": 0.00014097249999999999
+      },
+      {
+        "epoch": 19,
+        "step": 1,
+        "epoch_progress": 19.0,
+        "grad_norm": 105.3494873046875,
+        "lr": 0.00014481000000000005
+      },
+      {
+        "epoch": 19,
+        "step": 1,
+        "epoch_progress": 19.0,
+        "grad_norm": 105.3494873046875,
+        "lr": 0.00014481000000000005
+      },
+      {
+        "epoch": 20,
+        "step": 1,
+        "epoch_progress": 20.0,
+        "grad_norm": 105.3494873046875,
+        "lr": 0.00014815250000000004
+      },
+      {
+        "epoch": 20,
+        "step": 1,
+        "epoch_progress": 20.0,
+        "grad_norm": 105.3494873046875,
+        "lr": 0.00014815250000000004
+      },
+      {
+        "epoch": 21,
+        "step": 1,
+        "epoch_progress": 21.0,
+        "grad_norm": 86.43000030517578,
+        "lr": 0.000151
+      },
+      {
+        "epoch": 21,
+        "step": 1,
+        "epoch_progress": 21.0,
+        "grad_norm": 86.43000030517578,
+        "lr": 0.000151
+      },
+      {
+        "epoch": 22,
+        "step": 1,
+        "epoch_progress": 22.0,
+        "grad_norm": 86.43000030517578,
+        "lr": 0.00015335250000000003
+      },
+      {
+        "epoch": 22,
+        "step": 1,
+        "epoch_progress": 22.0,
+        "grad_norm": 86.43000030517578,
+        "lr": 0.00015335250000000003
+      },
+      {
+        "epoch": 23,
+        "step": 1,
+        "epoch_progress": 23.0,
+        "grad_norm": 100.8201904296875,
+        "lr": 0.00015521000000000003
+      },
+      {
+        "epoch": 23,
+        "step": 1,
+        "epoch_progress": 23.0,
+        "grad_norm": 100.8201904296875,
+        "lr": 0.00015521000000000003
+      },
+      {
+        "epoch": 24,
+        "step": 1,
+        "epoch_progress": 24.0,
+        "grad_norm": 100.8201904296875,
+        "lr": 0.00015657250000000004
+      },
+      {
+        "epoch": 24,
+        "step": 1,
+        "epoch_progress": 24.0,
+        "grad_norm": 100.8201904296875,
+        "lr": 0.00015657250000000004
+      },
+      {
+        "epoch": 25,
+        "step": 1,
+        "epoch_progress": 25.0,
+        "grad_norm": 83.04077911376953,
+        "lr": 0.00015744000000000004
+      },
+      {
+        "epoch": 25,
+        "step": 1,
+        "epoch_progress": 25.0,
+        "grad_norm": 83.04077911376953,
+        "lr": 0.00015744000000000004
+      },
+      {
+        "epoch": 26,
+        "step": 1,
+        "epoch_progress": 26.0,
+        "grad_norm": 83.04077911376953,
+        "lr": 0.0001578125
+      },
+      {
+        "epoch": 26,
+        "step": 1,
+        "epoch_progress": 26.0,
+        "grad_norm": 83.04077911376953,
+        "lr": 0.0001578125
+      },
+      {
+        "epoch": 27,
+        "step": 1,
+        "epoch_progress": 27.0,
+        "grad_norm": 86.59806060791016,
+        "lr": 0.00015769
+      },
+      {
+        "epoch": 27,
+        "step": 1,
+        "epoch_progress": 27.0,
+        "grad_norm": 86.59806060791016,
+        "lr": 0.00015769
+      },
+      {
+        "epoch": 28,
+        "step": 1,
+        "epoch_progress": 28.0,
+        "grad_norm": 86.59806060791016,
+        "lr": 0.0001570725
+      },
+      {
+        "epoch": 28,
+        "step": 1,
+        "epoch_progress": 28.0,
+        "grad_norm": 86.59806060791016,
+        "lr": 0.0001570725
+      },
+      {
+        "epoch": 29,
+        "step": 1,
+        "epoch_progress": 29.0,
+        "grad_norm": 72.65192413330078,
+        "lr": 0.00015596
+      },
+      {
+        "epoch": 29,
+        "step": 1,
+        "epoch_progress": 29.0,
+        "grad_norm": 72.65192413330078,
+        "lr": 0.00015596
+      },
+      {
+        "epoch": 30,
+        "step": 1,
+        "epoch_progress": 30.0,
+        "grad_norm": 72.65192413330078,
+        "lr": 0.0001543525
+      },
+      {
+        "epoch": 30,
+        "step": 1,
+        "epoch_progress": 30.0,
+        "grad_norm": 72.65192413330078,
+        "lr": 0.0001543525
+      },
+      {
+        "epoch": 31,
+        "step": 1,
+        "epoch_progress": 31.0,
+        "grad_norm": 132.39434814453125,
+        "lr": 0.00015225000000000001
+      },
+      {
+        "epoch": 31,
+        "step": 1,
+        "epoch_progress": 31.0,
+        "grad_norm": 132.39434814453125,
+        "lr": 0.00015225000000000001
+      },
+      {
+        "epoch": 32,
+        "step": 1,
+        "epoch_progress": 32.0,
+        "grad_norm": 132.39434814453125,
+        "lr": 0.0001496525
+      },
+      {
+        "epoch": 32,
+        "step": 1,
+        "epoch_progress": 32.0,
+        "grad_norm": 132.39434814453125,
+        "lr": 0.0001496525
+      },
+      {
+        "epoch": 33,
+        "step": 1,
+        "epoch_progress": 33.0,
+        "grad_norm": 72.26019287109375,
+        "lr": 0.00014656
+      },
+      {
+        "epoch": 33,
+        "step": 1,
+        "epoch_progress": 33.0,
+        "grad_norm": 72.26019287109375,
+        "lr": 0.00014656
+      },
+      {
+        "epoch": 34,
+        "step": 1,
+        "epoch_progress": 34.0,
+        "grad_norm": 72.26019287109375,
+        "lr": 0.00014297249999999998
+      },
+      {
+        "epoch": 34,
+        "step": 1,
+        "epoch_progress": 34.0,
+        "grad_norm": 72.26019287109375,
+        "lr": 0.00014297249999999998
+      },
+      {
+        "epoch": 35,
+        "step": 1,
+        "epoch_progress": 35.0,
+        "grad_norm": 68.7037124633789,
+        "lr": 0.00013889
+      },
+      {
+        "epoch": 35,
+        "step": 1,
+        "epoch_progress": 35.0,
+        "grad_norm": 68.7037124633789,
+        "lr": 0.00013889
+      },
+      {
+        "epoch": 36,
+        "step": 1,
+        "epoch_progress": 36.0,
+        "grad_norm": 68.7037124633789,
+        "lr": 0.00013431250000000005
+      },
+      {
+        "epoch": 36,
+        "step": 1,
+        "epoch_progress": 36.0,
+        "grad_norm": 68.7037124633789,
+        "lr": 0.00013431250000000005
+      },
+      {
+        "epoch": 37,
+        "step": 1,
+        "epoch_progress": 37.0,
+        "grad_norm": 102.3941879272461,
+        "lr": 0.00012924
+      },
+      {
+        "epoch": 37,
+        "step": 1,
+        "epoch_progress": 37.0,
+        "grad_norm": 102.3941879272461,
+        "lr": 0.00012924
+      },
+      {
+        "epoch": 38,
+        "step": 1,
+        "epoch_progress": 38.0,
+        "grad_norm": 102.3941879272461,
+        "lr": 0.0001236725
+      },
+      {
+        "epoch": 38,
+        "step": 1,
+        "epoch_progress": 38.0,
+        "grad_norm": 102.3941879272461,
+        "lr": 0.0001236725
+      },
+      {
+        "epoch": 39,
+        "step": 1,
+        "epoch_progress": 39.0,
+        "grad_norm": 71.9281997680664,
+        "lr": 0.00011761000000000001
+      },
+      {
+        "epoch": 39,
+        "step": 1,
+        "epoch_progress": 39.0,
+        "grad_norm": 71.9281997680664,
+        "lr": 0.00011761000000000001
+      },
+      {
+        "epoch": 40,
+        "step": 1,
+        "epoch_progress": 40.0,
+        "grad_norm": 71.9281997680664,
+        "lr": 0.00011105249999999997
+      },
+      {
+        "epoch": 40,
+        "step": 1,
+        "epoch_progress": 40.0,
+        "grad_norm": 71.9281997680664,
+        "lr": 0.00011105249999999997
+      },
+      {
+        "epoch": 41,
+        "step": 1,
+        "epoch_progress": 41.0,
+        "grad_norm": 101.89140319824219,
+        "lr": 0.00010399999999999998
+      },
+      {
+        "epoch": 41,
+        "step": 1,
+        "epoch_progress": 41.0,
+        "grad_norm": 101.89140319824219,
+        "lr": 0.00010399999999999998
+      },
+      {
+        "epoch": 42,
+        "step": 1,
+        "epoch_progress": 42.0,
+        "grad_norm": 101.89140319824219,
+        "lr": 9.645250000000003e-05
+      },
+      {
+        "epoch": 42,
+        "step": 1,
+        "epoch_progress": 42.0,
+        "grad_norm": 101.89140319824219,
+        "lr": 9.645250000000003e-05
+      },
+      {
+        "epoch": 43,
+        "step": 1,
+        "epoch_progress": 43.0,
+        "grad_norm": 118.49574279785156,
+        "lr": 8.841000000000003e-05
+      },
+      {
+        "epoch": 43,
+        "step": 1,
+        "epoch_progress": 43.0,
+        "grad_norm": 118.49574279785156,
+        "lr": 8.841000000000003e-05
+      },
+      {
+        "epoch": 44,
+        "step": 1,
+        "epoch_progress": 44.0,
+        "grad_norm": 118.49574279785156,
+        "lr": 7.98725e-05
+      },
+      {
+        "epoch": 44,
+        "step": 1,
+        "epoch_progress": 44.0,
+        "grad_norm": 118.49574279785156,
+        "lr": 7.98725e-05
+      },
+      {
+        "epoch": 45,
+        "step": 1,
+        "epoch_progress": 45.0,
+        "grad_norm": 99.93833923339844,
+        "lr": 7.084e-05
+      },
+      {
+        "epoch": 45,
+        "step": 1,
+        "epoch_progress": 45.0,
+        "grad_norm": 99.93833923339844,
+        "lr": 7.084e-05
+      },
+      {
+        "epoch": 46,
+        "step": 1,
+        "epoch_progress": 46.0,
+        "grad_norm": 99.93833923339844,
+        "lr": 6.131249999999999e-05
+      },
+      {
+        "epoch": 46,
+        "step": 1,
+        "epoch_progress": 46.0,
+        "grad_norm": 99.93833923339844,
+        "lr": 6.131249999999999e-05
+      },
+      {
+        "epoch": 47,
+        "step": 1,
+        "epoch_progress": 47.0,
+        "grad_norm": 111.18379974365234,
+        "lr": 5.128999999999998e-05
+      },
+      {
+        "epoch": 47,
+        "step": 1,
+        "epoch_progress": 47.0,
+        "grad_norm": 111.18379974365234,
+        "lr": 5.128999999999998e-05
+      },
+      {
+        "epoch": 48,
+        "step": 1,
+        "epoch_progress": 48.0,
+        "grad_norm": 111.18379974365234,
+        "lr": 4.077250000000003e-05
+      },
+      {
+        "epoch": 48,
+        "step": 1,
+        "epoch_progress": 48.0,
+        "grad_norm": 111.18379974365234,
+        "lr": 4.077250000000003e-05
+      },
+      {
+        "epoch": 49,
+        "step": 1,
+        "epoch_progress": 49.0,
+        "grad_norm": 99.0024185180664,
+        "lr": 2.9760000000000027e-05
+      },
+      {
+        "epoch": 49,
+        "step": 1,
+        "epoch_progress": 49.0,
+        "grad_norm": 99.0024185180664,
+        "lr": 2.9760000000000027e-05
+      },
+      {
+        "epoch": 50,
+        "step": 1,
+        "epoch_progress": 50.0,
+        "grad_norm": 99.0024185180664,
+        "lr": 1.8252500000000012e-05
+      },
+      {
+        "epoch": 50,
+        "step": 1,
+        "epoch_progress": 50.0,
+        "grad_norm": 99.0024185180664,
+        "lr": 1.8252500000000012e-05
+      }
+    ]
+  },
+  "artifacts": {
+    "config": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/config.json",
+    "dataset_scan": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/dataset_scan.json",
+    "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/dataset_runtime.yaml",
+    "train_log": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/train.log",
+    "progress": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/progress.json",
+    "summary": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/summary.json",
+    "weights_dir": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights",
+    "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+    "results_csv": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/results.csv",
+    "args_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/args.yaml",
+    "plots": [
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/F1_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/PR_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/P_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/R_curve.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/confusion_matrix.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/confusion_matrix_normalized.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/labels.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/labels_correlogram.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/results.png",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch0.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch1.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch2.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch40.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch41.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/train_batch42.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/val_batch0_labels.jpg",
+      "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/yolo_output/train/val_batch0_pred.jpg"
+    ]
+  },
+  "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+  "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/training_provenance.json",
+  "training_provenance": null,
+  "error": null
+}

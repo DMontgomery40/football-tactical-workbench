@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+
+if [ ! -d "$ROOT_DIR/.dvc" ]; then
+  exit 0
+fi
+
+DVC_BIN=""
+if command -v dvc >/dev/null 2>&1; then
+  DVC_BIN="$(command -v dvc)"
+elif [ -x "$ROOT_DIR/backend/.venv/bin/dvc" ]; then
+  DVC_BIN="$ROOT_DIR/backend/.venv/bin/dvc"
+else
+  exit 0
+fi
+
+echo "[post-checkout] Restoring DVC-tracked artifacts..."
+if ! "$DVC_BIN" checkout -q; then
+  echo "[post-checkout] Warning: DVC checkout failed; run '$DVC_BIN checkout' manually."
+fi

@@ -29,8 +29,13 @@ backend/experiments/*.mkv
 backend/experiments/*.avi
 backend/experiments/*.zip
 backend/experiments/*.mp4
-backend/datasets/
+backend/datasets/**
+!backend/datasets/**/*.dvc
+!backend/datasets/*.dvc
 backend/runs/
+backend/models/promoted/**
+!backend/models/promoted/**/*.dvc
+!backend/models/promoted/*.dvc
 backend/models/soccana_keypoint/.cache
 backend/models/soccana/.cache
 *.mp4

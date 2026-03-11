@@ -51,6 +51,16 @@ from app.training import (
     prepare_training_run_inputs,
     scan_training_dataset_path,
 )
+from app.training_provenance import (
+    build_training_provenance,
+    probe_dvc_runtime,
+    read_training_provenance,
+    resolve_promoted_checkpoint_path,
+    resolve_promoted_provenance_path,
+    stage_promoted_detector_checkpoint,
+    utc_now_iso,
+    write_training_provenance,
+)
 from app.wide_angle import (
     AnalysisStoppedError,
     CALIBRATION_REFRESH_FRAMES,
@@ -770,6 +780,7 @@ def training_config() -> dict[str, Any]:
         "device_options": build_training_device_options(runtime_profile),
         "device_guidance": build_training_device_guidance(runtime_profile),
         "runtime_profile": runtime_profile,
+        "dvc": probe_dvc_runtime(),
     }
 
 
@@ -843,6 +854,7 @@ def start_training_job(request: TrainingDetectJobRequest) -> dict[str, Any]:
         backend_version=backend_config["backend_version"],
         artifacts={"dataset_scan": runtime_inputs["dataset_scan_path"], "generated_dataset_yaml": runtime_inputs["generated_dataset_yaml"]},
     )
+    manager.refresh_training_provenance(job.job_id)
 
     threading.Thread(
         target=_launch_training_job_async,
@@ -907,10 +919,44 @@ def activate_training_run(run_id: str) -> dict[str, Any]:
     if not checkpoint_path.exists() or not checkpoint_path.is_file():
         raise HTTPException(status_code=409, detail=f"Completed training run checkpoint is missing: {checkpoint_path}")
 
+    activation = {
+        "mode": "activate_training_run",
+        "detector_id": f"custom_{run_id}",
+        "activated_at": utc_now_iso(),
+    }
+    manager.refresh_training_provenance(job.job_id, activation=activation)
+
+    promoted_checkpoint_path = stage_promoted_detector_checkpoint(run_id, checkpoint_path)
+    promoted_provenance_payload = build_training_provenance(
+        run_id=job.run_id,
+        run_dir=job.run_dir,
+        status=job.status,
+        config=job.config,
+        dataset_path=str(job.config.get("dataset_path") or ""),
+        dataset_scan_path=str((job.artifacts or {}).get("dataset_scan") or ""),
+        generated_dataset_yaml=job.generated_dataset_yaml or str((job.artifacts or {}).get("generated_dataset_yaml") or ""),
+        generated_split_lists=job.generated_split_lists,
+        summary_path=job.summary_path,
+        best_checkpoint=promoted_checkpoint_path,
+        activation=activation,
+    )
+    promoted_provenance_path = write_training_provenance(
+        resolve_promoted_provenance_path(run_id),
+        promoted_provenance_payload,
+    )
+    registry_artifacts = dict(job.artifacts or {})
+    registry_artifacts["promoted_checkpoint"] = promoted_checkpoint_path
+    registry_artifacts["training_provenance"] = promoted_provenance_path
+    manager.update(
+        job.job_id,
+        artifacts={**registry_artifacts, "best_checkpoint": str(checkpoint_path)},
+    )
+    manager.append_log(job.job_id, f"Promoted detector checkpoint to {promoted_checkpoint_path}.")
+
     try:
         entry = registry.activate_detector(
             run_id=run_id,
-            checkpoint_path=str(checkpoint_path),
+            checkpoint_path=promoted_checkpoint_path,
             run_name=str(job.config.get("run_name") or run_id),
             base_weights=str(job.config.get("base_weights") or "soccana"),
             metrics=job.metrics,
@@ -919,7 +965,9 @@ def activate_training_run(run_id: str) -> dict[str, Any]:
             backend=job.backend,
             backend_version=job.backend_version,
             summary_path=job.summary_path,
-            artifacts=job.artifacts,
+            artifacts=registry_artifacts,
+            training_provenance_path=promoted_provenance_path,
+            training_provenance=promoted_provenance_payload,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1693,17 +1741,48 @@ def resolve_analysis_detector_model(detector_model: str, player_model: str = "")
     return requested_detector or requested_player or "soccana"
 
 
+def resolve_training_registry_materialization(job: Any) -> tuple[str, str | None, dict[str, Any] | None, dict[str, Any]]:
+    checkpoint_candidate = Path(str(job.best_checkpoint or "")).expanduser().resolve()
+    promoted_checkpoint = resolve_promoted_checkpoint_path(job.run_id)
+    promoted_provenance = resolve_promoted_provenance_path(job.run_id)
+
+    checkpoint_path = promoted_checkpoint if promoted_checkpoint.exists() else checkpoint_candidate
+    provenance_path = (
+        str(promoted_provenance.resolve())
+        if promoted_provenance.exists()
+        else (str(job.training_provenance_path) if getattr(job, "training_provenance_path", None) else None)
+    )
+
+    training_provenance = None
+    if provenance_path:
+        try:
+            training_provenance = read_training_provenance(provenance_path)
+        except (ValueError, json.JSONDecodeError) as exc:
+            training_provenance = {
+                "load_error": f"Could not parse training provenance: {exc}",
+                "path": provenance_path,
+            }
+
+    artifacts = dict(job.artifacts or {})
+    if promoted_checkpoint.exists():
+        artifacts["promoted_checkpoint"] = str(promoted_checkpoint.resolve())
+    if provenance_path:
+        artifacts["training_provenance"] = provenance_path
+    return str(checkpoint_path), provenance_path, training_provenance, artifacts
+
+
 def build_training_registry_snapshot() -> dict[str, Any]:
     manager, registry = require_training_available()
     for job in manager.list_states():
         if job.status != "completed" or not job.best_checkpoint:
             continue
-        checkpoint_path = Path(job.best_checkpoint).expanduser()
-        if not checkpoint_path.exists():
+        checkpoint_path, training_provenance_path, training_provenance, artifacts = resolve_training_registry_materialization(job)
+        resolved_checkpoint = Path(checkpoint_path).expanduser()
+        if not resolved_checkpoint.exists():
             continue
         registry.register_detector(
             run_id=job.run_id,
-            checkpoint_path=str(checkpoint_path),
+            checkpoint_path=str(resolved_checkpoint),
             run_name=str(job.config.get("run_name") or job.run_id),
             base_weights=str(job.config.get("base_weights") or "soccana"),
             metrics=job.metrics,
@@ -1712,7 +1791,9 @@ def build_training_registry_snapshot() -> dict[str, Any]:
             backend=job.backend,
             backend_version=job.backend_version,
             summary_path=job.summary_path,
-            artifacts=job.artifacts,
+            artifacts=artifacts,
+            training_provenance_path=training_provenance_path,
+            training_provenance=training_provenance,
             activate=registry.get_active_detector_id() == f"custom_{job.run_id}",
         )
     return registry.snapshot()

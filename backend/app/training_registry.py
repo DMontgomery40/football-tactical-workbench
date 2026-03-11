@@ -100,6 +100,8 @@ class TrainingRegistry:
         backend_version: str | None = None,
         summary_path: str | None = None,
         artifacts: dict[str, Any] | None = None,
+        training_provenance_path: str | None = None,
+        training_provenance: dict[str, Any] | None = None,
         activate: bool = False,
     ) -> dict[str, Any]:
         detector_id = f"custom_{run_id}"
@@ -121,6 +123,8 @@ class TrainingRegistry:
                 "backend_version": backend_version,
                 "summary_path": summary_path,
                 "artifacts": artifacts or None,
+                "training_provenance_path": training_provenance_path,
+                "training_provenance": training_provenance or None,
             }
             index = next((idx for idx, item in enumerate(detectors) if str(item.get("id")) == detector_id), None)
             if index is None:
@@ -153,6 +157,8 @@ class TrainingRegistry:
         backend_version: str | None = None,
         summary_path: str | None = None,
         artifacts: dict[str, Any] | None = None,
+        training_provenance_path: str | None = None,
+        training_provenance: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         resolved_path = self._validate_activatable_detector_path(
             detector_id=f"custom_{run_id}",
@@ -170,6 +176,8 @@ class TrainingRegistry:
             backend_version=backend_version,
             summary_path=summary_path,
             artifacts=artifacts,
+            training_provenance_path=training_provenance_path,
+            training_provenance=training_provenance,
             activate=True,
         )
 
@@ -233,6 +241,8 @@ class TrainingRegistry:
             "backend_version": None,
             "summary_path": None,
             "artifacts": None,
+            "training_provenance_path": None,
+            "training_provenance": None,
         }
 
         detectors: list[dict[str, Any]] = []
@@ -257,12 +267,17 @@ class TrainingRegistry:
                     detector.setdefault("backend_version", detector.get("backend_version"))
                     detector.setdefault("summary_path", detector.get("summary_path"))
                     detector.setdefault("artifacts", detector.get("artifacts"))
+                    detector.setdefault("training_provenance_path", detector.get("training_provenance_path"))
+                    detector.setdefault("training_provenance", detector.get("training_provenance"))
                     path_value = detector.get("path")
                     if path_value:
                         detector["path"] = str(Path(str(path_value)).expanduser().resolve())
                         detector["class_ids"] = resolve_registered_class_ids(detector["path"])
                     else:
                         detector["class_ids"] = dict(detector.get("class_ids") or DEFAULT_CLASS_IDS)
+                    provenance_path = detector.get("training_provenance_path")
+                    if provenance_path:
+                        detector["training_provenance_path"] = str(Path(str(provenance_path)).expanduser().resolve())
                 detectors.append(detector)
 
         if not any(str(item.get("id")) == "soccana" for item in detectors):

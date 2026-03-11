@@ -26,6 +26,7 @@ backend/training_runs/<run_id>/
   dataset_runtime.yaml
   progress.json
   summary.json
+  training_provenance.json
   train.log
   job_state.json
   splits/
@@ -58,6 +59,7 @@ The Training Studio reads job state from the persisted run folder and surfaces t
 | `dataset_runtime.yaml` | always for a started run | Run-local training manifest handed to Ultralytics |
 | `progress.json` | during and after worker execution | Structured progress handoff from worker to manager |
 | `summary.json` | always after run creation | Main training contract used by Training Studio |
+| `training_provenance.json` | after dataset inputs are prepared | Compact lineage record for dataset path, promoted checkpoint, and DVC-tracked state |
 | `train.log` | always after worker launch | Full training subprocess log |
 | `weights/best.pt` | on successful run | Best detector checkpoint |
 | `yolo_output/train/results.csv` | on successful run | Ultralytics metrics export |
@@ -81,6 +83,7 @@ It stores:
 - class ID mapping
 - backend/runtime metadata
 - summary/artifact paths for custom runs
+- training provenance path and compact provenance payload for custom runs
 
 When a custom detector is active in the registry, analysis uses it whenever the analysis selector remains on `soccana`.
 
@@ -215,6 +218,8 @@ The saved training summary is the main contract between backend and Training Stu
 - `backend_version`
 - `metrics`
 - `best_checkpoint`
+- `training_provenance_path`
+- `training_provenance`
 
 ### Artifact paths
 
@@ -222,10 +227,12 @@ The saved training summary is the main contract between backend and Training Stu
 - `artifacts.config`
 - `artifacts.dataset_scan`
 - `artifacts.generated_dataset_yaml`
+- `artifacts.training_provenance`
 - `artifacts.train_log`
 - `artifacts.progress`
 - `artifacts.weights_dir`
 - `artifacts.best_checkpoint`
+- `artifacts.promoted_checkpoint`
 - `artifacts.results_csv`
 - `artifacts.args_yaml`
 - `artifacts.plots`

@@ -32,6 +32,7 @@ The current backend requirements include:
 - `ultralytics`
 - `huggingface_hub`
 - `SoccerNet`
+- `dvc`
 
 ## Frontend Setup
 
@@ -179,6 +180,7 @@ Detector fine-tuning remains local-first and writes to:
 
 - `backend/training_runs/<run_id>/`
 - `backend/models/registry.json`
+- `backend/models/promoted/custom_<run_id>/` after activation
 
 ## Recommended First Validation
 
@@ -223,6 +225,7 @@ That remains the quickest place to test live preview and saved analysis runs.
 5. Start a short smoke run.
 6. Inspect logs, artifact paths, and the run summary in `Jobs`.
 7. In `Registry`, inspect the checkpoint and activate it only when you want analysis to use it while the analysis selector remains on `soccana`.
+8. If you want durable artifact recovery across machines or checkouts, track the dataset or promoted detector folder with DVC and commit the resulting `.dvc` pointer file.
 
 The detector-training V1 expects:
 

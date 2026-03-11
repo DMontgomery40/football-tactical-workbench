@@ -19,6 +19,27 @@ export function formatPathTail(value) {
   return `.../${parts.slice(-3).join('/')}`;
 }
 
+export function formatDvcRuntime(value) {
+  if (!value || typeof value !== 'object') return 'not configured';
+  const version = value.version ? ` (${value.version})` : '';
+  if (value.status === 'ready') return `ready${version}`;
+  if (value.status === 'repo_configured') return 'repo configured, CLI unavailable';
+  if (value.status === 'cli_only') return `CLI only${version}`;
+  return 'disabled';
+}
+
+export function formatDvcTrackedState(value) {
+  if (!value || typeof value !== 'object') return 'n/a';
+  if (value.tracked) {
+    if (value.pointer_relative_path) {
+      return `tracked via ${value.pointer_relative_path}`;
+    }
+    return 'tracked via DVC';
+  }
+  if (value.exists === false) return 'missing';
+  return 'not DVC-tracked';
+}
+
 export function formatClassIds(value) {
   if (!Array.isArray(value) || value.length === 0) return 'none';
   return value.join(', ');

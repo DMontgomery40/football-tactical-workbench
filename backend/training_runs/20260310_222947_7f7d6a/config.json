@@ -1,0 +1,111 @@
+{
+  "base_weights": "soccana",
+  "dataset_path": "/private/tmp/fpw_train_valid_v1",
+  "run_name": "20260310_222947_7f7d6a",
+  "epochs": 50,
+  "imgsz": 640,
+  "batch": 16,
+  "device": "auto",
+  "workers": 4,
+  "patience": 20,
+  "freeze": null,
+  "cache": false,
+  "backend": "ultralytics",
+  "backend_version": "8.3.81",
+  "dataset_scan": {
+    "path": "/private/tmp/fpw_train_valid_v1",
+    "tier": "valid",
+    "has_yaml": true,
+    "yaml_path": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "classes": [
+      "player",
+      "goalkeeper",
+      "referee",
+      "ball"
+    ],
+    "class_count": 4,
+    "classes_source": "/private/tmp/fpw_train_valid_v1/dataset.yaml",
+    "class_mapping": {
+      "player_class_ids": [
+        0,
+        1
+      ],
+      "ball_class_ids": [
+        3
+      ],
+      "referee_class_ids": [
+        2
+      ],
+      "player_class_id": 0,
+      "ball_class_id": 3,
+      "referee_class_id": 2
+    },
+    "split_paths": {
+      "train": "/private/tmp/fpw_train_valid_v1/images/train",
+      "val": "/private/tmp/fpw_train_valid_v1/images/val",
+      "test": null
+    },
+    "splits": {
+      "train": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/train",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/train"
+        ],
+        "images": 4,
+        "label_files": 4,
+        "labeled_images": 4,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 8,
+        "warnings": [],
+        "errors": []
+      },
+      "val": {
+        "source": "dataset_yaml",
+        "path": "/private/tmp/fpw_train_valid_v1/images/val",
+        "refs": [
+          "/private/tmp/fpw_train_valid_v1/images/val"
+        ],
+        "images": 2,
+        "label_files": 2,
+        "labeled_images": 2,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 4,
+        "warnings": [],
+        "errors": []
+      },
+      "test": {
+        "source": "missing",
+        "path": null,
+        "refs": [],
+        "images": 0,
+        "label_files": 0,
+        "labeled_images": 0,
+        "empty_label_files": 0,
+        "missing_labels": 0,
+        "invalid_label_files": 0,
+        "invalid_label_rows": 0,
+        "instances": 0,
+        "warnings": [],
+        "errors": []
+      }
+    },
+    "warnings": [],
+    "errors": [],
+    "can_start": true,
+    "suggested_validation_strategy": "existing_split",
+    "detected_format": "yolo_detection"
+  },
+  "generated_dataset_yaml": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/dataset_runtime.yaml",
+  "generated_split_lists": {
+    "train": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/train.txt",
+    "val": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/splits/val.txt"
+  },
+  "validation_strategy": "existing_split"
+}

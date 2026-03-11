@@ -158,5 +158,7 @@
   "artifacts": {},
   "best_checkpoint": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
   "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/training_provenance.json",
+  "training_provenance": null,
   "error": null
 }

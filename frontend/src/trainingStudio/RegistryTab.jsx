@@ -1,4 +1,5 @@
 import { MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
+import DurableArtifactsPanel from './DurableArtifactsPanel';
 import { formatClassIds, formatMetric, formatTimestamp } from './formatters';
 
 function RegistryListItem({ entry, isSelected, isActive, onSelect }) {
@@ -90,6 +91,12 @@ function RegistryDetail({ entry, helpIndex, activeRegistryId, pendingActivateDet
           <div>{entry.summary_path}</div>
         </div>
       ) : null}
+
+      <DurableArtifactsPanel
+        helpIndex={helpIndex}
+        trainingProvenancePath={entry.training_provenance_path}
+        trainingProvenance={entry.training_provenance}
+      />
 
       {entry.id !== activeRegistryId ? (
         <div className="source-toolbar">

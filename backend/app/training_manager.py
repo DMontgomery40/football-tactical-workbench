@@ -15,6 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from app.training import SUMMARY_FILENAME, collect_training_artifacts
+from app.training_provenance import (
+    PROVENANCE_FILENAME,
+    build_training_provenance,
+    read_training_provenance,
+    write_training_provenance,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TRAINING_RUNS_DIR = BASE_DIR / "training_runs"
@@ -47,6 +53,8 @@ class TrainingJobState:
     artifacts: dict[str, Any] = field(default_factory=dict)
     best_checkpoint: str | None = None
     summary_path: str | None = None
+    training_provenance_path: str | None = None
+    training_provenance: dict[str, Any] | None = None
     error: str | None = None
     pid: int | None = None
 
@@ -76,6 +84,8 @@ class TrainingJobState:
             "artifacts": self.artifacts or {},
             "best_checkpoint": self.best_checkpoint,
             "summary_path": self.summary_path,
+            "training_provenance_path": self.training_provenance_path,
+            "training_provenance": self.training_provenance or None,
             "error": self.error,
         }
 
@@ -113,6 +123,7 @@ class TrainingManager:
             backend=str(normalized_config.get("backend") or "") or None,
             backend_version=str(normalized_config.get("backend_version") or "") or None,
             summary_path=str((run_dir / SUMMARY_FILENAME).resolve()),
+            training_provenance_path=str((run_dir / PROVENANCE_FILENAME).resolve()),
         )
         self._write_config(run_dir, normalized_config)
         with self._lock:
@@ -155,6 +166,7 @@ class TrainingManager:
                     "metrics": job.metrics or {},
                     "best_checkpoint": job.best_checkpoint,
                     "summary_path": job.summary_path,
+                    "training_provenance_path": job.training_provenance_path,
                 }
             )
         return runs
@@ -167,6 +179,32 @@ class TrainingManager:
             if "config" in kwargs and isinstance(job.config, dict):
                 self._write_config(Path(job.run_dir), job.config)
             self._persist_locked(job)
+
+    def refresh_training_provenance(self, job_id: str, activation: dict[str, Any] | None = None) -> dict[str, Any] | None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return None
+            run_dir = Path(job.run_dir)
+            payload = build_training_provenance(
+                run_id=job.run_id,
+                run_dir=run_dir,
+                status=job.status,
+                config=job.config,
+                dataset_path=str(job.config.get("dataset_path") or ""),
+                dataset_scan_path=str((job.artifacts or {}).get("dataset_scan") or ""),
+                generated_dataset_yaml=job.generated_dataset_yaml or str((job.artifacts or {}).get("generated_dataset_yaml") or ""),
+                generated_split_lists=job.generated_split_lists,
+                summary_path=job.summary_path,
+                best_checkpoint=job.best_checkpoint,
+                activation=activation,
+            )
+            provenance_path = write_training_provenance(run_dir / PROVENANCE_FILENAME, payload)
+            job.training_provenance_path = provenance_path
+            job.training_provenance = payload
+            job.artifacts = self._collect_artifacts(run_dir)
+            self._persist_locked(job)
+            return {"path": provenance_path, "payload": payload}
 
     def append_log(self, job_id: str, message: str) -> None:
         stamp = datetime.utcnow().strftime("%H:%M:%S")
@@ -216,6 +254,7 @@ class TrainingManager:
             self._persist_locked(job)
             self._log_offsets[job_id] = current_offset
             self._seen_epochs[job_id] = int(job.current_epoch or 0)
+        self.refresh_training_provenance(job_id)
         self.append_log(job_id, f"Training worker started (pid {proc.pid})")
         threading.Thread(
             target=self._poll_process,
@@ -244,6 +283,7 @@ class TrainingManager:
                 pid = job.pid
 
         if queued_stop:
+            self.refresh_training_provenance(job_id)
             self.append_log(job_id, "Stopped queued job before worker launch")
             return True
 
@@ -309,11 +349,26 @@ class TrainingManager:
                 artifacts=dict(payload.get("artifacts") or {}),
                 best_checkpoint=str(payload.get("best_checkpoint")) if payload.get("best_checkpoint") else None,
                 summary_path=str(payload.get("summary_path")) if payload.get("summary_path") else str((run_dir / SUMMARY_FILENAME).resolve()),
+                training_provenance_path=(
+                    str(payload.get("training_provenance_path"))
+                    if payload.get("training_provenance_path")
+                    else (str((run_dir / PROVENANCE_FILENAME).resolve()) if (run_dir / PROVENANCE_FILENAME).exists() else None)
+                ),
+                training_provenance=dict(payload.get("training_provenance") or {}) or None,
                 error=str(payload.get("error")) if payload.get("error") else None,
                 pid=int(payload.get("pid")) if payload.get("pid") else None,
             )
             if not job.job_id:
                 continue
+
+            if job.training_provenance is None and job.training_provenance_path:
+                try:
+                    job.training_provenance = read_training_provenance(job.training_provenance_path)
+                except (ValueError, json.JSONDecodeError) as exc:
+                    job.training_provenance = {
+                        "load_error": f"Could not parse training provenance: {exc}",
+                        "path": job.training_provenance_path,
+                    }
 
             if job.status in {"queued", "running", "stopping"} and job.config:
                 job.status = "queued"
@@ -367,6 +422,7 @@ class TrainingManager:
             finished_at = datetime.utcnow().isoformat() + "Z"
             if latest.status in {"stopped", "stopping"}:
                 self.update(job_id, status="stopped", pid=None, error=None, finished_at=finished_at)
+                self.refresh_training_provenance(job_id)
                 self.append_log(job_id, "Training stopped")
             elif return_code == 0:
                 best_checkpoint = run_dir / "weights" / "best.pt"
@@ -385,6 +441,7 @@ class TrainingManager:
                         error=None,
                         finished_at=finished_at,
                     )
+                    self.refresh_training_provenance(job_id)
                     self.append_log(job_id, "Training completed")
                 else:
                     self.update(
@@ -395,6 +452,7 @@ class TrainingManager:
                         error="Training exited successfully but no best checkpoint was produced.",
                         finished_at=finished_at,
                     )
+                    self.refresh_training_provenance(job_id)
             else:
                 tail = " ".join(self._tail_log(log_path, limit=3))
                 self.update(
@@ -405,6 +463,7 @@ class TrainingManager:
                     error=f"Training process exited with code {return_code}. {tail}".strip(),
                     finished_at=finished_at,
                 )
+                self.refresh_training_provenance(job_id)
             with self._lock:
                 self._log_offsets.pop(job_id, None)
                 self._seen_epochs.pop(job_id, None)
@@ -440,6 +499,8 @@ class TrainingManager:
         run_dir.mkdir(parents=True, exist_ok=True)
         if not job.summary_path:
             job.summary_path = str(self._summary_state_path(run_dir).resolve())
+        if not job.training_provenance_path:
+            job.training_provenance_path = str((run_dir / PROVENANCE_FILENAME).resolve())
         self._job_state_path(run_dir).write_text(json.dumps(job.persistence_dict(), indent=2), encoding="utf-8")
         self._summary_state_path(run_dir).write_text(json.dumps(self._summary_payload(job), indent=2), encoding="utf-8")
 

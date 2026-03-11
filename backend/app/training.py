@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from app.training_provenance import PROVENANCE_FILENAME
 from app.wide_angle import (
     BALL_CLASS_LABEL_HINTS,
     PLAYER_CLASS_LABEL_HINTS,
@@ -627,6 +628,7 @@ def collect_training_artifacts(run_dir: Path) -> dict[str, Any]:
         "config": str((run_dir / "config.json").resolve()),
         "dataset_scan": str((run_dir / SCAN_FILENAME).resolve()) if (run_dir / SCAN_FILENAME).exists() else None,
         "generated_dataset_yaml": str((run_dir / RUNTIME_DATASET_FILENAME).resolve()) if (run_dir / RUNTIME_DATASET_FILENAME).exists() else None,
+        "training_provenance": str((run_dir / PROVENANCE_FILENAME).resolve()) if (run_dir / PROVENANCE_FILENAME).exists() else None,
         "train_log": str((run_dir / "train.log").resolve()) if (run_dir / "train.log").exists() else None,
         "progress": str((run_dir / "progress.json").resolve()) if (run_dir / "progress.json").exists() else None,
         "summary": str((run_dir / SUMMARY_FILENAME).resolve()) if (run_dir / SUMMARY_FILENAME).exists() else None,

@@ -1,0 +1,7 @@
+.DS_Store
+backend/.venv/
+backend/runs/
+backend/training_runs/
+frontend/dist/
+frontend/node_modules/
+output/

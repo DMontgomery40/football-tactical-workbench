@@ -234,6 +234,8 @@
   },
   "best_checkpoint": null,
   "summary_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/summary.json",
+  "training_provenance_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_071851_5758c3/training_provenance.json",
+  "training_provenance": null,
   "error": "unhashable type: 'list'",
   "pid": 95493
 }
