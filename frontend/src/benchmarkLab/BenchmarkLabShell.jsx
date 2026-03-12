@@ -3,6 +3,7 @@ import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { buildHelpIndex, SectionTitleWithHelp } from '../helpUi';
 import { writeStoredValue } from '../trainingStudio/storage';
 import BenchmarkControls from './BenchmarkControls';
+import { buildCoreBaselinePlan } from './candidates';
 import CandidateDetail from './CandidateDetail';
 import CandidateLibrary from './CandidateLibrary';
 import ClipCard from './ClipCard';
@@ -42,6 +43,9 @@ function SnGamestateReferenceCard({ helpIndex }) {
       </p>
       <p className="field-note">
         This workbench can review arbitrary clips, but that is not the same as official label-backed evaluation. Use the SoccerNet baseline when you need the published GSR scoring contract.
+      </p>
+      <p className="field-note">
+        When the local sn-gamestate repo is configured, Benchmark Lab can run that external baseline side-by-side with the native pipelines on the same clip for review.
       </p>
       <div className="path-list">
         <a href="https://github.com/SoccerNet/sn-gamestate" target="_blank" rel="noreferrer">Repository</a>
@@ -262,21 +266,34 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
 
   // --- Derived ---
 
-  const selectedCandidate = useMemo(
-    () => state.candidates.find((c) => c.id === state.selectedCandidateId) || null,
-    [state.candidates, state.selectedCandidateId],
-  );
-
   const activeBenchmark = useMemo(
     () => state.benchmarks.find((b) => b.benchmark_id === state.selectedBenchmarkId) || null,
     [state.benchmarks, state.selectedBenchmarkId],
+  );
+
+  const selectedCandidate = useMemo(
+    () =>
+      state.candidates.find((c) => c.id === state.selectedCandidateId)
+      || activeBenchmark?.candidates?.find((c) => c.id === state.selectedCandidateId)
+      || null,
+    [activeBenchmark, state.candidates, state.selectedCandidateId],
+  );
+
+  const baselineCandidates = useMemo(
+    () => state.candidates.filter((candidate) => candidate?.comparison_group === 'baseline'),
+    [state.candidates],
+  );
+  const coreBaselinePlan = useMemo(() => buildCoreBaselinePlan(state.candidates), [state.candidates]);
+
+  const unavailableBaselines = useMemo(
+    () => baselineCandidates.filter((candidate) => candidate?.available === false),
+    [baselineCandidates],
   );
 
   const selectedCandidateResult = useMemo(() => {
     if (!activeBenchmark?.leaderboard || !state.selectedCandidateId) return null;
     return activeBenchmark.leaderboard.find((r) => r.candidate_id === state.selectedCandidateId) || null;
   }, [activeBenchmark, state.selectedCandidateId]);
-
   return (
     <section className="benchmark-shell">
       <div className="card benchmark-header">
@@ -285,14 +302,25 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
             <span>Benchmark Lab</span>
           </div>
           <p className="studio-intro">
-            Compare model outputs on a locked reference clip under identical runtime conditions.
+            Compare the three analysis baselines on one locked reference clip under identical review conditions.
             This surface currently produces a proxy clip-comparison score, not a label-backed accuracy benchmark.
           </p>
-          {activePipeline !== (state.runtimeProfile?.pipeline || 'classic') ? (
+          {state.runtimeProfile?.note ? (
+            <p className="benchmark-pipeline-notice">{state.runtimeProfile.note}</p>
+          ) : (
             <p className="benchmark-pipeline-notice">
-              Your Analysis Workspace uses the <strong>{activePipeline}</strong> pipeline.
-              Benchmark Lab locks all runs to <strong>{state.runtimeProfile?.pipeline || 'classic'}</strong> for
-              fair comparison. Results may not reflect your active pipeline configuration.
+              Benchmark Lab treats pipeline choice as part of the comparison itself: classic / soccana, SoccerMaster,
+              and sn-gamestate can all run side-by-side while the clip stays fixed.
+            </p>
+          )}
+          {unavailableBaselines.length > 0 ? (
+            <p className="benchmark-pipeline-notice">
+              Missing local setup for: <strong>{unavailableBaselines.map((candidate) => candidate.label || candidate.id).join(', ')}</strong>.
+              Configure those baselines to run the full trio.
+            </p>
+          ) : activePipeline !== (state.runtimeProfile?.native_pipeline || 'classic') ? (
+            <p className="benchmark-pipeline-notice">
+              Your Analysis Workspace is currently using <strong>{activePipeline}</strong>. That selection does not change the benchmark trio.
             </p>
           ) : null}
         </div>
@@ -341,6 +369,7 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
             <BenchmarkControls
               clipReady={state.clipStatus?.ready}
               candidates={state.candidates}
+              coreBaselinePlan={coreBaselinePlan}
               selectedCandidateId={state.selectedCandidateId}
               isRunning={state.pending.runBenchmark}
               benchmarkError={state.errors.benchmark}

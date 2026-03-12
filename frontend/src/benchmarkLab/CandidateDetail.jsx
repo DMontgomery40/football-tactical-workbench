@@ -23,11 +23,30 @@ export default function CandidateDetail({
 
   // benchmarkResult is a leaderboard row with scores at top level
   const result = benchmarkResult;
-  const hasScores = result && result.composite != null;
+  const hasResultMetrics = Boolean(
+    result
+    && (result.composite != null
+      || result.track_stability != null
+      || result.calibration != null
+      || result.coverage != null
+      || result.throughput != null
+      || result.score_note),
+  );
   const summary = candidateRunResult?.summary_excerpt || null;
   const diagnostics = summary?.diagnostics?.length ? summary.diagnostics : summary?.heuristic_diagnostics || [];
   const overlayVideo = summary?.overlay_video ? `${apiBase}${summary.overlay_video}` : '';
   const candidateLogs = Array.isArray(candidateRunResult?.logs) ? candidateRunResult.logs : [];
+  const runFacts = [
+    { label: 'Frames processed', value: summary?.frames_processed },
+    { label: 'Runtime FPS', value: summary?.fps },
+    { label: 'Unique tracks', value: summary?.unique_player_track_ids },
+    { label: 'Field registered ratio', value: summary?.field_registered_ratio },
+  ].filter((item) => item.value != null && item.value !== '');
+  const artifactLabel = candidate.pipeline_override === 'sn_gamestate'
+    ? 'Repository'
+    : candidate.pipeline_override === 'soccermaster'
+      ? 'Model bundle'
+      : 'Weights';
 
   return (
     <div className="card benchmark-detail">
@@ -39,7 +58,7 @@ export default function CandidateDetail({
         ) : null}
       </div>
 
-      {hasScores ? (
+      {hasResultMetrics ? (
         <div className="benchmark-detail-metrics">
           <div className="benchmark-detail-metric-grid">
             <div className="benchmark-metric-item">
@@ -68,10 +87,17 @@ export default function CandidateDetail({
               Pipeline: <strong>{result.pipeline}</strong>
             </div>
           ) : null}
+          {result.score_note ? (
+            <div className="stat-hint">{result.score_note}</div>
+          ) : null}
         </div>
       ) : result?.status === 'failed' ? (
         <div className="error-box">
           Benchmark failed: {result.error || 'Unknown error'}
+        </div>
+      ) : candidate.available === false ? (
+        <div className="error-box">
+          {candidate.availability_note || 'This benchmark candidate is not configured on this machine yet.'}
         </div>
       ) : (
         <p className="muted">No benchmark results for this candidate yet.</p>
@@ -80,6 +106,19 @@ export default function CandidateDetail({
       {overlayVideo ? (
         <div className="benchmark-detail-video">
           <video controls preload="metadata" src={overlayVideo} className="benchmark-detail-video-el" />
+        </div>
+      ) : null}
+
+      {runFacts.length ? (
+        <div className="benchmark-detail-metrics">
+          <div className="benchmark-detail-metric-grid">
+            {runFacts.map((item) => (
+              <div key={item.label} className="benchmark-metric-item">
+                <span className="micro-label">{item.label}</span>
+                <span className="benchmark-metric-value">{formatScore(item.value)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -113,7 +152,7 @@ export default function CandidateDetail({
       ) : null}
 
       <div className="benchmark-detail-meta">
-        <span className="micro-label">Weights</span>
+        <span className="micro-label">{artifactLabel}</span>
         <span className="muted">{candidate.path || 'N/A'}</span>
       </div>
     </div>

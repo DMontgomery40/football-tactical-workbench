@@ -1,7 +1,7 @@
-"""Benchmark Lab -- detector comparison orchestration.
+"""Benchmark Lab -- model and pipeline comparison orchestration.
 
-Runs multiple detector candidates against a canonical benchmark clip using
-fixed runtime settings, then ranks them by a transparent composite score
+Runs multiple benchmark candidates against a canonical benchmark clip using
+shared runtime defaults, then ranks them by a transparent composite score
 derived from existing analysis summary signals.
 
 CRITICAL: imported benchmark models are never activated in the main analysis
@@ -11,16 +11,16 @@ only referenced during benchmark runs.
 from __future__ import annotations
 
 import json
+import os
 import shutil
-import subprocess
 import threading
-import time
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import cv2
+from app.sn_gamestate import run_sn_gamestate_analysis, sn_gamestate_status
 from app.training_provenance import (
     probe_dvc_runtime,
     resolve_dvc_tracking,
@@ -43,10 +43,10 @@ CLIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 IMPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# Fixed runtime profile -- every candidate is evaluated under identical
-# conditions so the comparison is fair.
+# Native runtime defaults -- every comparable native candidate inherits these
+# settings unless the candidate provides an explicit pipeline override.
 # ---------------------------------------------------------------------------
-BENCHMARK_RUNTIME_PROFILE: dict[str, Any] = {
+BENCHMARK_NATIVE_RUNTIME_DEFAULTS: dict[str, Any] = {
     "pipeline": "classic",
     "keypoint_model": "soccana_keypoint",
     "tracker_mode": "hybrid_reid",
@@ -54,6 +54,22 @@ BENCHMARK_RUNTIME_PROFILE: dict[str, Any] = {
     "player_conf": 0.25,
     "ball_conf": 0.20,
     "iou": 0.50,
+}
+
+BENCHMARK_RUNTIME_PROFILE: dict[str, Any] = {
+    "comparison_mode": "candidate_defined_pipeline_baselines",
+    "pipeline": "candidate_defined",
+    "native_pipeline": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["pipeline"],
+    "native_keypoint_model": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["keypoint_model"],
+    "tracker_mode": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["tracker_mode"],
+    "include_ball": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["include_ball"],
+    "player_conf": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["player_conf"],
+    "ball_conf": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["ball_conf"],
+    "iou": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["iou"],
+    "note": (
+        "The benchmark clip stays fixed for every run. Pipeline selection can vary by candidate baseline, "
+        "while native tracker and threshold defaults stay fixed where those controls apply."
+    ),
 }
 
 BENCHMARK_CLIP_FILENAME = "benchmark_clip.mp4"
@@ -65,6 +81,12 @@ SCORE_WEIGHT_TRACK_STABILITY = 0.30
 SCORE_WEIGHT_CALIBRATION = 0.25
 SCORE_WEIGHT_COVERAGE = 0.25
 SCORE_WEIGHT_THROUGHPUT = 0.20
+FULL_PROXY_SCORE_KEYS = (
+    "average_track_length",
+    "player_track_churn_ratio",
+    "field_registered_ratio",
+    "average_player_detections_per_frame",
+)
 
 
 # ---- Clip management ------------------------------------------------------
@@ -163,21 +185,50 @@ def ensure_clip(source_path: str = "") -> dict[str, Any]:
 # ---- Candidate management -------------------------------------------------
 
 SOCCERMASTER_MODELS_DIR = BASE_DIR / "models" / "soccermaster"
+SOCCERMASTER_MODELS_ENV_VAR = "SOCCERMASTER_MODELS_DIR"
+
+
+def _resolve_soccermaster_models_dir() -> Path | None:
+    candidates: list[Path] = []
+    raw_env = str(os.environ.get(SOCCERMASTER_MODELS_ENV_VAR, "")).strip()
+    if raw_env:
+        candidates.append(Path(raw_env).expanduser())
+    candidates.append(SOCCERMASTER_MODELS_DIR)
+    siblings_root = BASE_DIR.parent.parent
+    try:
+        candidates.extend(sorted(siblings_root.glob("*/backend/models/soccermaster")))
+    except Exception:
+        pass
+
+    required = ("backbone.pt", "SoccerNetGSR_Detection.pt", "KeypointsDetection.pt")
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        if all((candidate / name).exists() for name in required):
+            return candidate.resolve()
+    return None
 
 
 def _pretrained_candidate() -> dict[str, Any]:
-    """The built-in soccana detector."""
+    """The built-in classic baseline with the football-pretrained soccana detector."""
     path = resolve_model_path("soccana", "detector")
     return {
         "id": "soccana",
-        "label": "soccana (pretrained)",
-        "source": "pretrained",
+        "label": "Classic / soccana",
+        "source": "baseline",
         "path": path,
         "is_pretrained": True,
+        "available": True,
+        "comparison_group": "baseline",
+        "pipeline_override": "classic",
+        "availability_note": "Classic analysis pipeline with the built-in football-pretrained soccana detector.",
     }
 
 
-def _soccermaster_candidate() -> dict[str, Any] | None:
+def _soccermaster_candidate() -> dict[str, Any]:
     """SoccerMaster unified pipeline candidate.
 
     Only available when the SoccerMaster model weights are present locally.
@@ -185,19 +236,47 @@ def _soccermaster_candidate() -> dict[str, Any] | None:
     detection + calibration), so it overrides the locked runtime profile's
     pipeline and keypoint_model settings.
     """
-    backbone = SOCCERMASTER_MODELS_DIR / "backbone.pt"
-    detection = SOCCERMASTER_MODELS_DIR / "SoccerNetGSR_Detection.pt"
-    keypoints = SOCCERMASTER_MODELS_DIR / "KeypointsDetection.pt"
-    if not (backbone.exists() and detection.exists() and keypoints.exists()):
-        return None
+    models_dir = _resolve_soccermaster_models_dir()
+    available = models_dir is not None
+    note = (
+        f"SoccerMaster weights found at {models_dir}."
+        if models_dir
+        else (
+            "SoccerMaster weights are not present locally. Set SOCCERMASTER_MODELS_DIR or place the required "
+            "weights under backend/models/soccermaster."
+        )
+    )
     return {
         "id": "soccermaster",
         "label": "SoccerMaster (unified)",
-        "source": "pretrained",
-        "path": str(SOCCERMASTER_MODELS_DIR),
+        "source": "baseline",
+        "path": str(models_dir) if models_dir else "",
         "is_pretrained": True,
+        "available": available,
+        "comparison_group": "baseline",
         "pipeline_override": "soccermaster",
         "keypoint_override": "soccermaster",
+        "availability_note": note,
+    }
+
+
+def _sn_gamestate_candidate() -> dict[str, Any]:
+    status = sn_gamestate_status()
+    return {
+        "id": "sn_gamestate",
+        "label": "sn-gamestate (TrackLab baseline)",
+        "source": "baseline",
+        "path": str(status.get("repo_path") or ""),
+        "is_pretrained": True,
+        "available": bool(status.get("available")),
+        "comparison_group": "baseline",
+        "pipeline_override": "sn_gamestate",
+        "availability_note": str(status.get("note") or ""),
+        "availability_status": {
+            "repo_present": bool(status.get("repo_present")),
+            "uv_available": bool(status.get("uv_available")),
+        },
+        "links": status.get("links") or {},
     }
 
 
@@ -227,6 +306,9 @@ def _registry_candidates() -> list[dict[str, Any]]:
             "source": "registry",
             "path": path,
             "is_pretrained": False,
+            "available": True,
+            "comparison_group": "detector",
+            "availability_note": "Custom detector from the local Training Studio registry.",
             "training_run_id": entry.get("training_run_id"),
             "metrics": entry.get("metrics"),
         })
@@ -254,19 +336,23 @@ def _import_candidates() -> list[dict[str, Any]]:
                 "source": "import",
                 "path": path,
                 "is_pretrained": False,
+                "available": True,
+                "comparison_group": "detector",
+                "availability_note": "Imported detector checkpoint staged only for Benchmark Lab.",
                 "import_origin": record.get("origin"),
             })
     return candidates
 
 
 def list_candidates() -> list[dict[str, Any]]:
-    """All benchmark candidates: pretrained + soccermaster + registry + imports."""
+    """All benchmark candidates: baseline trio + registry + imports."""
     seen: set[str] = set()
     result: list[dict[str, Any]] = []
-    base = [_pretrained_candidate()]
-    sm = _soccermaster_candidate()
-    if sm is not None:
-        base.append(sm)
+    base = [
+        _pretrained_candidate(),
+        _soccermaster_candidate(),
+        _sn_gamestate_candidate(),
+    ]
     for candidate in base + _registry_candidates() + _import_candidates():
         cid = candidate["id"]
         if cid in seen:
@@ -344,6 +430,9 @@ def import_local_checkpoint(checkpoint_path: str, label: str = "") -> dict[str, 
         "source": "import",
         "path": str(dest_path),
         "is_pretrained": False,
+        "available": True,
+        "comparison_group": "detector",
+        "availability_note": "Imported detector checkpoint staged only for Benchmark Lab.",
         "import_origin": str(resolved),
         "origin_dvc": record["origin_dvc"],
     }
@@ -386,6 +475,9 @@ def import_hf_checkpoint(repo_id: str, filename: str = "best.pt", label: str = "
         "source": "import",
         "path": str(dest_path),
         "is_pretrained": False,
+        "available": True,
+        "comparison_group": "detector",
+        "availability_note": "Imported detector checkpoint staged only for Benchmark Lab.",
         "import_origin": record["origin"],
     }
 
@@ -402,7 +494,8 @@ def compute_composite_score(summary: dict[str, Any]) -> dict[str, Any]:
 
     # Track stability: penalise high churn, reward long average tracks
     avg_track_len = float(summary.get("average_track_length") or 0)
-    churn = float(summary.get("player_track_churn_ratio") or 1.0)
+    raw_churn = summary.get("player_track_churn_ratio")
+    churn = float(raw_churn) if raw_churn is not None else 1.0
     # Ideal avg track length ~= total frames, churn ~= 0
     stability_raw = min(avg_track_len / frames, 1.0) * (1.0 - min(churn, 1.0))
     track_stability = round(stability_raw * 100, 2)
@@ -438,6 +531,44 @@ def compute_composite_score(summary: dict[str, Any]) -> dict[str, Any]:
             "coverage": SCORE_WEIGHT_COVERAGE,
             "throughput": SCORE_WEIGHT_THROUGHPUT,
         },
+    }
+
+
+def compute_benchmark_score(summary: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    if all(key in summary for key in FULL_PROXY_SCORE_KEYS):
+        score = compute_composite_score(summary)
+        score["score_kind"] = "full_proxy"
+        score["score_note"] = ""
+        return score
+
+    fps = float(summary.get("fps") or 0.0)
+    throughput_score = round(min(fps / 30.0, 1.0) * 100, 2)
+    pipeline = str(candidate.get("pipeline_override") or BENCHMARK_NATIVE_RUNTIME_DEFAULTS["pipeline"])
+    if pipeline == "sn_gamestate":
+        note = (
+            "sn-gamestate is runnable side-by-side here, but arbitrary external clips do not expose the full native "
+            "tracking, calibration, and coverage metrics this workbench uses for its proxy score. Review overlay, logs, "
+            "and diagnostics directly instead of reading this row as a ranked 0-100 score."
+        )
+    else:
+        note = (
+            "This run completed, but the summary did not expose the full native proxy metrics needed for a 0-100 score. "
+            "Review overlay, logs, and diagnostics directly."
+        )
+    return {
+        "composite": None,
+        "track_stability": None,
+        "calibration": None,
+        "coverage": None,
+        "throughput": throughput_score,
+        "weights": {
+            "track_stability": SCORE_WEIGHT_TRACK_STABILITY,
+            "calibration": SCORE_WEIGHT_CALIBRATION,
+            "coverage": SCORE_WEIGHT_COVERAGE,
+            "throughput": SCORE_WEIGHT_THROUGHPUT,
+        },
+        "score_kind": "partial_proxy",
+        "score_note": note,
     }
 
 
@@ -499,11 +630,21 @@ class BenchmarkOrchestrator:
         if candidate_ids:
             id_set = set(candidate_ids)
             selected = [c for c in all_candidates if c["id"] in id_set]
+            missing_ids = sorted(id_set - {c["id"] for c in selected})
+            if missing_ids:
+                raise RuntimeError(f"Unknown benchmark candidate ids: {', '.join(missing_ids)}")
+            unavailable = [c for c in selected if not c.get("available", True)]
+            if unavailable:
+                missing = ", ".join(
+                    f"{item.get('label', item.get('id', 'candidate'))} ({item.get('availability_note', 'not available')})"
+                    for item in unavailable
+                )
+                raise RuntimeError(f"Selected benchmark candidates are not runnable yet: {missing}")
         else:
-            selected = all_candidates
+            selected = [c for c in all_candidates if c.get("available", True)]
 
         if not selected:
-            raise RuntimeError("No candidates available for benchmarking.")
+            raise RuntimeError("No runnable benchmark candidates are available for benchmarking.")
 
         benchmark_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S_") + uuid.uuid4().hex[:6]
         benchmark_dir = BENCHMARKS_DIR / benchmark_id
@@ -599,7 +740,12 @@ class BenchmarkOrchestrator:
                 with self._lock:
                     st = self._active_benchmarks[benchmark_id]
                     st["candidate_results"][candidate_id] = result
-                self._append_log(benchmark_id, benchmark_dir, f"Candidate {candidate_id} completed. Composite={result['score']['composite']}")
+                composite = (result.get("score") or {}).get("composite")
+                if composite is None:
+                    note = result.get("score_note") or "Completed without a ranked proxy score."
+                    self._append_log(benchmark_id, benchmark_dir, f"Candidate {candidate_id} completed. {note}")
+                else:
+                    self._append_log(benchmark_id, benchmark_dir, f"Candidate {candidate_id} completed. Composite={composite}")
             except Exception as exc:
                 error_result = {
                     "candidate_id": candidate_id,
@@ -643,14 +789,14 @@ class BenchmarkOrchestrator:
 
         # Respect per-candidate pipeline overrides (e.g. SoccerMaster uses
         # its own unified pipeline rather than classic + separate detector).
-        pipeline = candidate.get("pipeline_override") or BENCHMARK_RUNTIME_PROFILE["pipeline"]
-        keypoint_model = candidate.get("keypoint_override") or BENCHMARK_RUNTIME_PROFILE["keypoint_model"]
+        pipeline = candidate.get("pipeline_override") or BENCHMARK_NATIVE_RUNTIME_DEFAULTS["pipeline"]
+        keypoint_model = candidate.get("keypoint_override") or BENCHMARK_NATIVE_RUNTIME_DEFAULTS["keypoint_model"]
 
         # SoccerMaster doesn't use separate YOLO detector/ball models -- its
         # unified backbone handles everything.  But analyze_video still runs
         # resolve_detector_spec() on player_model before checking pipeline mode,
         # so we pass the standard soccana detector as a valid-but-unused default.
-        if pipeline == "soccermaster":
+        if pipeline in {"soccermaster", "sn_gamestate"}:
             fallback_detector = resolve_model_path("soccana", "detector")
         else:
             fallback_detector = detector_path
@@ -662,25 +808,33 @@ class BenchmarkOrchestrator:
             "player_model": fallback_detector,
             "ball_model": fallback_detector,
             "keypoint_model": keypoint_model,
-            "tracker_mode": BENCHMARK_RUNTIME_PROFILE["tracker_mode"],
-            "include_ball": BENCHMARK_RUNTIME_PROFILE["include_ball"],
-            "player_conf": BENCHMARK_RUNTIME_PROFILE["player_conf"],
-            "ball_conf": BENCHMARK_RUNTIME_PROFILE["ball_conf"],
-            "iou": BENCHMARK_RUNTIME_PROFILE["iou"],
+            "tracker_mode": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["tracker_mode"],
+            "include_ball": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["include_ball"],
+            "player_conf": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["player_conf"],
+            "ball_conf": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["ball_conf"],
+            "iou": BENCHMARK_NATIVE_RUNTIME_DEFAULTS["iou"],
         }
 
         job_mgr = _BenchmarkJobManager(benchmark_id, candidate_id, benchmark_dir)
         job_id = f"bench_{candidate_id}_{uuid.uuid4().hex[:4]}"
 
-        summary = analyze_wide_angle_video(
-            job_id=job_id,
-            run_dir=run_dir,
-            config_payload=config_payload,
-            job_manager=job_mgr,
-            job_control=None,
-        )
+        if pipeline == "sn_gamestate":
+            summary = run_sn_gamestate_analysis(
+                job_id=job_id,
+                run_dir=run_dir,
+                source_video_path=Path(clip_path).expanduser().resolve(),
+                job_manager=job_mgr,
+            )
+        else:
+            summary = analyze_wide_angle_video(
+                job_id=job_id,
+                run_dir=run_dir,
+                config_payload=config_payload,
+                job_manager=job_mgr,
+                job_control=None,
+            )
 
-        score = compute_composite_score(summary)
+        score = compute_benchmark_score(summary, candidate)
 
         return {
             "candidate_id": candidate_id,
@@ -690,7 +844,9 @@ class BenchmarkOrchestrator:
             "run_dir": str(run_dir),
             "logs": job_mgr.lines,
             "score": score,
+            "score_note": score.get("score_note", ""),
             "summary_excerpt": {
+                "pipeline": summary.get("pipeline"),
                 "frames_processed": summary.get("frames_processed"),
                 "fps": summary.get("fps"),
                 "unique_player_track_ids": summary.get("unique_player_track_ids"),
@@ -705,6 +861,7 @@ class BenchmarkOrchestrator:
                 "diagnostics": summary.get("diagnostics") or [],
                 "heuristic_diagnostics": summary.get("heuristic_diagnostics") or [],
                 "diagnostics_source": summary.get("diagnostics_source"),
+                "score_note": score.get("score_note", ""),
             },
         }
 
@@ -719,24 +876,40 @@ class BenchmarkOrchestrator:
             entry = candidate_map.get(cid, {})
             score = result.get("score")
             rows.append({
-                "rank": 0,
+                "rank": None,
                 "candidate_id": cid,
                 "label": entry.get("label", cid),
                 "source": entry.get("source", "unknown"),
-                "pipeline": entry.get("pipeline_override") or BENCHMARK_RUNTIME_PROFILE["pipeline"],
+                "pipeline": entry.get("pipeline_override") or BENCHMARK_NATIVE_RUNTIME_DEFAULTS["pipeline"],
+                "available": entry.get("available", True),
+                "comparison_group": entry.get("comparison_group", "detector"),
                 "status": result.get("status", "unknown"),
                 "composite": score["composite"] if score else None,
                 "track_stability": score["track_stability"] if score else None,
                 "calibration": score["calibration"] if score else None,
                 "coverage": score["coverage"] if score else None,
                 "throughput": score["throughput"] if score else None,
+                "score_kind": score.get("score_kind") if score else None,
+                "score_note": result.get("score_note", ""),
                 "run_id": result.get("run_id"),
                 "error": result.get("error"),
             })
-        # Sort by composite descending, failed entries at bottom
-        rows.sort(key=lambda r: (0 if r["composite"] is not None else 1, -(r["composite"] or 0)))
-        for i, row in enumerate(rows):
-            row["rank"] = i + 1
+
+        def _sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+            if row["status"] == "completed" and row["composite"] is not None:
+                return (0, -(row["composite"] or 0.0), row["label"])
+            if row["status"] == "completed":
+                return (1, 0.0, row["label"])
+            if row["status"] == "failed":
+                return (2, 0.0, row["label"])
+            return (3, 0.0, row["label"])
+
+        rows.sort(key=_sort_key)
+        next_rank = 1
+        for row in rows:
+            if row["status"] == "completed" and row["composite"] is not None:
+                row["rank"] = next_rank
+                next_rank += 1
         return rows
 
     def _update_state(self, benchmark_id: str, benchmark_dir: Path, **kwargs: Any) -> None:
@@ -760,7 +933,11 @@ class BenchmarkOrchestrator:
         summary_path.write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
 
     def _restore_completed(self) -> None:
-        """Load completed benchmark summaries from disk on startup."""
+        """Load benchmark summaries from disk on startup.
+
+        Benchmarks cannot resume after process restart, so any persisted queued/running
+        state is converted into a visible failed-with-partial-results record.
+        """
         if not BENCHMARKS_DIR.exists():
             return
         for child in BENCHMARKS_DIR.iterdir():
@@ -770,6 +947,13 @@ class BenchmarkOrchestrator:
             if summary_path.exists():
                 try:
                     data = json.loads(summary_path.read_text(encoding="utf-8"))
+                    if data.get("status") in ("queued", "running"):
+                        data["status"] = "failed"
+                        data["error"] = (
+                            "Benchmark process stopped before completion. Partial candidate results were preserved, "
+                            "but the benchmark worker is no longer running. Rerun the benchmark to refresh it."
+                        )
+                        summary_path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
                     if data.get("status") in ("completed", "failed"):
                         with self._lock:
                             self._active_benchmarks[child.name] = data

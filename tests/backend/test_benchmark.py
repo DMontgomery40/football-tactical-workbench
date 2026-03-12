@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -13,10 +12,12 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.benchmark import (
+    BenchmarkOrchestrator,
     SCORE_WEIGHT_CALIBRATION,
     SCORE_WEIGHT_COVERAGE,
     SCORE_WEIGHT_THROUGHPUT,
     SCORE_WEIGHT_TRACK_STABILITY,
+    compute_benchmark_score,
     compute_composite_score,
     list_candidates,
 )
@@ -41,21 +42,17 @@ def test_composite_score_from_perfect_summary() -> None:
         "frames_processed": 100,
         "fps": 30,
         "average_track_length": 100,
-        # NOTE: churn uses `or 1.0` default, so 0.0 is falsy and becomes 1.0.
-        # Must pass a small nonzero value, or accept that 0.0 maps to "max churn".
-        # The implementation treats missing/zero churn as worst-case (1.0).
-        "player_track_churn_ratio": 0.01,
+        "player_track_churn_ratio": 0.0,
         "field_registered_ratio": 1.0,
         "average_player_detections_per_frame": 22,
     }
     result = compute_composite_score(summary)
 
-    assert result["track_stability"] == 99.0  # (100/100) * (1 - 0.01) = 0.99 => 99.0
+    assert result["track_stability"] == 100.0
     assert result["calibration"] == 100.0
     assert result["coverage"] == 100.0
     assert result["throughput"] == 100.0
-    # composite should be very close to 100
-    assert result["composite"] > 99.0
+    assert result["composite"] == 100.0
 
 
 def test_composite_score_from_empty_summary() -> None:
@@ -131,14 +128,17 @@ def test_composite_score_caps_throughput_and_coverage_at_100() -> None:
 def test_list_candidates_always_includes_pretrained(tmp_path: Path) -> None:
     fake_soccana = tmp_path / "soccana.pt"
     fake_soccana.write_bytes(b"fake")
+    fake_soccermaster = {"id": "soccermaster", "label": "SoccerMaster", "available": False}
+    fake_sn = {"id": "sn_gamestate", "label": "sn-gamestate", "available": False}
 
     with patch("app.benchmark.resolve_model_path", return_value=str(fake_soccana)):
-        with patch("app.benchmark._soccermaster_candidate", return_value=None):
-            with patch("app.benchmark._registry_candidates", return_value=[]):
-                with patch("app.benchmark._import_candidates", return_value=[]):
-                    candidates = list_candidates()
+        with patch("app.benchmark._soccermaster_candidate", return_value=fake_soccermaster):
+            with patch("app.benchmark._sn_gamestate_candidate", return_value=fake_sn):
+                with patch("app.benchmark._registry_candidates", return_value=[]):
+                    with patch("app.benchmark._import_candidates", return_value=[]):
+                        candidates = list_candidates()
 
-    assert len(candidates) == 1
+    assert [candidate["id"] for candidate in candidates] == ["soccana", "soccermaster", "sn_gamestate"]
     assert candidates[0]["id"] == "soccana"
     assert candidates[0]["is_pretrained"] is True
 
@@ -155,6 +155,8 @@ def test_list_candidates_deduplicates_by_id(tmp_path: Path) -> None:
         "source": "registry",
         "path": str(fake_soccana),
         "is_pretrained": False,
+        "available": True,
+        "comparison_group": "detector",
     }
     registry_custom = {
         "id": "custom_run",
@@ -162,18 +164,69 @@ def test_list_candidates_deduplicates_by_id(tmp_path: Path) -> None:
         "source": "registry",
         "path": str(fake_custom),
         "is_pretrained": False,
+        "available": True,
+        "comparison_group": "detector",
     }
+    fake_soccermaster = {"id": "soccermaster", "label": "SoccerMaster", "available": True}
+    fake_sn = {"id": "sn_gamestate", "label": "sn-gamestate", "available": True}
 
     with patch("app.benchmark.resolve_model_path", return_value=str(fake_soccana)):
-        with patch("app.benchmark._soccermaster_candidate", return_value=None):
-            with patch("app.benchmark._registry_candidates", return_value=[registry_dup, registry_custom]):
-                with patch("app.benchmark._import_candidates", return_value=[]):
-                    candidates = list_candidates()
+        with patch("app.benchmark._soccermaster_candidate", return_value=fake_soccermaster):
+            with patch("app.benchmark._sn_gamestate_candidate", return_value=fake_sn):
+                with patch("app.benchmark._registry_candidates", return_value=[registry_dup, registry_custom]):
+                    with patch("app.benchmark._import_candidates", return_value=[]):
+                        candidates = list_candidates()
 
     ids = [c["id"] for c in candidates]
-    assert ids == ["soccana", "custom_run"]
+    assert ids == ["soccana", "soccermaster", "sn_gamestate", "custom_run"]
     # soccana should be the pretrained version, not the registry duplicate
     assert candidates[0]["is_pretrained"] is True
+
+
+def test_compute_benchmark_score_returns_partial_proxy_for_sn_gamestate() -> None:
+    score = compute_benchmark_score(
+        {"fps": 15.0},
+        {"pipeline_override": "sn_gamestate"},
+    )
+
+    assert score["composite"] is None
+    assert score["throughput"] == 50.0
+    assert score["score_kind"] == "partial_proxy"
+    assert "sn-gamestate" in score["score_note"]
+
+
+def test_compute_benchmark_score_returns_full_proxy_for_native_summary() -> None:
+    score = compute_benchmark_score(
+        {
+            "frames_processed": 100,
+            "fps": 30.0,
+            "average_track_length": 100,
+            "player_track_churn_ratio": 0.0,
+            "field_registered_ratio": 1.0,
+            "average_player_detections_per_frame": 22.0,
+        },
+        {"pipeline_override": "classic"},
+    )
+
+    assert score["composite"] == 100.0
+    assert score["score_kind"] == "full_proxy"
+    assert score["score_note"] == ""
+
+
+def test_create_benchmark_rejects_unavailable_selected_candidate(tmp_path: Path) -> None:
+    with patch.object(BenchmarkOrchestrator, "_restore_completed", lambda self: None):
+        orchestrator = BenchmarkOrchestrator()
+
+    with patch("app.benchmark.clip_status", return_value={"ready": True, "path": str(tmp_path / "clip.mp4")}):
+        with patch(
+            "app.benchmark.list_candidates",
+            return_value=[
+                {"id": "soccana", "label": "Classic / soccana", "available": True},
+                {"id": "sn_gamestate", "label": "sn-gamestate", "available": False, "availability_note": "Clone repo first"},
+            ],
+        ):
+            with pytest.raises(RuntimeError, match="not runnable yet"):
+                orchestrator.create_benchmark(candidate_ids=["sn_gamestate"])
 
 
 # ---------------------------------------------------------------------------

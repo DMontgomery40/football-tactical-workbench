@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { SectionTitleWithHelp } from '../helpUi';
+import { splitBenchmarkCandidates } from './candidates';
 
 export default function CandidateLibrary({
   candidates,
@@ -16,6 +17,7 @@ export default function CandidateLibrary({
   const [localPath, setLocalPath] = useState('');
   const [hfRepoId, setHfRepoId] = useState('');
   const [hfFilename, setHfFilename] = useState('');
+  const { baselineCandidates, detectorCandidates } = splitBenchmarkCandidates(candidates);
 
   function handleImportLocal(event) {
     event.preventDefault();
@@ -36,34 +38,57 @@ export default function CandidateLibrary({
     setImportMode(null);
   }
 
+  function renderCandidateRow(candidate) {
+    const available = candidate.available !== false;
+    return (
+      <li key={candidate.id} className="benchmark-candidate-row">
+        <button
+          type="button"
+          className={`benchmark-candidate-btn${candidate.id === selectedCandidateId ? ' selected' : ''}${available ? '' : ' opacity-70'}`}
+          onClick={() => onSelectCandidate(candidate.id)}
+        >
+          <span className="benchmark-candidate-name">{candidate.label || candidate.id}</span>
+          <span className="benchmark-candidate-source muted">{candidate.source || 'unknown'}</span>
+          {candidate.pipeline_override ? (
+            <span className="benchmark-candidate-pipeline muted">{candidate.pipeline_override}</span>
+          ) : null}
+          <span className={`benchmark-status-badge ${available ? 'muted' : 'failed'}`}>
+            {available ? 'ready' : 'setup required'}
+          </span>
+          {candidate.availability_note ? (
+            <span className="muted text-left text-sm">{candidate.availability_note}</span>
+          ) : null}
+        </button>
+      </li>
+    );
+  }
+
   return (
     <div className="card benchmark-candidates">
-      <SectionTitleWithHelp title="Candidate detectors" entry={helpIndex?.get('benchmark.candidate')} />
+      <SectionTitleWithHelp title="Baselines and detector candidates" entry={helpIndex?.get('benchmark.candidate')} />
 
       {candidates.length === 0 && !candidatesError ? (
-        <p className="muted">No candidates found. Import a detector or train one in Training Studio.</p>
+        <p className="muted">No benchmark candidates found yet.</p>
       ) : null}
 
       {candidatesError ? <div className="error-box">{candidatesError}</div> : null}
 
-      {candidates.length > 0 ? (
-        <ul className="benchmark-candidate-list">
-          {candidates.map((c) => (
-            <li key={c.id} className="benchmark-candidate-row">
-              <button
-                type="button"
-                className={`benchmark-candidate-btn${c.id === selectedCandidateId ? ' selected' : ''}`}
-                onClick={() => onSelectCandidate(c.id)}
-              >
-                <span className="benchmark-candidate-name">{c.label || c.id}</span>
-                <span className="benchmark-candidate-source muted">{c.source || 'unknown'}</span>
-                {c.pipeline_override ? (
-                  <span className="benchmark-candidate-pipeline muted">{c.pipeline_override}</span>
-                ) : null}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {baselineCandidates.length > 0 ? (
+        <>
+          <div className="micro-label">Core baselines</div>
+          <ul className="benchmark-candidate-list">
+            {baselineCandidates.map(renderCandidateRow)}
+          </ul>
+        </>
+      ) : null}
+
+      {detectorCandidates.length > 0 ? (
+        <>
+          <div className="micro-label">Additional detector checkpoints</div>
+          <ul className="benchmark-candidate-list">
+            {detectorCandidates.map(renderCandidateRow)}
+          </ul>
+        </>
       ) : null}
 
       <div className="benchmark-import-controls">

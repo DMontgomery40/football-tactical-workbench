@@ -17,7 +17,10 @@ function formatScore(value) {
   return String(value);
 }
 
-function statusBadge(status) {
+function statusBadge(status, row) {
+  if (status === 'completed' && row?.composite == null && row?.score_kind === 'partial_proxy') {
+    return <span className="benchmark-status-badge muted">unscored</span>;
+  }
   if (status === 'completed') return null;
   if (status === 'failed') return <span className="benchmark-status-badge failed">failed</span>;
   if (status === 'running') return <span className="benchmark-status-badge running">running</span>;
@@ -42,11 +45,20 @@ export default function Leaderboard({
   const leaderboard = useMemo(() => {
     const rows = Array.isArray(activeBenchmark?.leaderboard) ? [...activeBenchmark.leaderboard] : [];
     if (sortField === 'rank') {
-      rows.sort((a, b) => (sortAsc ? a.rank - b.rank : b.rank - a.rank));
+      rows.sort((a, b) => {
+        const va = a.rank ?? Number.MAX_SAFE_INTEGER;
+        const vb = b.rank ?? Number.MAX_SAFE_INTEGER;
+        return sortAsc ? va - vb : vb - va;
+      });
     } else {
       rows.sort((a, b) => {
-        const va = a[sortField] ?? -Infinity;
-        const vb = b[sortField] ?? -Infinity;
+        const aMissing = a[sortField] == null;
+        const bMissing = b[sortField] == null;
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+        const va = a[sortField];
+        const vb = b[sortField];
         return sortAsc ? va - vb : vb - va;
       });
     }
@@ -56,6 +68,7 @@ export default function Leaderboard({
   const isRunning = activeBenchmark?.status === 'running' || activeBenchmark?.status === 'queued';
   const candidateCount = activeBenchmark?.candidate_count || 0;
   const completedCount = leaderboard.filter((r) => r.status === 'completed' || r.status === 'failed').length;
+  const hasPartialProxyRows = leaderboard.some((row) => row.score_kind === 'partial_proxy');
 
   function handleSort(field) {
     if (field === sortField) {
@@ -136,7 +149,7 @@ export default function Leaderboard({
                     {sortField === field.id ? (sortAsc ? ' \u25B2' : ' \u25BC') : ''}
                   </th>
                 ))}
-                <th className="benchmark-th">Detector</th>
+                <th className="benchmark-th">Baseline / candidate</th>
                 <th className="benchmark-th">Pipeline</th>
               </tr>
             </thead>
@@ -148,13 +161,13 @@ export default function Leaderboard({
                   onClick={() => onSelectCandidate?.(row.candidate_id)}
                 >
                   <td className="benchmark-rank-cell">
-                    <span className={`benchmark-rank-badge rank-${Math.min(row.rank, 4)}`}>
-                      {row.rank}
+                    <span className={`benchmark-rank-badge rank-${Math.min(row.rank || 4, 4)}`}>
+                      {row.rank ?? '--'}
                     </span>
                   </td>
                   <td className="benchmark-score-cell">
                     {formatScore(row.composite)}
-                    {statusBadge(row.status)}
+                    {statusBadge(row.status, row)}
                   </td>
                   <td>{formatScore(row.track_stability)}</td>
                   <td>{formatScore(row.calibration)}</td>
@@ -171,6 +184,11 @@ export default function Leaderboard({
               Proxy score 0-100. Weights: track stability 30%, calibration 25%, coverage 25%, throughput 20%.
             </div>
           )}
+          {hasPartialProxyRows ? (
+            <div className="benchmark-score-legend muted">
+              Some external baselines can finish side-by-side without a ranked proxy score when they do not emit the native runtime metrics this workbench score needs.
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

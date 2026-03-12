@@ -71,7 +71,7 @@ export default function ClipCard({
         </div>
       ) : (
         <p className="muted benchmark-clip-empty-hint">
-          A short reference clip is needed to benchmark detectors under identical conditions.
+          A short reference clip is needed to benchmark candidates under identical conditions.
           Provide a local video path or upload a file, then click Prepare.
         </p>
       )}
@@ -124,16 +124,19 @@ export default function ClipCard({
 
       {runtimeProfile ? (
         <div className="benchmark-runtime-summary">
-          <MicroLabelWithHelp label="Locked runtime profile" entry={helpIndex?.get('benchmark.runtime_profile')} />
+          <MicroLabelWithHelp label="Shared runtime defaults" entry={helpIndex?.get('benchmark.runtime_profile')} />
           <div className="benchmark-runtime-grid">
-            <span className="muted">Pipeline: <strong>{runtimeProfile.pipeline || 'classic'}</strong></span>
-            <span className="muted">Keypoint: <strong>{runtimeProfile.keypoint_model || 'soccana_keypoint'}</strong></span>
+            <span className="muted">Native pipeline: <strong>{runtimeProfile.native_pipeline || runtimeProfile.pipeline || 'classic'}</strong></span>
+            <span className="muted">Native keypoint: <strong>{runtimeProfile.native_keypoint_model || runtimeProfile.keypoint_model || 'soccana_keypoint'}</strong></span>
             <span className="muted">Tracker: <strong>{runtimeProfile.tracker_mode || 'hybrid_reid'}</strong></span>
             <span className="muted">Ball: <strong>{runtimeProfile.include_ball ? 'yes' : 'no'}</strong></span>
             <span className="muted">Player conf: <strong>{runtimeProfile.player_conf ?? '0.25'}</strong></span>
             <span className="muted">Ball conf: <strong>{runtimeProfile.ball_conf ?? '0.20'}</strong></span>
             <span className="muted">IoU: <strong>{runtimeProfile.iou ?? '0.50'}</strong></span>
           </div>
+          {runtimeProfile.note ? (
+            <p className="muted benchmark-clip-ready-hint">{runtimeProfile.note}</p>
+          ) : null}
         </div>
       ) : null}
     </div>
