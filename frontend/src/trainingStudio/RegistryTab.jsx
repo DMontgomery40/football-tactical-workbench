@@ -92,11 +92,13 @@ function RegistryDetail({ entry, helpIndex, activeRegistryId, pendingActivateDet
         </div>
       ) : null}
 
-      <DurableArtifactsPanel
-        helpIndex={helpIndex}
-        trainingProvenancePath={entry.training_provenance_path}
-        trainingProvenance={entry.training_provenance}
-      />
+      {!entry.is_pretrained ? (
+        <DurableArtifactsPanel
+          helpIndex={helpIndex}
+          trainingProvenancePath={entry.training_provenance_path}
+          trainingProvenance={entry.training_provenance}
+        />
+      ) : null}
 
       {entry.id !== activeRegistryId ? (
         <div className="source-toolbar">

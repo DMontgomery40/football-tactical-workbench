@@ -122,6 +122,7 @@ For the full setup guide, environment variables, training notes, and first valid
 3. In `Train`, fine-tune from `soccana`.
 4. In `Jobs`, watch progress and logs.
 5. In `Registry`, inspect the completed checkpoint and activate it when you want analysis to use it while the analysis selector stays on `soccana`.
+6. If you care about durable artifact lineage, use the DVC/provenance details surfaced in Training Studio and the deeper notes in [Workflows](docs/workflows.md) and [Outputs, API, and Batch Experiments](docs/outputs-and-api.md).
 
 The full UI walk-through lives in [Workflows](docs/workflows.md).
 
@@ -130,6 +131,7 @@ The full UI walk-through lives in [Workflows](docs/workflows.md).
 - Backend startup prewarms the default detector and field-calibration models from the local cache or model source.
 - On Apple Silicon, detector inference prefers MPS while field calibration still falls back to CPU.
 - Training jobs run in isolated Python subprocesses and persist their own `config.json`, `dataset_scan.json`, `dataset_runtime.yaml`, `train.log`, `summary.json`, and artifacts inside `backend/training_runs/<run_id>/`.
+- Terminal training runs also persist an AI-or-heuristic `training_analysis_ai.json` artifact so Training Studio can reopen the multi-section run review without scraping raw logs.
 - Completed detector runs are added to the local detector registry, and an activated checkpoint is copied into `backend/models/promoted/custom_<run_id>/` with `training_provenance.json` before it becomes the active detector for analysis whenever the analysis selector remains on `soccana`.
 - The app stores analysis sources, analysis job snapshots, and training job snapshots on disk so restarts do not silently wipe state.
 - AI diagnostics remain a real post-run path. If a provider is configured, completed analysis runs get AI-curated run briefs and diagnostics; otherwise they fall back to heuristic diagnostics.
@@ -143,6 +145,8 @@ The full UI walk-through lives in [Workflows](docs/workflows.md).
   Analysis Workspace and Training Studio UI flows, persistence rules, and operator-facing behavior.
 - [Outputs, API, and Batch Experiments](docs/outputs-and-api.md)
   Analysis outputs, training outputs, FastAPI endpoints, and batch tooling.
+- [AGENTS.md](AGENTS.md)
+  Repo-local implementation guardrails for future coding agents and contributors working in this tree.
 
 ## Repository Map
 

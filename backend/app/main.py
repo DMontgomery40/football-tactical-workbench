@@ -51,6 +51,10 @@ from app.training import (
     prepare_training_run_inputs,
     scan_training_dataset_path,
 )
+from app.training_ai_analysis import (
+    ARTIFACT_FILENAME as TRAINING_ANALYSIS_ARTIFACT_FILENAME,
+    PROMPT_VERSION as CURRENT_TRAINING_ANALYSIS_PROMPT_VERSION,
+)
 from app.training_provenance import (
     build_training_provenance,
     probe_dvc_runtime,
@@ -64,6 +68,10 @@ from app.training_provenance import (
 from app.wide_angle import (
     AnalysisStoppedError,
     CALIBRATION_REFRESH_FRAMES,
+    DEFAULT_PIPELINE,
+    KEYPOINT_MODEL_DEFAULT,
+    KEYPOINT_MODEL_SOURCES,
+    PIPELINE_OPTIONS,
     PLAYER_MODEL_OPTIONS,
     TACTICAL_HELP_CATALOG,
     TACTICAL_LEARN_CARDS,
@@ -744,6 +752,8 @@ def config() -> ConfigResponse:
     active_detector_entry = training_registry.get_active_entry() if training_available() else {"id": "soccana", "label": "soccana (football-pretrained)"}
     runtime_profile = build_runtime_profile()
     return ConfigResponse.model_validate({
+        "pipeline_options": list(PIPELINE_OPTIONS.keys()),
+        "default_pipeline": DEFAULT_PIPELINE,
         "detector_models": PLAYER_MODEL_OPTIONS,
         "player_models": PLAYER_MODEL_OPTIONS,
         "tracker": DEFAULT_PLAYER_TRACKER_MODE,
@@ -751,6 +761,8 @@ def config() -> ConfigResponse:
         "default_player_tracker_mode": DEFAULT_PLAYER_TRACKER_MODE,
         "learn_cards": TACTICAL_LEARN_CARDS,
         "help_catalog": TACTICAL_HELP_CATALOG,
+        "keypoint_models": list(KEYPOINT_MODEL_SOURCES.keys()),
+        "default_keypoint_model": KEYPOINT_MODEL_DEFAULT,
         "field_calibration_refresh_frames": CALIBRATION_REFRESH_FRAMES,
         "field_calibration_mode": "automatic_keypoints",
         "soccernet_dataset_dir": str(SOCCERNET_DIR),
@@ -772,6 +784,7 @@ def training_config() -> dict[str, Any]:
     _training_manager, registry = require_training_available()
     backend_config = build_training_backend_config()
     runtime_profile = build_runtime_profile()
+    diagnostics_config = resolve_provider_config()
     return {
         "training_families": ["detector"],
         "enabled_families": ["detector"],
@@ -781,6 +794,9 @@ def training_config() -> dict[str, Any]:
         "device_guidance": build_training_device_guidance(runtime_profile),
         "runtime_profile": runtime_profile,
         "dvc": probe_dvc_runtime(),
+        "training_analysis_provider": diagnostics_config.provider if diagnostics_config else None,
+        "training_analysis_model": diagnostics_config.model if diagnostics_config else None,
+        "training_analysis_prompt_version": CURRENT_TRAINING_ANALYSIS_PROMPT_VERSION,
     }
 
 
@@ -903,6 +919,42 @@ def get_training_run(run_id: str) -> dict[str, Any]:
     if job is None:
         raise HTTPException(status_code=404, detail="Training run not found")
     return job.as_dict()
+
+
+@app.get("/api/train/runs/{run_id}/analysis")
+def get_training_run_analysis(run_id: str) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    job = manager.get_by_run_id(run_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training run not found")
+    artifact_path = Path(str(job.training_analysis_json or Path(job.run_dir) / TRAINING_ANALYSIS_ARTIFACT_FILENAME))
+    if not artifact_path.exists():
+        raise HTTPException(status_code=404, detail="Training analysis artifact not found")
+    try:
+        payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not read training analysis artifact: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=500, detail="Training analysis artifact is not a JSON object")
+    return payload
+
+
+@app.post("/api/train/runs/{run_id}/refresh-analysis")
+def refresh_training_run_analysis(run_id: str) -> dict[str, Any]:
+    manager, _registry = require_training_available()
+    job = manager.get_by_run_id(run_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training run not found")
+    if str(job.status or "").lower() in {"queued", "running", "stopping", "finalizing"}:
+        raise HTTPException(status_code=409, detail="Wait until the training run finishes before refreshing its AI analysis")
+    try:
+        manager.generate_training_analysis(job.job_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not refresh training analysis: {exc}") from exc
+    refreshed = manager.get(job.job_id)
+    if refreshed is None:
+        raise HTTPException(status_code=500, detail="Training run disappeared after analysis refresh")
+    return refreshed.as_dict()
 
 
 @app.post("/api/train/runs/{run_id}/activate")
@@ -1897,8 +1949,10 @@ def refresh_persisted_run_diagnostics(run_id: str) -> JobStateResponse:
 def live_preview(
     source_id: str = Query(default=""),
     local_video_path: str = Query(default=""),
+    pipeline: str = Query(default=DEFAULT_PIPELINE),
     detector_model: str = Query(default="soccana"),
     player_model: str = Query(default=""),
+    keypoint_model: str = Query(default=KEYPOINT_MODEL_DEFAULT),
     tracker_mode: str = Query(default=DEFAULT_PLAYER_TRACKER_MODE),
     include_ball: bool = Query(default=True),
     player_conf: float = Query(default=0.25),
@@ -1911,8 +1965,10 @@ def live_preview(
     stream = generate_live_preview_stream(
         source_video_path=source_video_path,
         config_payload={
+            "pipeline": pipeline,
             "player_model": resolved_detector_model,
             "ball_model": resolved_detector_model,
+            "keypoint_model": keypoint_model,
             "tracker_mode": tracker_mode,
             "include_ball": include_ball,
             "player_conf": float(player_conf),
@@ -1960,8 +2016,10 @@ async def analyze(
     local_video_path: str = Form(default=""),
     source_id: str = Form(default=""),
     label_path: str = Form(default=""),
+    pipeline: str = Form(default=DEFAULT_PIPELINE),
     detector_model: str = Form(default="soccana"),
     player_model: str = Form(default=""),
+    keypoint_model: str = Form(default=KEYPOINT_MODEL_DEFAULT),
     tracker_mode: str = Form(default=DEFAULT_PLAYER_TRACKER_MODE),
     include_ball: bool = Form(default=True),
     player_conf: float = Form(default=0.25),
@@ -1993,8 +2051,10 @@ async def analyze(
     config_payload = {
         "source_video_path": str(source_video_path),
         "label_path": label_path.strip(),
+        "pipeline": pipeline,
         "player_model": resolved_detector_model,
         "ball_model": resolved_detector_model,
+        "keypoint_model": keypoint_model,
         "tracker_mode": tracker_mode,
         "include_ball": include_ball,
         "player_conf": float(player_conf),

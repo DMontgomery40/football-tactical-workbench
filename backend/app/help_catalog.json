@@ -13,6 +13,19 @@
     "links": []
   },
   {
+    "id": "analysis.pipeline",
+    "title": "Analysis pipeline",
+    "summary": "Selects the detection and field-registration architecture that drives the entire analysis run.",
+    "body": [
+      "Classic uses the soccana detector for player/ball detection plus soccana_keypoint for field registration. These are separate models with independent weights and confidence thresholds.",
+      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both."
+    ],
+    "targets": [
+      "analysis.pipeline"
+    ],
+    "links": []
+  },
+  {
     "id": "analysis.detector_weights",
     "title": "Detector weights",
     "summary": "The detector decides which players, referees, and ball candidates exist at all. Every downstream stage depends on it.",
@@ -394,6 +407,7 @@
     "body": [
       "This panel explains whether the dataset is coherent enough to start detector fine-tuning safely. It should make clear what the studio found, what it had to infer, and what would make the resulting metrics less trustworthy.",
       "A green result means the studio believes the split structure, label files, and class mapping are coherent enough to proceed. A warning means training may still work, but the operator should understand the compromise. A blocking result means the worker should not start.",
+      "A blocking result can also mean the path is a different dataset format entirely, such as a FiftyOne export with JSON annotations instead of a YOLO detector dataset with per-image label text files.",
       "Use this panel to decide whether to fix data quality first. If the scan result looks weak, the right answer is usually in dataset structure or labels, not in hyperparameter tuning."
     ],
     "targets": [
@@ -794,6 +808,188 @@
         "label": "Ultralytics repository",
         "url": "https://github.com/ultralytics/ultralytics",
         "kind": "repo"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_review",
+    "title": "AI training review",
+    "summary": "This is the run-level narrative that turns config, logs, metrics, dataset contract, and artifacts into one activation-focused explanation.",
+    "body": [
+      "The goal of this review is not to replace raw logs or metrics. It is to connect them into a clear answer to two questions: what actually happened in this run, and should this checkpoint move closer to activation for analysis.",
+      "A strong review should separate runtime failures from weak validation, weak validation from dataset-contract issues, and dataset-contract issues from artifact-readiness or promotion problems. Those are different problems and they need different fixes.",
+      "Read the summary line first, then the five collapsible sections. The sections are intentionally stable categories so you can compare runs without guessing which evidence bucket matters most."
+    ],
+    "targets": [
+      "training.ai_review"
+    ],
+    "links": [
+      {
+        "label": "Insights on Model Evaluation and Fine-Tuning",
+        "url": "https://docs.ultralytics.com/guides/model-evaluation-insights/",
+        "kind": "docs",
+        "published_at": "2026-01-20"
+      },
+      {
+        "label": "Performance Metrics Deep Dive",
+        "url": "https://docs.ultralytics.com/guides/yolo-performance-metrics/",
+        "kind": "docs",
+        "published_at": "2026-01-14"
+      },
+      {
+        "label": "Model Training with Ultralytics YOLO",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_run_outcome",
+    "title": "Run outcome",
+    "summary": "This section says where the run actually ended and whether the result is a model-quality signal or a runtime failure signal.",
+    "body": [
+      "A failed run at `0 / 50` epochs is not a weak detector result. It is usually a worker, device, callback, or training-loop execution problem. That difference matters because the right fix is in implementation or runtime configuration, not in more hyperparameter tweaking.",
+      "A completed run can still be a poor activation candidate, but it at least produced real optimization evidence. This section is there to stop those two situations from being blended together."
+    ],
+    "targets": [
+      "training.ai_run_outcome"
+    ],
+    "links": [
+      {
+        "label": "Model Training with Ultralytics YOLO",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
+      },
+      {
+        "label": "PyTorch MPS BatchNorm regression",
+        "url": "https://github.com/pytorch/pytorch/issues/175189",
+        "kind": "issue",
+        "published_at": "2026-02-23"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_dataset_contract",
+    "title": "Dataset contract",
+    "summary": "This section explains whether the run started from a trustworthy football detector dataset contract or from warning-heavy fallback logic.",
+    "body": [
+      "Training Studio does more than count files. It checks class names, football role mapping, split structure, missing labels, and how validation images are being sourced.",
+      "A run can complete and still be operationally suspect if the dataset YAML names are weak, player or ball IDs are wrong, or the validation split had to be improvised. This section keeps that contract visible so you do not over-trust clean-looking metrics."
+    ],
+    "targets": [
+      "training.ai_dataset_contract"
+    ],
+    "links": [
+      {
+        "label": "Object Detection Datasets Overview",
+        "url": "https://docs.ultralytics.com/datasets/detect/",
+        "kind": "docs",
+        "published_at": "2026-01-21"
+      },
+      {
+        "label": "K-Fold Cross Validation with Ultralytics",
+        "url": "https://docs.ultralytics.com/guides/kfold-cross-validation/",
+        "kind": "docs",
+        "published_at": "2026-01-20"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_training_dynamics",
+    "title": "Training dynamics",
+    "summary": "This section is about whether the loss and optimizer traces reflect real learning or only a partial worker startup before failure.",
+    "body": [
+      "Sparse curve samples can mean very different things. On a healthy run, they are a coarse story of how the optimizer behaved. On a failed run, they may only prove that callback hooks fired before the loop stabilized.",
+      "Use this section to avoid reading too much into noisy or truncated curves. If epoch one never completed, the right interpretation is often `no valid learning signal yet`, not `interesting early overfit`."
+    ],
+    "targets": [
+      "training.ai_training_dynamics"
+    ],
+    "links": [
+      {
+        "label": "Machine Learning Best Practices and Tips for Model Training",
+        "url": "https://docs.ultralytics.com/guides/model-training-tips/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
+      },
+      {
+        "label": "Insights on Model Evaluation and Fine-Tuning",
+        "url": "https://docs.ultralytics.com/guides/model-evaluation-insights/",
+        "kind": "docs",
+        "published_at": "2026-01-20"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_validation_signal",
+    "title": "Validation signal",
+    "summary": "This section explains how believable the reported detector metrics are for this specific run.",
+    "body": [
+      "Detector metrics only mean what the validation contract allows them to mean. A real validation split carries more weight than a generated fallback, and missing `results.csv` metrics after a crash do not tell you anything about detector quality at all.",
+      "Use this section to decide whether the numbers are evidence for promotion, evidence for caution, or simply unavailable because the worker never produced them."
+    ],
+    "targets": [
+      "training.ai_validation_signal"
+    ],
+    "links": [
+      {
+        "label": "Performance Metrics Deep Dive",
+        "url": "https://docs.ultralytics.com/guides/yolo-performance-metrics/",
+        "kind": "docs",
+        "published_at": "2026-01-14"
+      },
+      {
+        "label": "Insights on Model Evaluation and Fine-Tuning",
+        "url": "https://docs.ultralytics.com/guides/model-evaluation-insights/",
+        "kind": "docs",
+        "published_at": "2026-01-20"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_artifact_readiness",
+    "title": "Artifact readiness",
+    "summary": "This section is the bridge from a finished run folder to a checkpoint that the product can safely consider for activation.",
+    "body": [
+      "A detector is not activation-ready just because training wrote a file. This section ties together checkpoint existence, summary state, provenance, and whether the run should move forward or stay blocked.",
+      "It matters because Training Studio is a product surface, not just a folder browser. The operator needs to know whether the run produced durable evidence, a promotable checkpoint, or only a useful failure record."
+    ],
+    "targets": [
+      "training.ai_artifact_readiness"
+    ],
+    "links": [
+      {
+        "label": "DVC get started",
+        "url": "https://dvc.org/doc/start",
+        "kind": "docs"
+      },
+      {
+        "label": "Model Training with Ultralytics YOLO",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
+      }
+    ]
+  },
+  {
+    "id": "training.ai_prompt_context",
+    "title": "Training analysis prompt context",
+    "summary": "This is the exact evidence bundle that was sent to the model when the AI training review was generated.",
+    "body": [
+      "The prompt context is there for auditability. It shows the important log chunks, recent log tail, code excerpts, and budget metadata used to build the AI review.",
+      "Use it when the review seems too vague or surprisingly specific. It tells you whether the model had enough evidence, whether the right log block made it into context, and which implementation files were quoted for the diagnosis."
+    ],
+    "targets": [
+      "training.ai_prompt_context"
+    ],
+    "links": [
+      {
+        "label": "Model Training with Ultralytics YOLO",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
       }
     ]
   },
@@ -1203,6 +1399,7 @@
     "summary": "This is the source dataset contract the scanner found. The worker later turns it into a run-local `dataset_runtime.yaml` that training actually consumes.",
     "body": [
       "The scan uses the source YAML to discover split references and class names. If that file is missing, unparseable, or semantically wrong, the studio cannot safely map the trained detector back into analysis.",
+      "If the path points at a different export format, such as a FiftyOne dataset dump with JSON annotations, this field stays missing because there is no compatible detector-training YAML contract to trust.",
       "The generated runtime manifest is only as good as the contract it starts from. If the source YAML points at the wrong splits or names classes badly, the run can still produce artifacts while learning the wrong thing."
     ],
     "targets": [

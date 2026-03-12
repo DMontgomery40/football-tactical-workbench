@@ -1,8 +1,9 @@
 import { HelpPopover, MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
 import ArtifactList from './ArtifactList';
 import DurableArtifactsPanel from './DurableArtifactsPanel';
+import TrainingAnalysisPanel from './TrainingAnalysisPanel';
 import TrainingCurvesPanel from './TrainingCurvesPanel';
-import { ACTIVE_JOB_STATUSES } from './state';
+import { STOPPABLE_JOB_STATUSES } from './state';
 import { formatClassIds, formatMetric, formatTimestamp } from './formatters';
 
 function JobListItem({ job, isSelected, onSelect }) {
@@ -27,13 +28,16 @@ function JobListItem({ job, isSelected, onSelect }) {
 }
 
 function JobDetail({
+  apiBase,
   job,
   helpIndex,
   pendingStopJobId,
   pendingActivateRunId,
+  pendingRefreshAnalysisRunId,
   onOpenRegistry,
   onStopJob,
   onActivateRun,
+  onRefreshAnalysis,
 }) {
   if (!job) {
     return <div className="empty-card studio-panel">Select a training job to inspect runtime state, logs, curves, and artifacts.</div>;
@@ -96,6 +100,14 @@ function JobDetail({
 
       {job.error ? <div className="error-box">{job.error}</div> : null}
 
+      <TrainingAnalysisPanel
+        apiBase={apiBase}
+        job={job}
+        helpIndex={helpIndex}
+        onRefreshAnalysis={onRefreshAnalysis}
+        isRefreshingAnalysis={pendingRefreshAnalysisRunId === job.run_id}
+      />
+
       <DurableArtifactsPanel
         helpIndex={helpIndex}
         trainingProvenancePath={job.training_provenance_path}
@@ -108,7 +120,7 @@ function JobDetail({
         <button className="secondary-button compact-button" type="button" onClick={onOpenRegistry}>
           Open registry
         </button>
-        {ACTIVE_JOB_STATUSES.has(String(job.status || '')) ? (
+        {STOPPABLE_JOB_STATUSES.has(String(job.status || '')) ? (
           <button
             className="secondary-button compact-button"
             type="button"
@@ -180,6 +192,7 @@ function JobDetail({
 }
 
 export default function JobsTab({
+  apiBase,
   helpIndex,
   jobs,
   jobsError,
@@ -188,8 +201,10 @@ export default function JobsTab({
   onOpenRegistry,
   onStopJob,
   onActivateRun,
+  onRefreshAnalysis,
   pendingStopJobId,
   pendingActivateRunId,
+  pendingRefreshAnalysisRunId,
 }) {
   const selectedJob = jobs.find((job) => job.job_id === selectedJobId) || jobs[0] || null;
 
@@ -217,13 +232,16 @@ export default function JobsTab({
             </div>
           </section>
           <JobDetail
+            apiBase={apiBase}
             job={selectedJob}
             helpIndex={helpIndex}
             pendingStopJobId={pendingStopJobId}
             pendingActivateRunId={pendingActivateRunId}
+            pendingRefreshAnalysisRunId={pendingRefreshAnalysisRunId}
             onOpenRegistry={onOpenRegistry}
             onStopJob={onStopJob}
             onActivateRun={onActivateRun}
+            onRefreshAnalysis={onRefreshAnalysis}
           />
         </section>
       )}

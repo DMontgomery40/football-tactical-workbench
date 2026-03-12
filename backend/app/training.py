@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.training_provenance import PROVENANCE_FILENAME
+from app.training_ai_analysis import ARTIFACT_FILENAME as TRAINING_ANALYSIS_ARTIFACT_FILENAME
 from app.wide_angle import (
     BALL_CLASS_LABEL_HINTS,
     PLAYER_CLASS_LABEL_HINTS,
@@ -90,6 +91,14 @@ def _normalize_yaml_class_names(raw_names: Any) -> list[str]:
     return []
 
 
+def _path_is_hidden_from_root(path: Path, root: Path) -> bool:
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        relative = path
+    return any(part.startswith(".") for part in relative.parts)
+
+
 def _find_dataset_yaml_candidate(dataset_path: Path) -> Path | None:
     candidates: list[Path] = [
         dataset_path / "dataset.yaml",
@@ -101,6 +110,20 @@ def _find_dataset_yaml_candidate(dataset_path: Path) -> Path | None:
     candidates.extend(sorted(dataset_path.glob("*.yml")))
     candidates.extend(sorted(dataset_path.glob("*/*.yaml")))
     candidates.extend(sorted(dataset_path.glob("*/*.yml")))
+    candidates.extend(
+        sorted(
+            candidate
+            for candidate in dataset_path.rglob("*.yaml")
+            if candidate.is_file() and not _path_is_hidden_from_root(candidate, dataset_path)
+        )
+    )
+    candidates.extend(
+        sorted(
+            candidate
+            for candidate in dataset_path.rglob("*.yml")
+            if candidate.is_file() and not _path_is_hidden_from_root(candidate, dataset_path)
+        )
+    )
 
     seen: set[Path] = set()
     for candidate in candidates:
@@ -126,6 +149,47 @@ def _safe_yaml_load(path: Path) -> dict[str, Any]:
     except Exception:
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def _safe_json_load(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _detect_non_yolo_dataset_hint(dataset_root: Path) -> str | None:
+    metadata_path = dataset_root / "metadata.json"
+    samples_path = dataset_root / "samples.json"
+    fiftyone_path = dataset_root / "fiftyone.yml"
+    present_files = [path.name for path in (fiftyone_path, metadata_path, samples_path) if path.exists()]
+    if not present_files:
+        return None
+
+    metadata_payload = _safe_json_load(metadata_path) if metadata_path.exists() else {}
+    sample_fields = metadata_payload.get("sample_fields")
+    has_fiftyone_detection_field = False
+    if isinstance(sample_fields, list):
+        for field in sample_fields:
+            if not isinstance(field, dict):
+                continue
+            name = str(field.get("name") or "").strip().lower()
+            embedded_doc_type = str(field.get("embedded_doc_type") or "").strip()
+            if name in {"ground_truth", "detections"} and embedded_doc_type.endswith("Detections"):
+                has_fiftyone_detection_field = True
+                break
+
+    if not has_fiftyone_detection_field and not (samples_path.exists() and fiftyone_path.exists()):
+        return None
+
+    files_text = ", ".join(present_files)
+    return (
+        "Detected a FiftyOne-style dataset export "
+        f"({files_text}) with JSON detection annotations. Training Studio expects a YOLO detector dataset "
+        "with `dataset.yaml` or `data.yaml` plus per-image `.txt` labels, so convert or export this dataset "
+        "to YOLO before fine-tuning."
+    )
 
 
 def _matching_class_ids(names: list[str], hints: tuple[str, ...]) -> list[int]:
@@ -450,6 +514,7 @@ def inspect_training_dataset(dataset_path: Path) -> DatasetInspection:
 
     warnings: list[str] = []
     errors: list[str] = []
+    non_yolo_dataset_hint = _detect_non_yolo_dataset_hint(folder)
     yaml_path = _find_dataset_yaml_candidate(folder)
     yaml_payload = _safe_yaml_load(yaml_path) if yaml_path else {}
     classes = _normalize_yaml_class_names(yaml_payload.get("names"))
@@ -457,7 +522,8 @@ def inspect_training_dataset(dataset_path: Path) -> DatasetInspection:
 
     if yaml_path is None:
         errors.append(
-            "No dataset YAML with class names was found. V1 detector fine-tuning needs `dataset.yaml` or `data.yaml` so the app can map classes back into analysis."
+            non_yolo_dataset_hint
+            or "No dataset YAML with class names was found. V1 detector fine-tuning needs `dataset.yaml` or `data.yaml` so the app can map classes back into analysis."
         )
     elif yaml is None:
         errors.append("PyYAML is unavailable, so dataset YAML files cannot be parsed in this backend build.")
@@ -510,7 +576,11 @@ def inspect_training_dataset(dataset_path: Path) -> DatasetInspection:
     if train_split.images == 0:
         errors.append("No training images were found.")
     if train_split.labeled_images == 0 or train_split.instances == 0:
-        errors.append("Training split has no usable labeled detections.")
+        errors.append(
+            non_yolo_dataset_hint
+            if non_yolo_dataset_hint and non_yolo_dataset_hint not in errors
+            else "Training split has no usable labeled detections."
+        )
     if train_split.errors:
         errors.extend(train_split.errors[:5])
     if val_split.errors:
@@ -629,6 +699,7 @@ def collect_training_artifacts(run_dir: Path) -> dict[str, Any]:
         "dataset_scan": str((run_dir / SCAN_FILENAME).resolve()) if (run_dir / SCAN_FILENAME).exists() else None,
         "generated_dataset_yaml": str((run_dir / RUNTIME_DATASET_FILENAME).resolve()) if (run_dir / RUNTIME_DATASET_FILENAME).exists() else None,
         "training_provenance": str((run_dir / PROVENANCE_FILENAME).resolve()) if (run_dir / PROVENANCE_FILENAME).exists() else None,
+        "training_analysis": str((run_dir / TRAINING_ANALYSIS_ARTIFACT_FILENAME).resolve()) if (run_dir / TRAINING_ANALYSIS_ARTIFACT_FILENAME).exists() else None,
         "train_log": str((run_dir / "train.log").resolve()) if (run_dir / "train.log").exists() else None,
         "progress": str((run_dir / "progress.json").resolve()) if (run_dir / "progress.json").exists() else None,
         "summary": str((run_dir / SUMMARY_FILENAME).resolve()) if (run_dir / SUMMARY_FILENAME).exists() else None,

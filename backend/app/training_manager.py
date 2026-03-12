@@ -15,6 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from app.training import SUMMARY_FILENAME, collect_training_artifacts
+from app.training_ai_analysis import (
+    ARTIFACT_FILENAME as TRAINING_ANALYSIS_ARTIFACT_FILENAME,
+    build_summary_updates as build_training_analysis_summary_updates,
+    generate_training_run_analysis,
+    normalize_training_analysis_fields,
+)
 from app.training_provenance import (
     PROVENANCE_FILENAME,
     build_training_provenance,
@@ -55,11 +61,22 @@ class TrainingJobState:
     summary_path: str | None = None
     training_provenance_path: str | None = None
     training_provenance: dict[str, Any] | None = None
+    training_analysis_source: str = "heuristic"
+    training_analysis_provider: str | None = None
+    training_analysis_model: str | None = None
+    training_analysis_status: str = "unknown"
+    training_analysis_summary_line: str = ""
+    training_analysis_error: str = ""
+    training_analysis_json: str | None = None
+    training_analysis_prompt_version: str | None = None
+    training_analysis_overall_status: str = "mixed"
+    training_analysis_activation_recommendation: str = "hold"
+    training_analysis_sections: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
     pid: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "job_id": self.job_id,
             "run_id": self.run_id,
             "run_dir": self.run_dir,
@@ -86,8 +103,20 @@ class TrainingJobState:
             "summary_path": self.summary_path,
             "training_provenance_path": self.training_provenance_path,
             "training_provenance": self.training_provenance or None,
+            "training_analysis_source": self.training_analysis_source,
+            "training_analysis_provider": self.training_analysis_provider,
+            "training_analysis_model": self.training_analysis_model,
+            "training_analysis_status": self.training_analysis_status,
+            "training_analysis_summary_line": self.training_analysis_summary_line,
+            "training_analysis_error": self.training_analysis_error,
+            "training_analysis_json": self.training_analysis_json,
+            "training_analysis_prompt_version": self.training_analysis_prompt_version,
+            "training_analysis_overall_status": self.training_analysis_overall_status,
+            "training_analysis_activation_recommendation": self.training_analysis_activation_recommendation,
+            "training_analysis_sections": self.training_analysis_sections or [],
             "error": self.error,
         }
+        return normalize_training_analysis_fields(payload, run_dir=Path(self.run_dir))
 
     def persistence_dict(self) -> dict[str, Any]:
         payload = self.as_dict()
@@ -213,7 +242,42 @@ class TrainingManager:
             job.logs.append(f"[{stamp}] {message}")
             if len(job.logs) > 1000:
                 job.logs = job.logs[-1000:]
+                self._persist_locked(job)
+
+    def generate_training_analysis(self, job_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return None
+            payload = self._summary_payload(job)
+            run_dir = Path(job.run_dir)
+
+        analysis, artifact = generate_training_run_analysis(
+            payload,
+            log_callback=lambda message: self.append_log(job_id, message),
+        )
+        updates = build_training_analysis_summary_updates(analysis, artifact, run_dir=run_dir)
+
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                return artifact
+            job.training_analysis_source = str(updates.get("training_analysis_source") or job.training_analysis_source)
+            job.training_analysis_provider = updates.get("training_analysis_provider")
+            job.training_analysis_model = updates.get("training_analysis_model")
+            job.training_analysis_status = str(updates.get("training_analysis_status") or job.training_analysis_status)
+            job.training_analysis_summary_line = str(updates.get("training_analysis_summary_line") or "")
+            job.training_analysis_error = str(updates.get("training_analysis_error") or "")
+            job.training_analysis_json = str(updates.get("training_analysis_json") or "") or None
+            job.training_analysis_prompt_version = str(updates.get("training_analysis_prompt_version") or "") or None
+            job.training_analysis_overall_status = str(updates.get("training_analysis_overall_status") or job.training_analysis_overall_status)
+            job.training_analysis_activation_recommendation = str(
+                updates.get("training_analysis_activation_recommendation") or job.training_analysis_activation_recommendation
+            )
+            job.training_analysis_sections = list(updates.get("training_analysis_sections") or [])
+            job.artifacts = self._collect_artifacts(run_dir)
             self._persist_locked(job)
+        return artifact
 
     def launch(self, job_id: str, run_dir: Path, config: dict[str, Any]) -> None:
         with self._lock:
@@ -226,6 +290,8 @@ class TrainingManager:
         (run_dir / "weights" / "best.pt").unlink(missing_ok=True)
         log_path = run_dir / "train.log"
         current_offset = log_path.stat().st_size if log_path.exists() else 0
+        training_analysis_path = run_dir / TRAINING_ANALYSIS_ARTIFACT_FILENAME
+        training_analysis_path.unlink(missing_ok=True)
         logfile = log_path.open("ab")
         proc = subprocess.Popen(
             [sys.executable, "-m", "app.train_worker", str(run_dir)],
@@ -250,6 +316,17 @@ class TrainingManager:
             job.dataset_scan = dict(config.get("dataset_scan") or {}) or None
             job.backend = str(config.get("backend") or job.backend or "") or None
             job.backend_version = str(config.get("backend_version") or job.backend_version or "") or None
+            job.training_analysis_source = "heuristic"
+            job.training_analysis_provider = None
+            job.training_analysis_model = None
+            job.training_analysis_status = "pending"
+            job.training_analysis_summary_line = ""
+            job.training_analysis_error = ""
+            job.training_analysis_json = str(training_analysis_path.resolve())
+            job.training_analysis_prompt_version = None
+            job.training_analysis_overall_status = "mixed"
+            job.training_analysis_activation_recommendation = "hold"
+            job.training_analysis_sections = []
             job.artifacts = self._collect_artifacts(run_dir)
             self._persist_locked(job)
             self._log_offsets[job_id] = current_offset
@@ -355,6 +432,21 @@ class TrainingManager:
                     else (str((run_dir / PROVENANCE_FILENAME).resolve()) if (run_dir / PROVENANCE_FILENAME).exists() else None)
                 ),
                 training_provenance=dict(payload.get("training_provenance") or {}) or None,
+                training_analysis_source=str(payload.get("training_analysis_source") or "heuristic"),
+                training_analysis_provider=str(payload.get("training_analysis_provider")) if payload.get("training_analysis_provider") else None,
+                training_analysis_model=str(payload.get("training_analysis_model")) if payload.get("training_analysis_model") else None,
+                training_analysis_status=str(payload.get("training_analysis_status") or "unknown"),
+                training_analysis_summary_line=str(payload.get("training_analysis_summary_line") or ""),
+                training_analysis_error=str(payload.get("training_analysis_error") or ""),
+                training_analysis_json=str(payload.get("training_analysis_json")) if payload.get("training_analysis_json") else str((run_dir / TRAINING_ANALYSIS_ARTIFACT_FILENAME).resolve()),
+                training_analysis_prompt_version=(
+                    str(payload.get("training_analysis_prompt_version"))
+                    if payload.get("training_analysis_prompt_version")
+                    else None
+                ),
+                training_analysis_overall_status=str(payload.get("training_analysis_overall_status") or "mixed"),
+                training_analysis_activation_recommendation=str(payload.get("training_analysis_activation_recommendation") or "hold"),
+                training_analysis_sections=list(payload.get("training_analysis_sections") or []),
                 error=str(payload.get("error")) if payload.get("error") else None,
                 pid=int(payload.get("pid")) if payload.get("pid") else None,
             )
@@ -369,6 +461,14 @@ class TrainingManager:
                         "load_error": f"Could not parse training provenance: {exc}",
                         "path": job.training_provenance_path,
                     }
+
+            if job.status == "finalizing":
+                if job.best_checkpoint:
+                    job.status = "completed"
+                elif job.error:
+                    job.status = "failed"
+                else:
+                    job.status = "stopped"
 
             if job.status in {"queued", "running", "stopping"} and job.config:
                 job.status = "queued"
@@ -421,9 +521,11 @@ class TrainingManager:
 
             finished_at = datetime.utcnow().isoformat() + "Z"
             if latest.status in {"stopped", "stopping"}:
-                self.update(job_id, status="stopped", pid=None, error=None, finished_at=finished_at)
+                self.update(job_id, status="finalizing", pid=None, error=None, finished_at=finished_at)
                 self.refresh_training_provenance(job_id)
                 self.append_log(job_id, "Training stopped")
+                self.generate_training_analysis(job_id)
+                self.update(job_id, status="stopped")
             elif return_code == 0:
                 best_checkpoint = run_dir / "weights" / "best.pt"
                 metrics = self._extract_final_metrics(run_dir) or latest.metrics or {}
@@ -431,7 +533,7 @@ class TrainingManager:
                 if best_checkpoint.exists():
                     self.update(
                         job_id,
-                        status="completed",
+                        status="finalizing",
                         progress=100.0,
                         current_epoch=max(int(latest.current_epoch or 0), int(latest.total_epochs or 0)),
                         metrics=metrics,
@@ -443,27 +545,33 @@ class TrainingManager:
                     )
                     self.refresh_training_provenance(job_id)
                     self.append_log(job_id, "Training completed")
+                    self.generate_training_analysis(job_id)
+                    self.update(job_id, status="completed")
                 else:
                     self.update(
                         job_id,
-                        status="failed",
+                        status="finalizing",
                         pid=None,
                         artifacts=artifacts,
                         error="Training exited successfully but no best checkpoint was produced.",
                         finished_at=finished_at,
                     )
                     self.refresh_training_provenance(job_id)
+                    self.generate_training_analysis(job_id)
+                    self.update(job_id, status="failed")
             else:
                 tail = " ".join(self._tail_log(log_path, limit=3))
                 self.update(
                     job_id,
-                    status="failed",
+                    status="finalizing",
                     pid=None,
                     artifacts=self._collect_artifacts(run_dir),
                     error=f"Training process exited with code {return_code}. {tail}".strip(),
                     finished_at=finished_at,
                 )
                 self.refresh_training_provenance(job_id)
+                self.generate_training_analysis(job_id)
+                self.update(job_id, status="failed")
             with self._lock:
                 self._log_offsets.pop(job_id, None)
                 self._seen_epochs.pop(job_id, None)

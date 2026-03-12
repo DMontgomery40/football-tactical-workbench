@@ -8,10 +8,10 @@ import StudioHeader from './StudioHeader';
 import StudioTabsNav from './StudioTabsNav';
 import TrainTab from './TrainTab';
 import {
-  ACTIVE_JOB_STATUSES,
   createInitialStudioState,
   DEFAULT_FORM,
   normalizeDatasetPath,
+  POLLING_JOB_STATUSES,
   STORAGE_KEYS,
   trainingStudioReducer,
 } from './state';
@@ -185,7 +185,7 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
   }, [state.selectedRegistryEntryId]);
 
   const hasActiveJob = useMemo(
-    () => state.jobs.some((job) => ACTIVE_JOB_STATUSES.has(String(job?.status || ''))),
+    () => state.jobs.some((job) => POLLING_JOB_STATUSES.has(String(job?.status || ''))),
     [state.jobs],
   );
 
@@ -307,6 +307,18 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
     }
   }
 
+  async function handleRefreshTrainingAnalysis(runId) {
+    dispatch({ type: 'analysis/refresh/start', runId });
+    try {
+      await requestJson(`/api/train/runs/${runId}/refresh-analysis`, { method: 'POST' });
+      await loadJobs();
+    } catch (error) {
+      dispatch({ type: 'jobs/error', message: error.message || 'Could not refresh training analysis.' });
+    } finally {
+      dispatch({ type: 'analysis/refresh/end' });
+    }
+  }
+
   async function handleActivateRegistryEntry(entry) {
     dispatch({ type: 'detector/activate/start', detectorId: entry.id });
     try {
@@ -403,6 +415,7 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
 
       {state.studioTab === 'jobs' ? (
         <JobsTab
+          apiBase={apiBase}
           helpIndex={helpIndex}
           jobs={state.jobs}
           jobsError={state.errors.jobs}
@@ -411,8 +424,10 @@ export default function TrainingStudioShell({ apiBase, activeDetector, helpCatal
           onOpenRegistry={() => dispatch({ type: 'studioTab/set', value: 'registry' })}
           onStopJob={handleStopJob}
           onActivateRun={handleActivateRun}
+          onRefreshAnalysis={handleRefreshTrainingAnalysis}
           pendingStopJobId={state.pending.stopJobId}
           pendingActivateRunId={state.pending.activateRunId}
+          pendingRefreshAnalysisRunId={state.pending.refreshAnalysisRunId}
         />
       ) : null}
 

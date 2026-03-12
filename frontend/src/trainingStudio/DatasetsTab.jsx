@@ -27,6 +27,9 @@ export default function DatasetsTab({
             placeholder="/Users/you/datasets/football-yolo"
           />
         </label>
+        <div className="muted">
+          Training Studio expects a YOLO detector dataset layout with a source <code>dataset.yaml</code> or <code>data.yaml</code> and per-image <code>.txt</code> labels.
+        </div>
         <div className="source-toolbar">
           <button className="secondary-button compact-button" type="button" onClick={onScanDataset}>
             {isScanning ? 'Scanning...' : 'Scan dataset'}
