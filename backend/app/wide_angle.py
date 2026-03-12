@@ -1808,6 +1808,8 @@ def generate_live_preview_stream(source_video_path: Path, config_payload: dict[s
     ball_conf = float(config_payload["ball_conf"])
     iou = float(config_payload["iou"])
     tracker_mode = resolve_player_tracker_mode(config_payload)
+    if use_soccermaster and tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE:
+        tracker_mode = DEFAULT_PLAYER_TRACKER_MODE
 
     detector_device = choose_device()
     keypoint_device = choose_keypoint_device(detector_device)
@@ -2141,6 +2143,8 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
     player_model_name = str(config_payload["player_model"])
     requested_tracker_mode = requested_player_tracker_mode(config_payload)
     tracker_mode = resolve_player_tracker_mode(config_payload)
+    if use_soccermaster and tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE:
+        tracker_mode = DEFAULT_PLAYER_TRACKER_MODE
     tracker_mode_name = tracker_mode_label(tracker_mode)
     tracker_runtime_label = resolved_tracker_runtime_label(tracker_mode)
     include_ball = bool(config_payload["include_ball"])
@@ -2226,6 +2230,12 @@ def analyze_video(job_id: str, run_dir: Path, config_payload: dict[str, Any], jo
         f"Player tracker mode resolved to {tracker_mode_name} ({tracker_runtime_label})"
         + (f" from requested '{requested_tracker_mode}'" if requested_tracker_mode else " from default"),
     )
+    if use_soccermaster and requested_tracker_mode == BYTETRACK_PLAYER_TRACKER_MODE:
+        job_manager.log(
+            job_id,
+            "SoccerMaster currently does not provide a standalone ByteTrack integration in this repo; "
+            f"falling back to {tracker_mode_name} for persistent player IDs.",
+        )
     if not use_soccermaster:
         job_manager.log(
             job_id,

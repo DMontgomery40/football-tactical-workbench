@@ -150,6 +150,78 @@
         "title": "AnalyzeAcceptedResponse",
         "type": "object"
       },
+      "BenchmarkEnsureClipRequest": {
+        "properties": {
+          "source_path": {
+            "default": "",
+            "title": "Source Path",
+            "type": "string"
+          }
+        },
+        "title": "BenchmarkEnsureClipRequest",
+        "type": "object"
+      },
+      "BenchmarkImportHFRequest": {
+        "properties": {
+          "filename": {
+            "default": "best.pt",
+            "title": "Filename",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "repo_id": {
+            "title": "Repo Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo_id"
+        ],
+        "title": "BenchmarkImportHFRequest",
+        "type": "object"
+      },
+      "BenchmarkImportLocalRequest": {
+        "properties": {
+          "checkpoint_path": {
+            "title": "Checkpoint Path",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkpoint_path"
+        ],
+        "title": "BenchmarkImportLocalRequest",
+        "type": "object"
+      },
+      "BenchmarkRunRequest": {
+        "properties": {
+          "candidate_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Ids"
+          }
+        },
+        "title": "BenchmarkRunRequest",
+        "type": "object"
+      },
       "Body_analyze_api_analyze_post": {
         "properties": {
           "ball_conf": {
@@ -172,6 +244,11 @@
             "title": "Iou",
             "type": "number"
           },
+          "keypoint_model": {
+            "default": "soccana_keypoint",
+            "title": "Keypoint Model",
+            "type": "string"
+          },
           "label_path": {
             "default": "",
             "title": "Label Path",
@@ -180,6 +257,11 @@
           "local_video_path": {
             "default": "",
             "title": "Local Video Path",
+            "type": "string"
+          },
+          "pipeline": {
+            "default": "classic",
+            "title": "Pipeline",
             "type": "string"
           },
           "player_conf": {
@@ -216,6 +298,20 @@
           }
         },
         "title": "Body_analyze_api_analyze_post",
+        "type": "object"
+      },
+      "Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post",
         "type": "object"
       },
       "Body_prepare_source_api_source_post": {
@@ -259,6 +355,16 @@
           "contract_version": {
             "default": "2026.03.10",
             "title": "Contract Version",
+            "type": "string"
+          },
+          "default_keypoint_model": {
+            "default": "soccana_keypoint",
+            "title": "Default Keypoint Model",
+            "type": "string"
+          },
+          "default_pipeline": {
+            "default": "classic",
+            "title": "Default Pipeline",
             "type": "string"
           },
           "default_player_tracker_mode": {
@@ -305,11 +411,25 @@
           "help_catalog": {
             "title": "Help Catalog"
           },
+          "keypoint_models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keypoint Models",
+            "type": "array"
+          },
           "learn_cards": {
             "items": {
               "$ref": "#/components/schemas/LearnCard"
             },
             "title": "Learn Cards",
+            "type": "array"
+          },
+          "pipeline_options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pipeline Options",
             "type": "array"
           },
           "player_models": {
@@ -1249,6 +1369,11 @@
             ],
             "title": "Overlay Video"
           },
+          "pipeline": {
+            "default": "classic",
+            "title": "Pipeline",
+            "type": "string"
+          },
           "player_conf": {
             "default": 0.0,
             "title": "Player Conf",
@@ -2045,6 +2170,378 @@
         "summary": "Analyze"
       }
     },
+    "/api/benchmark/candidates": {
+      "get": {
+        "operationId": "benchmark_candidates_api_benchmark_candidates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Benchmark Candidates Api Benchmark Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Benchmark Candidates"
+      }
+    },
+    "/api/benchmark/candidates/import-hf": {
+      "post": {
+        "operationId": "benchmark_import_hf_endpoint_api_benchmark_candidates_import_hf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkImportHFRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Import Hf Endpoint Api Benchmark Candidates Import Hf Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Import Hf Endpoint"
+      }
+    },
+    "/api/benchmark/candidates/import-local": {
+      "post": {
+        "operationId": "benchmark_import_local_endpoint_api_benchmark_candidates_import_local_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkImportLocalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Import Local Endpoint Api Benchmark Candidates Import Local Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Import Local Endpoint"
+      }
+    },
+    "/api/benchmark/clip-status": {
+      "get": {
+        "operationId": "benchmark_clip_status_endpoint_api_benchmark_clip_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Clip Status Endpoint Api Benchmark Clip Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Benchmark Clip Status Endpoint"
+      }
+    },
+    "/api/benchmark/config": {
+      "get": {
+        "operationId": "benchmark_config_api_benchmark_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Config Api Benchmark Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Benchmark Config"
+      }
+    },
+    "/api/benchmark/ensure-clip": {
+      "post": {
+        "operationId": "benchmark_ensure_clip_endpoint_api_benchmark_ensure_clip_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkEnsureClipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Ensure Clip Endpoint Api Benchmark Ensure Clip Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Ensure Clip Endpoint"
+      }
+    },
+    "/api/benchmark/ensure-clip-upload": {
+      "post": {
+        "operationId": "benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Ensure Clip Upload Api Benchmark Ensure Clip Upload Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Ensure Clip Upload"
+      }
+    },
+    "/api/benchmark/history": {
+      "get": {
+        "operationId": "benchmark_history_api_benchmark_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Benchmark History Api Benchmark History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark History"
+      }
+    },
+    "/api/benchmark/jobs": {
+      "get": {
+        "operationId": "benchmark_jobs_api_benchmark_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Benchmark Jobs Api Benchmark Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Benchmark Jobs"
+      }
+    },
+    "/api/benchmark/jobs/{benchmark_id}": {
+      "get": {
+        "operationId": "benchmark_job_detail_api_benchmark_jobs__benchmark_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "benchmark_id",
+            "required": true,
+            "schema": {
+              "title": "Benchmark Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Job Detail Api Benchmark Jobs  Benchmark Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Job Detail"
+      }
+    },
+    "/api/benchmark/run": {
+      "post": {
+        "operationId": "benchmark_run_api_benchmark_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Benchmark Run Api Benchmark Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Benchmark Run"
+      }
+    },
     "/api/config": {
       "get": {
         "operationId": "config_api_config_get",
@@ -2313,6 +2810,16 @@
           },
           {
             "in": "query",
+            "name": "pipeline",
+            "required": false,
+            "schema": {
+              "default": "classic",
+              "title": "Pipeline",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "detector_model",
             "required": false,
             "schema": {
@@ -2328,6 +2835,16 @@
             "schema": {
               "default": "",
               "title": "Player Model",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keypoint_model",
+            "required": false,
+            "schema": {
+              "default": "soccana_keypoint",
+              "title": "Keypoint Model",
               "type": "string"
             }
           },
@@ -3253,6 +3770,88 @@
           }
         },
         "summary": "Activate Training Run"
+      }
+    },
+    "/api/train/runs/{run_id}/analysis": {
+      "get": {
+        "operationId": "get_training_run_analysis_api_train_runs__run_id__analysis_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Training Run Analysis Api Train Runs  Run Id  Analysis Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Training Run Analysis"
+      }
+    },
+    "/api/train/runs/{run_id}/refresh-analysis": {
+      "post": {
+        "operationId": "refresh_training_run_analysis_api_train_runs__run_id__refresh_analysis_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Refresh Training Run Analysis Api Train Runs  Run Id  Refresh Analysis Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Training Run Analysis"
       }
     }
   }

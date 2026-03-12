@@ -10,6 +10,7 @@ import {
   fetchSoccerNetConfig,
   refreshRunDiagnostics as refreshRunDiagnosticsContract,
 } from './lib/api/contracts';
+import BenchmarkLab from './BenchmarkLab';
 import TrainingStudio from './TrainingStudio';
 import {
   APP_STORAGE_KEYS,
@@ -59,7 +60,7 @@ const defaultForm = {
   labelPath: '',
   folderPath: '',
   detectorModel: 'soccana',
-  keypointModel: 'soccermaster',
+  keypointModel: 'soccana_keypoint',
   trackerMode: 'hybrid_reid',
   includeBall: true,
   playerConf: '0.25',
@@ -661,7 +662,7 @@ function TrajectoryPanel({
 export default function App() {
   const [appSpace, setAppSpace] = useState(() => {
     const stored = readStoredString(APP_STORAGE_KEYS.appSpace, 'analysis');
-    return stored === 'training' ? 'training' : 'analysis';
+    return ['analysis', 'training', 'benchmark'].includes(stored) ? stored : 'analysis';
   });
   const [themeMode, setThemeMode] = useState(() => readStoredString(APP_STORAGE_KEYS.themeMode, 'light'));
   const [config, setConfig] = useState({ player_models: [], ball_models: [], learn_cards: [], help_catalog: [] });
@@ -1791,6 +1792,13 @@ export default function App() {
           Training Studio
           {activeDetectorIsCustom && form.pipeline !== 'soccermaster' ? <span className="switcher-status-badge">custom detector active</span> : null}
         </button>
+        <button
+          type="button"
+          className={`switcher-tab ${appSpace === 'benchmark' ? 'active-switcher-tab' : ''}`}
+          onClick={() => setAppSpace('benchmark')}
+        >
+          Benchmark Lab
+        </button>
       </section>
 
       {appShellErrors.map((message, index) => (
@@ -1803,6 +1811,13 @@ export default function App() {
           activeDetector={config.active_detector || 'soccana'}
           helpCatalog={config.help_catalog || []}
           onActiveDetectorChange={handleTrainingActiveDetectorChange}
+        />
+      ) : appSpace === 'benchmark' ? (
+        <BenchmarkLab
+          apiBase={API_BASE}
+          helpCatalog={config.help_catalog || []}
+          activePipeline={form.pipeline || 'classic'}
+          activeDetector={config.active_detector || 'soccana'}
         />
       ) : (
       <main

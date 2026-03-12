@@ -167,7 +167,7 @@ function TrainingAnalysisPromptContext({ apiBase, job, helpIndex }) {
   }, [job?.run_id]);
 
   useEffect(() => {
-    if (!isExpanded || promptContext || artifactState.loading || !job?.run_id || !job?.training_analysis_json) {
+    if (!isExpanded || promptContext || artifactState.loading || artifactState.error || !job?.run_id || !job?.training_analysis_json) {
       return;
     }
 
@@ -192,7 +192,7 @@ function TrainingAnalysisPromptContext({ apiBase, job, helpIndex }) {
     return () => {
       cancelled = true;
     };
-  }, [apiBase, artifactState.loading, isExpanded, job?.run_id, job?.training_analysis_json, promptContext]);
+  }, [apiBase, artifactState.error, artifactState.loading, isExpanded, job?.run_id, job?.training_analysis_json, promptContext]);
 
   if (!job?.training_analysis_json) {
     return null;

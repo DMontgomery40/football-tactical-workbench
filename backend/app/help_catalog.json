@@ -1731,5 +1731,109 @@
         "kind": "docs"
       }
     ]
+  },
+  {
+    "id": "benchmark.clip",
+    "title": "Benchmark clip",
+    "summary": "Every candidate runs the exact same clip so the leaderboard compares models instead of footage differences.",
+    "body": [
+      "A detector benchmark only means anything when the input stays fixed. Change the clip and you change the camera angle, crowding, pitch visibility, and ball behavior all at once.",
+      "This surface locks one clip for the whole run. Every candidate sees the same frames under the same runtime profile, which is what makes the ranking readable."
+    ],
+    "targets": [
+      "benchmark.clip"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.runtime_profile",
+    "title": "Locked runtime profile",
+    "summary": "Tracker mode, thresholds, and ball settings are frozen so only the candidate changes between runs.",
+    "body": [
+      "If the tracker mode or thresholds changed between candidates, the leaderboard would mix detector quality with runtime tuning. This benchmark avoids that by freezing the rest of the pipeline.",
+      "Use a separate benchmark if you want to compare settings instead of weights."
+    ],
+    "targets": [
+      "benchmark.runtime_profile"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.candidate",
+    "title": "Benchmark candidate",
+    "summary": "A candidate is one detector checkpoint evaluated against the locked clip and runtime profile.",
+    "body": [
+      "Candidates can come from the built-in pretrained detector, the local training registry, or an imported local/Hugging Face checkpoint.",
+      "A candidate is not automatically promoted into analysis. Benchmark Lab evaluates it in isolation first so you can inspect the evidence before changing defaults."
+    ],
+    "targets": [
+      "benchmark.candidate"
+    ],
+    "links": [
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.composite_score",
+    "title": "Composite benchmark score",
+    "summary": "This is a transparent weighted heuristic across stability, calibration, coverage, and throughput.",
+    "body": [
+      "The score is meant to shortlist candidates, not replace judgment. Two close scores should send you to the overlay and diagnostics rather than straight to promotion.",
+      "Track stability and calibration matter most because this repo is judged by usable overlays and field projections, not detector bragging rights in isolation."
+    ],
+    "targets": [
+      "benchmark.composite_score"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.leaderboard",
+    "title": "Benchmark leaderboard",
+    "summary": "The leaderboard ranks candidates for one benchmark run and should be read together with overlay and diagnostics evidence.",
+    "body": [
+      "A candidate can score well overall but still have suspicious overlay behavior on hard moments. That is why this surface keeps the selected candidate detail beside the ranking.",
+      "Use the raw sub-metrics and the overlay video to understand why a model ranked where it did."
+    ],
+    "targets": [
+      "benchmark.leaderboard"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.sn_gamestate",
+    "title": "sn-gamestate reference",
+    "summary": "The official SoccerNet Game State Reconstruction devkit is an external TrackLab-based baseline and evaluation reference.",
+    "body": [
+      "This repo does not run the full sn-gamestate stack inline. Instead, Benchmark Lab links it as the canonical external reference for task scope, dataset conventions, and the GS-HOTA benchmark.",
+      "That distinction matters: sn-gamestate is a broader game-state pipeline, while this workbench benchmark ranks detector candidates inside this product's own runtime."
+    ],
+    "targets": [
+      "benchmark.sn_gamestate"
+    ],
+    "links": [
+      {
+        "label": "sn-gamestate repository",
+        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "kind": "repo",
+        "published_at": "2025-05"
+      },
+      {
+        "label": "GSR paper",
+        "url": "https://arxiv.org/abs/2404.11335",
+        "kind": "paper",
+        "published_at": "2024-04"
+      },
+      {
+        "label": "SoccerNet GSR task page",
+        "url": "https://www.soccer-net.org/tasks/new-game-state-reconstruction",
+        "kind": "docs",
+        "published_at": "2026"
+      }
+    ]
   }
 ]
