@@ -15,6 +15,10 @@ The app now has two top-level product surfaces:
   - fine-tune from football-pretrained `soccana`
   - monitor training jobs, logs, and artifacts
   - register a finished checkpoint and optionally promote it into analysis defaults
+- `Benchmark Lab`
+  - lock one benchmark clip and one runtime profile
+  - compare pretrained, registry, and imported detector candidates on that same clip
+  - rank candidates with a transparent leaderboard while keeping overlay and diagnostics visible
 
 This README stays intentionally high-level. The detailed setup, workflow, and API contracts live in the linked docs below.
 
@@ -124,6 +128,14 @@ For the full setup guide, environment variables, training notes, and first valid
 5. In `Registry`, inspect the completed checkpoint and activate it when you want analysis to use it while the analysis selector stays on `soccana`.
 6. If you care about durable artifact lineage, use the DVC/provenance details surfaced in Training Studio and the deeper notes in [Workflows](docs/workflows.md) and [Outputs, API, and Batch Experiments](docs/outputs-and-api.md).
 
+### Benchmark quick pass
+
+1. Switch to `Benchmark Lab`.
+2. Prepare one benchmark clip from a local path or upload.
+3. Review the locked runtime profile.
+4. Add candidates from the built-in detector, Training Studio registry, or an imported checkpoint.
+5. Run the benchmark and inspect the leaderboard, overlay, diagnostics, and logs before promoting anything.
+
 The full UI walk-through lives in [Workflows](docs/workflows.md).
 
 ## Runtime Notes
@@ -170,8 +182,12 @@ The full UI walk-through lives in [Workflows](docs/workflows.md).
   Top-level app shell, Analysis Workspace, persisted state, SoccerNet UI, and review flows.
 - `frontend/src/TrainingStudio.jsx`
   Dedicated training shell for dataset scan, training form, jobs, and registry.
+- `backend/app/benchmark.py`
+  Benchmark Lab clip management, candidate imports, scoring, and benchmark orchestration.
+- `frontend/src/benchmarkLab/`
+  Benchmark Lab shell, reducer state, candidate library, clip prep, leaderboard, and detail review.
 - `frontend/src/styles.css`
-  Full shared styling for analysis and training surfaces.
+  Full shared styling for analysis, training, and benchmark surfaces.
 
 ## SoccerNet
 

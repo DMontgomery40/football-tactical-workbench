@@ -2,7 +2,7 @@
 
 ## Top-Level App Layout
 
-The frontend is one SPA with two top-level product surfaces.
+The frontend is one SPA with three top-level product surfaces.
 
 ### `Analysis Workspace`
 
@@ -28,6 +28,12 @@ The frontend is one SPA with two top-level product surfaces.
   - `Jobs`
   - `Registry`
 
+### `Benchmark Lab`
+
+- top-level sub-navigation:
+  - `Setup`
+  - `Leaderboard`
+
 The browser stores several values in local storage:
 
 - theme mode
@@ -35,6 +41,7 @@ The browser stores several values in local storage:
 - analysis sidebar width
 - SoccerNet split, query, and selected files
 - training dataset path
+- selected benchmark run and candidate
 
 The header `Reset` control clears the saved browser state.
 
@@ -193,6 +200,20 @@ You can click a discovered video chip to:
 - populate the local video path
 - immediately load that clip into the source preview
 
+## Workflow 7: Use Benchmark Lab
+
+Benchmark Lab compares detector candidates on one fixed clip under one locked runtime profile.
+
+1. Switch to `Benchmark Lab`.
+2. Prepare the benchmark clip from a local path or upload.
+3. Keep the locked runtime profile as the benchmark contract for that run.
+4. Add candidates from:
+   - the built-in pretrained detector
+   - Training Studio registry entries
+   - imported local or Hugging Face checkpoints
+5. Run the benchmark.
+6. Read the leaderboard as a shortlist, then inspect the selected candidate's overlay, diagnostics, and logs.
+
 ## What Persists And What Does Not
 
 ### Persisted on disk
@@ -206,6 +227,7 @@ You can click a discovered video chip to:
 - source registry under `backend/uploads/sources.json`
 - analysis job snapshots under each analysis run directory as `job_state.json`
 - training job snapshots under each training run directory as `job_state.json`
+- benchmark summaries under `backend/benchmarks/<benchmark_id>/`
 
 ### In memory only
 

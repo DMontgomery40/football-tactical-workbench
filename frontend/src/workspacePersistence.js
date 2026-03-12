@@ -1,3 +1,4 @@
+import { STORAGE_KEYS as BENCHMARK_STORAGE_KEYS } from './benchmarkLab/state.js';
 import { STORAGE_KEYS as TRAINING_STORAGE_KEYS } from './trainingStudio/state.js';
 
 export const APP_STORAGE_KEYS = {
@@ -13,7 +14,13 @@ export const APP_STORAGE_KEYS = {
 };
 
 export function getAllWorkspaceStorageKeys() {
-  return [...new Set([...Object.values(APP_STORAGE_KEYS), ...Object.values(TRAINING_STORAGE_KEYS)])];
+  return [
+    ...new Set([
+      ...Object.values(APP_STORAGE_KEYS),
+      ...Object.values(TRAINING_STORAGE_KEYS),
+      ...Object.values(BENCHMARK_STORAGE_KEYS),
+    ]),
+  ];
 }
 
 export function clearSavedWorkspace(storage) {

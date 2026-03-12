@@ -51,6 +51,18 @@ The Training Studio reads job state from the persisted run folder and surfaces t
 | `summary.json` | always on successful run | Main analysis contract used by the UI |
 | `all_outputs.zip` | always on successful run | Bundle of output artifacts |
 
+## Benchmark Directory Layout
+
+Each benchmark writes to:
+
+```text
+backend/benchmarks/<benchmark_id>/
+  benchmark.log
+  benchmark_summary.json
+```
+
+Each candidate inside that benchmark also produces a normal analysis run under `backend/runs/`, and the benchmark summary links back to those run IDs.
+
 ## Detector Training Output Files
 
 | File | When it exists | Purpose |
@@ -372,6 +384,20 @@ The current FastAPI application exposes these routes.
 - `GET /api/train/runs/{run_id}`
 - `POST /api/train/runs/{run_id}/activate`
 - `GET /api/train/registry`
+
+### Benchmark Lab
+
+- `GET /api/benchmark/config`
+- `GET /api/benchmark/clip-status`
+- `POST /api/benchmark/ensure-clip`
+- `POST /api/benchmark/ensure-clip-upload`
+- `GET /api/benchmark/candidates`
+- `POST /api/benchmark/candidates/import-local`
+- `POST /api/benchmark/candidates/import-hf`
+- `POST /api/benchmark/run`
+- `GET /api/benchmark/jobs`
+- `GET /api/benchmark/jobs/{benchmark_id}`
+- `GET /api/benchmark/history`
 
 ### Local folder scan
 

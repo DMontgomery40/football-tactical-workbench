@@ -18,7 +18,8 @@
     "summary": "Selects the detection and field-registration architecture that drives the entire analysis run.",
     "body": [
       "Classic uses the soccana detector for player/ball detection plus soccana_keypoint for field registration. These are separate models with independent weights and confidence thresholds.",
-      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both."
+      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both.",
+      "sn-gamestate is different again: it is an external TrackLab-based Game State Reconstruction baseline from SoccerNet. In this app it behaves as an external pipeline option rather than a local detector checkpoint, so live preview is unavailable and the native detector/tracker sliders do not control it."
     ],
     "targets": [
       "analysis.pipeline"
@@ -1729,6 +1730,112 @@
         "label": "DVC glossary",
         "url": "https://dvc.org/doc/user-guide/project-structure/dvc-files-and-directories",
         "kind": "docs"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.clip",
+    "title": "Benchmark clip",
+    "summary": "Every candidate runs the exact same clip so the leaderboard compares models instead of footage differences.",
+    "body": [
+      "A benchmark only means anything when the input stays fixed. Change the clip and you change the camera angle, crowding, pitch visibility, and ball behavior all at once.",
+      "This surface locks one clip for the whole run. Every baseline or detector candidate sees the same frames, which is what makes the side-by-side review readable."
+    ],
+    "targets": [
+      "benchmark.clip"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.runtime_profile",
+    "title": "Shared runtime defaults",
+    "summary": "The benchmark clip stays fixed, and native tracker / threshold defaults stay fixed where those controls apply.",
+    "body": [
+      "Classic detector checkpoints are compared under one shared native runtime profile so tracker mode, threshold tuning, and ball settings do not drift between runs.",
+      "Some baseline candidates override the pipeline internally. SoccerMaster uses its unified detection-plus-calibration stack, and sn-gamestate runs its external TrackLab pipeline, while still sharing the same cached clip for side-by-side review."
+    ],
+    "targets": [
+      "benchmark.runtime_profile"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.candidate",
+    "title": "Benchmark candidate",
+    "summary": "A candidate can be a core pipeline baseline or a detector checkpoint evaluated against the same cached clip.",
+    "body": [
+      "The core comparison set is classic / soccana, SoccerMaster, and sn-gamestate. You can also add local registry detectors or imported checkpoints to compare them against that baseline trio.",
+      "A candidate is not automatically promoted into analysis. Benchmark Lab runs it in isolation first so you can inspect overlay, diagnostics, logs, and setup readiness before changing defaults."
+    ],
+    "targets": [
+      "benchmark.candidate"
+    ],
+    "links": [
+      {
+        "label": "Soccana model card",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.composite_score",
+    "title": "Proxy comparison score",
+    "summary": "This is a transparent weighted proxy across stability, calibration, coverage, and throughput, not a labeled accuracy metric.",
+    "body": [
+      "The score is meant to shortlist candidates, not replace judgment. Two close scores should send you to the overlay and diagnostics rather than straight to promotion.",
+      "This surface does not yet compare predictions against a labeled benchmark clip. It ranks runtime evidence from this app itself, which is why the score is helpful for review but not the same thing as model accuracy.",
+      "External baselines can still appear in the same benchmark run even when they do not emit the native metrics required for the 0-100 proxy score. In those cases, review the overlay, logs, and diagnostics directly instead of reading a missing score as failure."
+    ],
+    "targets": [
+      "benchmark.composite_score"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.leaderboard",
+    "title": "Benchmark leaderboard",
+    "summary": "The leaderboard ranks candidates for one benchmark run and should be read together with overlay and diagnostics evidence.",
+    "body": [
+      "A candidate can score well overall but still have suspicious overlay behavior on hard moments. That is why this surface keeps the selected candidate detail beside the ranking.",
+      "Use the raw sub-metrics and the overlay video to understand why a model ranked where it did. If you need official accuracy, use a labeled SoccerNetGS evaluation path such as GS-HOTA instead of this proxy leaderboard.",
+      "Some rows can be side-by-side review entries rather than ranked proxy-score entries. That happens when an external baseline completes but does not emit the native runtime metrics this workbench uses for ranking."
+    ],
+    "targets": [
+      "benchmark.leaderboard"
+    ],
+    "links": []
+  },
+  {
+    "id": "benchmark.sn_gamestate",
+    "title": "sn-gamestate baseline",
+    "summary": "The official SoccerNet Game State Reconstruction devkit is an external TrackLab-based baseline and evaluation reference.",
+    "body": [
+      "sn-gamestate is the official SoccerNet baseline and evaluator stack for Game State Reconstruction. Its dataset and model weights are downloaded automatically on first run.",
+      "Its published accuracy contract is GS-HOTA on labeled SoccerNetGS clips. That is different from this workbench's current proxy clip-comparison score, which does not yet run the official labeled evaluator inline."
+    ],
+    "targets": [
+      "benchmark.sn_gamestate"
+    ],
+    "links": [
+      {
+        "label": "sn-gamestate repository",
+        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "kind": "repo",
+        "published_at": "2025-05"
+      },
+      {
+        "label": "GSR paper",
+        "url": "https://arxiv.org/abs/2404.11335",
+        "kind": "paper",
+        "published_at": "2024-04"
+      },
+      {
+        "label": "SoccerNet GSR task page",
+        "url": "https://www.soccer-net.org/tasks/new-game-state-reconstruction",
+        "kind": "docs",
+        "published_at": "2026"
       }
     ]
   }

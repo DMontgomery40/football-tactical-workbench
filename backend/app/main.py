@@ -45,6 +45,7 @@ from app.schemas import (
     SoccerNetGamesResponse,
     SourceResponse,
 )
+from app.sn_gamestate import run_sn_gamestate_analysis, sn_gamestate_status
 from app.training import (
     build_training_backend_config,
     inspect_training_dataset,
@@ -89,6 +90,17 @@ except Exception as exc:
     TrainingManager = None  # type: ignore[assignment]
     TrainingRegistry = None  # type: ignore[assignment]
     TRAINING_IMPORT_ERROR = str(exc)
+
+from app.benchmark import (
+    BENCHMARK_RUNTIME_PROFILE,
+    BENCHMARKS_DIR,
+    benchmark_orchestrator,
+    clip_status as benchmark_clip_status,
+    ensure_clip as benchmark_ensure_clip,
+    import_hf_checkpoint as benchmark_import_hf,
+    import_local_checkpoint as benchmark_import_local,
+    list_candidates as benchmark_list_candidates,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 RUNS_DIR = BASE_DIR / "runs"
@@ -158,6 +170,25 @@ class TrainingDetectJobRequest(BaseModel):
 
 class TrainingRegistryActivateRequest(BaseModel):
     detector_id: str
+
+
+class BenchmarkEnsureClipRequest(BaseModel):
+    source_path: str = ""
+
+
+class BenchmarkImportLocalRequest(BaseModel):
+    checkpoint_path: str
+    label: str = ""
+
+
+class BenchmarkImportHFRequest(BaseModel):
+    repo_id: str
+    filename: str = "best.pt"
+    label: str = ""
+
+
+class BenchmarkRunRequest(BaseModel):
+    candidate_ids: list[str] | None = None
 
 
 def dump_json_model(instance: BaseModel) -> dict[str, Any]:
@@ -776,6 +807,7 @@ def config() -> ConfigResponse:
         "active_detector_label": active_detector_entry.get("label", "soccana (football-pretrained)"),
         "active_detector_is_custom": str(active_detector_entry.get("id", "soccana")) != "soccana",
         "runtime_profile": runtime_profile,
+        "sn_gamestate": sn_gamestate_status(),
     })
 
 
@@ -1045,6 +1077,98 @@ def activate_registered_detector(request: TrainingRegistryActivateRequest) -> di
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"success": True, "active_detector": entry["id"]}
+
+
+@app.get("/api/benchmark/config")
+def benchmark_config() -> dict[str, Any]:
+    return {
+        "runtime_profile": dict(BENCHMARK_RUNTIME_PROFILE),
+        "clip_status": benchmark_clip_status(),
+        "candidates": benchmark_list_candidates(),
+        "benchmarks_dir": str(BENCHMARKS_DIR),
+    }
+
+
+@app.get("/api/benchmark/clip-status")
+def benchmark_clip_status_endpoint() -> dict[str, Any]:
+    return benchmark_clip_status()
+
+
+@app.post("/api/benchmark/ensure-clip")
+def benchmark_ensure_clip_endpoint(request: BenchmarkEnsureClipRequest) -> dict[str, Any]:
+    result = benchmark_ensure_clip(source_path=request.source_path)
+    if not result.get("ready") and result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/api/benchmark/ensure-clip-upload")
+async def benchmark_ensure_clip_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    from app.benchmark import BENCHMARK_CLIP_FILENAME, CLIP_CACHE_DIR, clip_status as current_clip_status
+
+    dest = CLIP_CACHE_DIR / BENCHMARK_CLIP_FILENAME
+    CLIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {exc}") from exc
+    return current_clip_status()
+
+
+@app.get("/api/benchmark/candidates")
+def benchmark_candidates() -> list[dict[str, Any]]:
+    return benchmark_list_candidates()
+
+
+@app.post("/api/benchmark/candidates/import-local")
+def benchmark_import_local_endpoint(request: BenchmarkImportLocalRequest) -> dict[str, Any]:
+    try:
+        return benchmark_import_local(checkpoint_path=request.checkpoint_path, label=request.label)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/benchmark/candidates/import-hf")
+def benchmark_import_hf_endpoint(request: BenchmarkImportHFRequest) -> dict[str, Any]:
+    try:
+        return benchmark_import_hf(repo_id=request.repo_id, filename=request.filename, label=request.label)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"HF import failed: {exc}") from exc
+
+
+@app.post("/api/benchmark/run")
+def benchmark_run(request: BenchmarkRunRequest) -> dict[str, Any]:
+    try:
+        state = benchmark_orchestrator.create_benchmark(candidate_ids=request.candidate_ids)
+        return {"benchmark_id": state["benchmark_id"], "status": state["status"]}
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/benchmark/jobs")
+def benchmark_jobs() -> list[dict[str, Any]]:
+    return benchmark_orchestrator.list_benchmarks()
+
+
+@app.get("/api/benchmark/jobs/{benchmark_id}")
+def benchmark_job_detail(benchmark_id: str) -> dict[str, Any]:
+    state = benchmark_orchestrator.get_benchmark(benchmark_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Benchmark {benchmark_id} not found")
+    return state
+
+
+@app.get("/api/benchmark/history")
+def benchmark_history(limit: int = 20) -> list[dict[str, Any]]:
+    bounded_limit = min(max(int(limit), 1), 200)
+    return benchmark_orchestrator.history(limit=bounded_limit)
 
 
 @app.get("/api/jobs")
@@ -1959,8 +2083,13 @@ def live_preview(
     ball_conf: float = Query(default=0.20),
     iou: float = Query(default=0.50),
 ) -> StreamingResponse:
+    if pipeline == "sn_gamestate":
+        raise HTTPException(status_code=409, detail="Live preview is not available for the external sn-gamestate baseline. Use Analyze loaded clip instead.")
     source_video_path = resolve_source_path(source_id=source_id, local_video_path=local_video_path)
-    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
+    if pipeline == "sn_gamestate":
+        resolved_detector_model = "sn-gamestate external baseline"
+    else:
+        resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
 
     stream = generate_live_preview_stream(
         source_video_path=source_video_path,
@@ -2046,7 +2175,10 @@ async def analyze(
     else:
         source_video_path = resolve_source_path(local_video_path=local_video_path)
 
-    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
+    if pipeline == "sn_gamestate":
+        resolved_detector_model = "sn-gamestate external baseline"
+    else:
+        resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
 
     config_payload = {
         "source_video_path": str(source_video_path),
@@ -2080,13 +2212,21 @@ async def analyze(
 def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]) -> None:
     try:
         control = job_control_manager.get(job_id)
-        summary = analyze_wide_angle_video(
-            job_id=job_id,
-            run_dir=run_dir,
-            config_payload=config_payload,
-            job_manager=job_manager,
-            job_control=control,
-        )
+        if str(config_payload.get("pipeline") or "") == "sn_gamestate":
+            summary = run_sn_gamestate_analysis(
+                job_id=job_id,
+                run_dir=run_dir,
+                source_video_path=Path(str(config_payload["source_video_path"])).expanduser().resolve(),
+                job_manager=job_manager,
+            )
+        else:
+            summary = analyze_wide_angle_video(
+                job_id=job_id,
+                run_dir=run_dir,
+                config_payload=config_payload,
+                job_manager=job_manager,
+                job_control=control,
+            )
         job_manager.update(job_id, status="completed", progress=100.0, summary=summary)
         job_manager.log(job_id, "Run completed")
     except AnalysisStoppedError:

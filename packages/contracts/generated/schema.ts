@@ -21,6 +21,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/benchmark/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark Candidates */
+        get: operations["benchmark_candidates_api_benchmark_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/candidates/import-hf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Benchmark Import Hf Endpoint */
+        post: operations["benchmark_import_hf_endpoint_api_benchmark_candidates_import_hf_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/candidates/import-local": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Benchmark Import Local Endpoint */
+        post: operations["benchmark_import_local_endpoint_api_benchmark_candidates_import_local_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/clip-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark Clip Status Endpoint */
+        get: operations["benchmark_clip_status_endpoint_api_benchmark_clip_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark Config */
+        get: operations["benchmark_config_api_benchmark_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/ensure-clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Benchmark Ensure Clip Endpoint */
+        post: operations["benchmark_ensure_clip_endpoint_api_benchmark_ensure_clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/ensure-clip-upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Benchmark Ensure Clip Upload */
+        post: operations["benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark History */
+        get: operations["benchmark_history_api_benchmark_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark Jobs */
+        get: operations["benchmark_jobs_api_benchmark_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/jobs/{benchmark_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Benchmark Job Detail */
+        get: operations["benchmark_job_detail_api_benchmark_jobs__benchmark_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/benchmark/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Benchmark Run */
+        post: operations["benchmark_run_api_benchmark_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -565,6 +752,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/train/runs/{run_id}/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Training Run Analysis */
+        get: operations["get_training_run_analysis_api_train_runs__run_id__analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/train/runs/{run_id}/refresh-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Training Run Analysis */
+        post: operations["refresh_training_run_analysis_api_train_runs__run_id__refresh_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -665,6 +886,44 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** BenchmarkEnsureClipRequest */
+        BenchmarkEnsureClipRequest: {
+            /**
+             * Source Path
+             * @default
+             */
+            source_path: string;
+        };
+        /** BenchmarkImportHFRequest */
+        BenchmarkImportHFRequest: {
+            /**
+             * Filename
+             * @default best.pt
+             */
+            filename: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Repo Id */
+            repo_id: string;
+        };
+        /** BenchmarkImportLocalRequest */
+        BenchmarkImportLocalRequest: {
+            /** Checkpoint Path */
+            checkpoint_path: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /** BenchmarkRunRequest */
+        BenchmarkRunRequest: {
+            /** Candidate Ids */
+            candidate_ids?: string[] | null;
+        };
         /** Body_analyze_api_analyze_post */
         Body_analyze_api_analyze_post: {
             /**
@@ -688,6 +947,11 @@ export interface components {
              */
             iou: number;
             /**
+             * Keypoint Model
+             * @default soccana_keypoint
+             */
+            keypoint_model: string;
+            /**
              * Label Path
              * @default
              */
@@ -697,6 +961,11 @@ export interface components {
              * @default
              */
             local_video_path: string;
+            /**
+             * Pipeline
+             * @default classic
+             */
+            pipeline: string;
             /**
              * Player Conf
              * @default 0.25
@@ -719,6 +988,14 @@ export interface components {
             tracker_mode: string;
             /** Video File */
             video_file?: string | null;
+        };
+        /** Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post */
+        Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
         };
         /** Body_prepare_source_api_source_post */
         Body_prepare_source_api_source_post: {
@@ -743,6 +1020,16 @@ export interface components {
              * @default 2026.03.10
              */
             contract_version: string;
+            /**
+             * Default Keypoint Model
+             * @default soccana_keypoint
+             */
+            default_keypoint_model: string;
+            /**
+             * Default Pipeline
+             * @default classic
+             */
+            default_pipeline: string;
             /** Default Player Tracker Mode */
             default_player_tracker_mode: string;
             /** Detector Models */
@@ -757,8 +1044,12 @@ export interface components {
             field_calibration_refresh_frames: number;
             /** Help Catalog */
             help_catalog?: unknown;
+            /** Keypoint Models */
+            keypoint_models?: string[];
             /** Learn Cards */
             learn_cards?: components["schemas"]["LearnCard"][];
+            /** Pipeline Options */
+            pipeline_options?: string[];
             /** Player Models */
             player_models?: string[];
             /** Player Tracker Modes */
@@ -1329,6 +1620,11 @@ export interface components {
             /** Overlay Video */
             overlay_video?: string | null;
             /**
+             * Pipeline
+             * @default classic
+             */
+            pipeline: string;
+            /**
              * Player Conf
              * @default 0
              */
@@ -1778,6 +2074,335 @@ export interface operations {
             };
         };
     };
+    benchmark_candidates_api_benchmark_candidates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    benchmark_import_hf_endpoint_api_benchmark_candidates_import_hf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkImportHFRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_import_local_endpoint_api_benchmark_candidates_import_local_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkImportLocalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_clip_status_endpoint_api_benchmark_clip_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    benchmark_config_api_benchmark_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    benchmark_ensure_clip_endpoint_api_benchmark_ensure_clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkEnsureClipRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_history_api_benchmark_history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_jobs_api_benchmark_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    benchmark_job_detail_api_benchmark_jobs__benchmark_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                benchmark_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    benchmark_run_api_benchmark_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     config_api_config_get: {
         parameters: {
             query?: never;
@@ -1989,8 +2614,10 @@ export interface operations {
             query?: {
                 source_id?: string;
                 local_video_path?: string;
+                pipeline?: string;
                 detector_model?: string;
                 player_model?: string;
+                keypoint_model?: string;
                 tracker_mode?: string;
                 include_ball?: boolean;
                 player_conf?: number;
@@ -2690,6 +3317,72 @@ export interface operations {
         };
     };
     activate_training_run_api_train_runs__run_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_training_run_analysis_api_train_runs__run_id__analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_training_run_analysis_api_train_runs__run_id__refresh_analysis_post: {
         parameters: {
             query?: never;
             header?: never;
