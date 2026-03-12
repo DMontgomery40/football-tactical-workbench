@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app import main  # noqa: E402
+from app import sn_gamestate  # noqa: E402
 
 
 def test_config_includes_sn_gamestate_status(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -99,3 +101,96 @@ def test_analyze_skips_detector_resolution_for_sn_gamestate(
     assert response.job_id == "job-123"
     assert response.run_id
     assert response.run_dir
+
+
+def test_run_sn_gamestate_analysis_uses_easyocr_fallback_when_mmcv_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_dir = tmp_path / "sn-gamestate"
+    repo_dir.mkdir()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    source_video = tmp_path / "clip.mp4"
+    source_video.write_bytes(b"fake")
+    overlay_source = tmp_path / "overlay_source.mp4"
+    overlay_source.write_bytes(b"fake")
+    logged: list[str] = []
+    captured_command: dict[str, list[str]] = {}
+
+    monkeypatch.setattr(
+        sn_gamestate,
+        "sn_gamestate_status",
+        lambda: {
+            "available": True,
+            "repo_path": str(repo_dir),
+            "uv_path": "/opt/homebrew/bin/uv",
+            "note": "ready",
+            "evaluation": {"metric": "GS-HOTA"},
+            "weights": {"mode": "automatic_first_run"},
+        },
+    )
+    monkeypatch.setattr(
+        sn_gamestate,
+        "_sn_gamestate_python_module_available",
+        lambda repo_path, module_name, uv_path=None: module_name == "easyocr",
+    )
+    monkeypatch.setattr(
+        sn_gamestate,
+        "_inspect_video",
+        lambda path: {
+            "fps": 25.0,
+            "width": 1280,
+            "height": 720,
+            "frame_count": 100,
+            "duration_seconds": 4.0,
+        },
+    )
+    monkeypatch.setattr(sn_gamestate, "_find_visualization_video", lambda external_run_dir: overlay_source)
+    monkeypatch.setattr(sn_gamestate.shutil, "copy2", lambda src, dst: None)
+    monkeypatch.setattr(sn_gamestate.platform, "system", lambda: "Darwin")
+
+    class DummyStdout:
+        def __iter__(self):
+            return iter(["tracklab line\n"])
+
+        def close(self) -> None:
+            return None
+
+    class DummyProcess:
+        def __init__(self) -> None:
+            self.stdout = DummyStdout()
+
+        def wait(self) -> int:
+            return 0
+
+    def fake_popen(command, cwd, stdout, stderr, text, bufsize, env):
+        captured_command["command"] = list(command)
+        captured_command["env"] = dict(env)
+        return DummyProcess()
+
+    monkeypatch.setattr(sn_gamestate.subprocess, "Popen", fake_popen)
+
+    job_manager = SimpleNamespace(log=lambda _job_id, message: logged.append(message))
+    summary = sn_gamestate.run_sn_gamestate_analysis(
+        job_id="job-1",
+        run_dir=run_dir,
+        source_video_path=source_video,
+        job_manager=job_manager,
+    )
+
+    assert captured_command["command"][:4] == ["/opt/homebrew/bin/uv", "run", "python", "-c"]
+    assert "dataset.eval_set=val" in captured_command["command"]
+    assert "test_tracking=True" in captured_command["command"]
+    assert "num_cores=0" in captured_command["command"]
+    assert "modules/jersey_number_detect=easyocr" in captured_command["command"]
+    assert captured_command["env"]["PYTORCH_ENABLE_MPS_FALLBACK"] == "1"
+    assert any("macOS stability mode" in message for message in logged)
+    assert any("EasyOCR" in message for message in logged)
+    assert summary["external_pipeline"]["jersey_number_backend"] == "easyocr_fallback"
+    assert summary["external_pipeline"]["execution_mode"] == "cpu_safe_macos"
+    summary_path = run_dir / "outputs" / "summary.json"
+    assert summary_path.exists()
+    saved = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert saved["external_pipeline"]["jersey_number_backend"] == "easyocr_fallback"
+    assert saved["external_pipeline"]["execution_mode"] == "cpu_safe_macos"

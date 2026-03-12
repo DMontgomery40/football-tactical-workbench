@@ -16,6 +16,25 @@ import {
   createInitialBenchmarkState,
 } from './state';
 
+const HERO_STYLE = {
+  background: [
+    'radial-gradient(circle at top left, color-mix(in srgb, var(--accent-soft) 40%, transparent) 0%, transparent 42%)',
+    'radial-gradient(circle at bottom right, color-mix(in srgb, var(--good-bg) 42%, transparent) 0%, transparent 38%)',
+    'linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, var(--page-panel)) 0%, color-mix(in srgb, var(--surface) 84%, var(--surface-soft)) 100%)',
+  ].join(', '),
+};
+
+const PANEL_STYLE = {
+  border: '1px solid var(--line)',
+  background: 'color-mix(in srgb, var(--surface) 90%, var(--surface-muted))',
+};
+
+const NOTICE_STYLE = {
+  border: '1px solid color-mix(in srgb, var(--warn-line) 72%, var(--line))',
+  background: 'color-mix(in srgb, var(--warn-bg) 78%, var(--surface))',
+  color: 'var(--warn-text)',
+};
+
 function getErrorMessage(error, fallback) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -33,30 +52,67 @@ function extractResponseError(payload, fallback) {
   return fallback;
 }
 
+function statusToneStyle(tone) {
+  if (tone === 'good') {
+    return {
+      borderColor: 'color-mix(in srgb, var(--good-line) 80%, var(--line))',
+      background: 'color-mix(in srgb, var(--good-bg) 82%, var(--surface))',
+      color: 'var(--good-text)',
+    };
+  }
+  if (tone === 'warn') {
+    return {
+      borderColor: 'color-mix(in srgb, var(--warn-line) 78%, var(--line))',
+      background: 'color-mix(in srgb, var(--warn-bg) 80%, var(--surface))',
+      color: 'var(--warn-text)',
+    };
+  }
+  return {
+    borderColor: 'color-mix(in srgb, var(--accent) 26%, var(--line))',
+    background: 'color-mix(in srgb, var(--accent-soft) 42%, var(--surface))',
+    color: 'var(--accent-strong)',
+  };
+}
+
+function HeaderPill({ label, tone = 'default' }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+      style={statusToneStyle(tone)}
+    >
+      {label}
+    </span>
+  );
+}
+
+function StatusStripItem({ label, value, hint }) {
+  return (
+    <div className="grid gap-1 rounded-[18px] border p-4" style={PANEL_STYLE}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">{label}</div>
+      <div className="text-sm font-semibold text-[color:var(--text-strong)] md:text-base">{value}</div>
+      {hint ? <p className="m-0 text-sm leading-6 text-[color:var(--text-muted)]">{hint}</p> : null}
+    </div>
+  );
+}
+
 function SnGamestateReferenceCard({ helpIndex }) {
   return (
-    <section className="card benchmark-reference-card">
-      <SectionTitleWithHelp title="sn-gamestate baseline" entry={helpIndex.get('benchmark.sn_gamestate')} />
-      <p className="field-note">
-        SoccerNet&apos;s official Game State Reconstruction devkit is a separate TrackLab-based baseline and evaluator stack.
-        It auto-downloads its dataset and weights on first run, and its real accuracy metric is GS-HOTA on labeled SoccerNetGS clips.
+    <section className="card grid gap-3 rounded-[24px] p-5" style={PANEL_STYLE}>
+      <SectionTitleWithHelp title="sn-gamestate Baseline" entry={helpIndex.get('benchmark.sn_gamestate')} />
+      <p className="m-0 text-sm leading-6 text-[color:var(--text-muted)]">
+        The official SoccerNet Game State Reconstruction stack runs here as an external review baseline. It is valid for
+        side-by-side overlay comparison, but GS-HOTA still belongs to labeled SoccerNetGS evaluation rather than arbitrary clips.
       </p>
-      <p className="field-note">
-        This workbench can review arbitrary clips, but that is not the same as official label-backed evaluation. Use the SoccerNet baseline when you need the published GSR scoring contract.
-      </p>
-      <p className="field-note">
-        When the local sn-gamestate repo is configured, Benchmark Lab can run that external baseline side-by-side with the native pipelines on the same clip for review.
-      </p>
-      <div className="path-list">
-        <a href="https://github.com/SoccerNet/sn-gamestate" target="_blank" rel="noreferrer">Repository</a>
-        <a href="https://arxiv.org/abs/2404.11335" target="_blank" rel="noreferrer">Paper</a>
-        <a href="https://www.soccer-net.org/tasks/new-game-state-reconstruction" target="_blank" rel="noreferrer">Task page</a>
+      <div className="flex flex-wrap gap-2">
+        <a className="compact-button" href="https://github.com/SoccerNet/sn-gamestate" target="_blank" rel="noreferrer">Repository</a>
+        <a className="compact-button" href="https://arxiv.org/abs/2404.11335" target="_blank" rel="noreferrer">Paper</a>
+        <a className="compact-button" href="https://www.soccer-net.org/tasks/new-game-state-reconstruction" target="_blank" rel="noreferrer">Task page</a>
       </div>
     </section>
   );
 }
 
-export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePipeline = 'classic', activeDetector = 'soccana' }) {
+export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePipeline = 'classic' }) {
   const [state, dispatch] = useReducer(benchmarkLabReducer, undefined, createInitialBenchmarkState);
   const pollRef = useRef(null);
   const helpIndex = useMemo(() => buildHelpIndex(helpCatalog), [helpCatalog]);
@@ -95,7 +151,6 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
     return data;
   }
 
-  // Bootstrap
   useEffect(() => {
     let cancelled = false;
 
@@ -125,17 +180,14 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
     return () => { cancelled = true; };
   }, []);
 
-  // Persist tab
   useEffect(() => {
     writeStoredValue(STORAGE_KEYS.tab, state.tab);
   }, [state.tab]);
 
-  // Persist clip source path
   useEffect(() => {
     writeStoredValue(STORAGE_KEYS.clipSourcePath, state.clipSourcePath);
   }, [state.clipSourcePath]);
 
-  // Persist selections
   useEffect(() => {
     writeStoredValue(STORAGE_KEYS.selectedBenchmarkId, state.selectedBenchmarkId);
   }, [state.selectedBenchmarkId]);
@@ -144,9 +196,8 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
     writeStoredValue(STORAGE_KEYS.selectedCandidateId, state.selectedCandidateId);
   }, [state.selectedCandidateId]);
 
-  // Poll active benchmarks
   const hasActiveBenchmark = useMemo(
-    () => state.benchmarks.some((b) => POLLING_BENCHMARK_STATUSES.has(String(b?.status || ''))),
+    () => state.benchmarks.some((benchmark) => POLLING_BENCHMARK_STATUSES.has(String(benchmark?.status || ''))),
     [state.benchmarks],
   );
 
@@ -178,8 +229,6 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
     };
   }, [hasActiveBenchmark]);
 
-  // --- Handlers ---
-
   async function handleEnsureClip(sourcePath) {
     dispatch({ type: 'clip/ensure/start' });
     try {
@@ -206,7 +255,11 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
       const rawText = await response.text();
       let payload = {};
       if (rawText) {
-        try { payload = JSON.parse(rawText); } catch { payload = {}; }
+        try {
+          payload = JSON.parse(rawText);
+        } catch {
+          payload = {};
+        }
       }
       if (!response.ok) {
         throw new Error(payload.detail || payload.error || rawText.trim() || `Upload failed (${response.status})`);
@@ -264,106 +317,121 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
     }
   }
 
-  // --- Derived ---
-
   const activeBenchmark = useMemo(
-    () => state.benchmarks.find((b) => b.benchmark_id === state.selectedBenchmarkId) || null,
+    () => state.benchmarks.find((benchmark) => benchmark.benchmark_id === state.selectedBenchmarkId) || null,
     [state.benchmarks, state.selectedBenchmarkId],
   );
 
   const selectedCandidate = useMemo(
     () =>
-      state.candidates.find((c) => c.id === state.selectedCandidateId)
-      || activeBenchmark?.candidates?.find((c) => c.id === state.selectedCandidateId)
+      state.candidates.find((candidate) => candidate.id === state.selectedCandidateId)
+      || activeBenchmark?.candidates?.find((candidate) => candidate.id === state.selectedCandidateId)
       || null,
     [activeBenchmark, state.candidates, state.selectedCandidateId],
   );
 
-  const baselineCandidates = useMemo(
-    () => state.candidates.filter((candidate) => candidate?.comparison_group === 'baseline'),
-    [state.candidates],
-  );
   const coreBaselinePlan = useMemo(() => buildCoreBaselinePlan(state.candidates), [state.candidates]);
-
-  const unavailableBaselines = useMemo(
-    () => baselineCandidates.filter((candidate) => candidate?.available === false),
-    [baselineCandidates],
-  );
-
+  const unavailableBaselines = coreBaselinePlan.unavailableCandidates || [];
   const selectedCandidateResult = useMemo(() => {
     if (!activeBenchmark?.leaderboard || !state.selectedCandidateId) return null;
-    return activeBenchmark.leaderboard.find((r) => r.candidate_id === state.selectedCandidateId) || null;
+    return activeBenchmark.leaderboard.find((row) => row.candidate_id === state.selectedCandidateId) || null;
   }, [activeBenchmark, state.selectedCandidateId]);
+
+  const clipReady = Boolean(state.clipStatus?.ready);
+  const baselineReadyCount = (coreBaselinePlan.candidates || []).filter((candidate) => candidate.available !== false).length;
+  const statusItems = [
+    {
+      label: 'Locked clip',
+      value: clipReady
+        ? `${Number(state.clipStatus?.duration_seconds || state.clipStatus?.duration || 0).toFixed(1)}s reference`
+        : 'clip needed',
+      hint: clipReady ? 'Same footage for every run.' : 'Load a short clip before benchmarking.',
+    },
+    {
+      label: 'Baseline trio',
+      value: `${baselineReadyCount}/${coreBaselinePlan.candidates.length || 3} ready`,
+      hint: unavailableBaselines.length
+        ? `Setup still needed for ${unavailableBaselines.map((candidate) => candidate.label).join(', ')}.`
+        : 'Classic, SoccerMaster, and sn-gamestate are available.',
+    },
+    {
+      label: 'Live comparison',
+      value: activeBenchmark ? String(activeBenchmark.status || 'idle') : 'idle',
+      hint: activeBenchmark ? `Benchmark ${activeBenchmark.benchmark_id}` : 'No active benchmark selected.',
+    },
+  ];
+
   return (
-    <section className="benchmark-shell">
-      <div className="card benchmark-header">
-        <div className="benchmark-header-copy">
-          <div className="section-title">
-            <span>Benchmark Lab</span>
+    <section className="grid gap-6">
+      <div className="card overflow-hidden rounded-[28px] p-0" style={HERO_STYLE}>
+        <div className="grid gap-5 p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:p-7">
+          <div className="grid gap-4">
+            <div className="flex flex-wrap gap-2">
+              <HeaderPill label="Benchmark Desk" />
+              <HeaderPill label="Proxy review only" tone="warn" />
+              {clipReady ? <HeaderPill label="Clip locked" tone="good" /> : null}
+              {activePipeline !== 'classic' ? <HeaderPill label={`Workspace: ${activePipeline}`} /> : null}
+            </div>
+            <div className="grid gap-3">
+              <h2 className="m-0 max-w-4xl text-3xl font-semibold leading-tight text-[color:var(--text-strong)] md:text-[2.45rem]">
+                Compare the three pipeline baselines on one locked clip, then judge them from the overlay instead of the chrome.
+              </h2>
+              <p className="m-0 max-w-3xl text-sm leading-7 text-[color:var(--text-muted)]">
+                Keep the clip fixed, keep the baseline trio visible, and let the selected run own the review desk. This board is for quick operational comparison, not label-backed accuracy claims.
+              </p>
+            </div>
+            <div className="grid gap-3 rounded-[22px] p-4" style={PANEL_STYLE}>
+              <div className="grid gap-3 lg:grid-cols-3">
+                {statusItems.map((item) => (
+                  <StatusStripItem key={item.label} label={item.label} value={item.value} hint={item.hint} />
+                ))}
+              </div>
+              {state.runtimeProfile?.note ? (
+                <div className="rounded-[18px] p-4 text-sm leading-6" style={NOTICE_STYLE}>
+                  {state.runtimeProfile.note}
+                </div>
+              ) : null}
+            </div>
           </div>
-          <p className="studio-intro">
-            Compare the three analysis baselines on one locked reference clip under identical review conditions.
-            This surface currently produces a proxy clip-comparison score, not a label-backed accuracy benchmark.
-          </p>
-          {state.runtimeProfile?.note ? (
-            <p className="benchmark-pipeline-notice">{state.runtimeProfile.note}</p>
-          ) : (
-            <p className="benchmark-pipeline-notice">
-              Benchmark Lab treats pipeline choice as part of the comparison itself: classic / soccana, SoccerMaster,
-              and sn-gamestate can all run side-by-side while the clip stays fixed.
-            </p>
-          )}
-          {unavailableBaselines.length > 0 ? (
-            <p className="benchmark-pipeline-notice">
-              Missing local setup for: <strong>{unavailableBaselines.map((candidate) => candidate.label || candidate.id).join(', ')}</strong>.
-              Configure those baselines to run the full trio.
-            </p>
-          ) : activePipeline !== (state.runtimeProfile?.native_pipeline || 'classic') ? (
-            <p className="benchmark-pipeline-notice">
-              Your Analysis Workspace is currently using <strong>{activePipeline}</strong>. That selection does not change the benchmark trio.
-            </p>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            {BENCHMARK_TABS.map((tab) => {
+              const active = state.tab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${active ? 'text-[color:var(--accent-strong)]' : 'text-[color:var(--text-muted)]'}`}
+                  style={active ? {
+                    border: '1px solid color-mix(in srgb, var(--accent) 32%, var(--line))',
+                    background: 'color-mix(in srgb, var(--accent-soft) 42%, var(--surface))',
+                  } : {
+                    border: '1px solid var(--line)',
+                    background: 'color-mix(in srgb, var(--surface) 92%, var(--surface-muted))',
+                  }}
+                  onClick={() => dispatch({ type: 'tab/set', value: tab.id })}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-
-      <nav className="card studio-nav benchmark-nav" aria-label="Benchmark Lab tabs">
-        {BENCHMARK_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`studio-tab${state.tab === t.id ? ' active-studio-tab' : ''}`}
-            onClick={() => dispatch({ type: 'tab/set', value: t.id })}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
 
       {state.errors.global ? <div className="error-box">{state.errors.global}</div> : null}
       {state.errors.operation ? <div className="error-box">{state.errors.operation}</div> : null}
 
       {state.tab === 'setup' ? (
-        <div className="benchmark-setup-grid">
-          <div className="benchmark-setup-left">
+        <div className="grid gap-6 xl:grid-cols-[minmax(18rem,22rem)_minmax(22rem,28rem)_minmax(0,1fr)]">
+          <div className="grid gap-6">
             <ClipCard
               clipStatus={state.clipStatus}
-              runtimeProfile={state.runtimeProfile}
               clipSourcePath={state.clipSourcePath}
               onClipSourcePathChange={(value) => dispatch({ type: 'clipSourcePath/set', value })}
               isEnsuring={state.pending.ensureClip}
               clipError={state.errors.clip}
               onEnsureClip={handleEnsureClip}
               onUploadClip={handleUploadClip}
-              helpIndex={helpIndex}
-            />
-            <CandidateLibrary
-              candidates={state.candidates}
-              selectedCandidateId={state.selectedCandidateId}
-              onSelectCandidate={(id) => dispatch({ type: 'candidate/select', candidateId: id })}
-              onImportLocal={handleImportLocal}
-              onImportHf={handleImportHf}
-              isImporting={state.pending.importCandidate}
-              candidatesError={state.errors.candidates}
               helpIndex={helpIndex}
             />
             <BenchmarkControls
@@ -378,7 +446,21 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
             />
             <SnGamestateReferenceCard helpIndex={helpIndex} />
           </div>
-          <div className="benchmark-setup-right">
+
+          <div className="grid gap-6">
+            <CandidateLibrary
+              candidates={state.candidates}
+              selectedCandidateId={state.selectedCandidateId}
+              onSelectCandidate={(id) => dispatch({ type: 'candidate/select', candidateId: id })}
+              onImportLocal={handleImportLocal}
+              onImportHf={handleImportHf}
+              isImporting={state.pending.importCandidate}
+              candidatesError={state.errors.candidates}
+              helpIndex={helpIndex}
+            />
+          </div>
+
+          <div className="grid gap-6 xl:sticky xl:top-6 xl:self-start">
             <CandidateDetail
               apiBase={apiBase}
               candidate={selectedCandidate}
@@ -391,7 +473,7 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
       ) : null}
 
       {state.tab === 'leaderboard' ? (
-        <div className="benchmark-leaderboard-grid">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.9fr)]">
           <Leaderboard
             benchmarks={state.benchmarks}
             selectedBenchmarkId={state.selectedBenchmarkId}
@@ -402,7 +484,7 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
             }}
             helpIndex={helpIndex}
           />
-          {selectedCandidateResult ? (
+          <div className="grid gap-6 xl:sticky xl:top-6 xl:self-start">
             <CandidateDetail
               apiBase={apiBase}
               candidate={selectedCandidate}
@@ -410,7 +492,7 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
               candidateRunResult={activeBenchmark?.candidate_results?.[state.selectedCandidateId] || null}
               helpIndex={helpIndex}
             />
-          ) : null}
+          </div>
         </div>
       ) : null}
     </section>

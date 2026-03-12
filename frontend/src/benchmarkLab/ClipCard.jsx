@@ -1,10 +1,40 @@
 import { useRef, useState } from 'react';
 
-import { MicroLabelWithHelp, SectionTitleWithHelp } from '../helpUi';
+import { SectionTitleWithHelp } from '../helpUi';
+
+const PANEL_STYLE = {
+  border: '1px solid var(--line)',
+  background: 'color-mix(in srgb, var(--surface) 92%, var(--surface-muted))',
+};
+
+function badgeStyle(ready) {
+  if (ready) {
+    return {
+      borderColor: 'color-mix(in srgb, var(--good-line) 82%, var(--line))',
+      background: 'color-mix(in srgb, var(--good-bg) 84%, var(--surface))',
+      color: 'var(--good-text)',
+    };
+  }
+  return {
+    borderColor: 'color-mix(in srgb, var(--warn-line) 80%, var(--line))',
+    background: 'color-mix(in srgb, var(--warn-bg) 82%, var(--surface))',
+    color: 'var(--warn-text)',
+  };
+}
+
+function FactChip({ children }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-[color:var(--text-muted)]"
+      style={PANEL_STYLE}
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function ClipCard({
   clipStatus,
-  runtimeProfile,
   clipSourcePath,
   onClipSourcePathChange,
   isEnsuring,
@@ -13,7 +43,7 @@ export default function ClipCard({
   onUploadClip,
   helpIndex,
 }) {
-  const ready = clipStatus?.ready;
+  const ready = Boolean(clipStatus?.ready);
   const cachedPath = clipStatus?.path || '';
   const sizeMb = clipStatus?.size_mb;
   const duration = clipStatus?.duration;
@@ -21,27 +51,25 @@ export default function ClipCard({
 
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
-
   const hasAnyInput = hasTextPath || selectedFile != null;
 
   function handleSubmit(event) {
     event.preventDefault();
     if (isEnsuring || !hasAnyInput) return;
 
-    // File takes priority over text path
     if (selectedFile) {
       onUploadClip(selectedFile);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } else {
-      onEnsureClip(clipSourcePath.trim());
+      return;
     }
+
+    onEnsureClip(clipSourcePath.trim());
   }
 
   function handleFileChange(event) {
     const file = event.target.files?.[0] || null;
     setSelectedFile(file);
-    // Do NOT auto-upload. Wait for the user to click Prepare.
   }
 
   function handleClearFile() {
@@ -50,95 +78,99 @@ export default function ClipCard({
   }
 
   return (
-    <div className="card benchmark-clip-card">
-      <div className="benchmark-clip-header">
-        <SectionTitleWithHelp title="Benchmark clip" entry={helpIndex?.get('benchmark.clip')} />
-        <span className={`benchmark-clip-badge ${ready ? 'clip-ready' : 'clip-pending'}`}>
-          {ready ? 'Ready' : 'Not ready'}
+    <div className="card grid gap-5 rounded-[26px] p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionTitleWithHelp title="Reference Clip" entry={helpIndex?.get('benchmark.clip')} />
+        <span
+          className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
+          style={badgeStyle(ready)}
+        >
+          {ready ? 'Reference locked' : 'Clip needed'}
         </span>
       </div>
 
-      {ready ? (
-        <div className="benchmark-clip-meta">
-          <div className="benchmark-clip-path muted">{cachedPath}</div>
-          <div className="benchmark-clip-info">
-            {sizeMb != null ? <span className="muted">{sizeMb.toFixed(1)} MB</span> : null}
-            {duration != null ? <span className="muted">{duration.toFixed(1)}s</span> : null}
-          </div>
-          <p className="muted benchmark-clip-ready-hint">
-            This clip is cached and locked for all benchmark runs. To replace it, enter a new path or pick a file below and click Prepare.
+      <div className="grid gap-3 rounded-[22px] p-4" style={PANEL_STYLE}>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Current benchmark clip</div>
+        {ready ? (
+          <>
+            <div className="text-sm font-medium text-[color:var(--text-strong)] break-all">{cachedPath}</div>
+            <div className="flex flex-wrap gap-2">
+              {sizeMb != null ? <FactChip>{sizeMb.toFixed(1)} MB</FactChip> : null}
+              {duration != null ? <FactChip>{duration.toFixed(1)}s</FactChip> : null}
+              {clipStatus?.fps != null ? <FactChip>{Number(clipStatus.fps).toFixed(1)} fps</FactChip> : null}
+              {clipStatus?.width && clipStatus?.height ? <FactChip>{clipStatus.width}×{clipStatus.height}</FactChip> : null}
+            </div>
+            <p className="m-0 text-sm leading-6 text-[color:var(--text-muted)]">
+              This clip is the canonical reference for every row on the board. Replace it only when you want to restart the comparison from a new camera context.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="text-sm font-medium text-[color:var(--text-strong)]">No clip is locked yet.</div>
+            <p className="m-0 text-sm leading-6 text-[color:var(--text-muted)]">
+              Load one short reference clip before benchmarking. Keep it tight enough to iterate quickly, but long enough to expose tracking churn, field registration, and visible ball phases.
+            </p>
+          </>
+        )}
+      </div>
+
+      <form className="grid gap-4 rounded-[22px] p-4" style={PANEL_STYLE} onSubmit={handleSubmit}>
+        <div className="grid gap-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Replace clip</div>
+          <p className="m-0 text-sm leading-6 text-[color:var(--text-muted)]">
+            Use a local path or upload a new file. Keep one clip locked while you compare the trio so every row stays on the same camera context.
           </p>
         </div>
-      ) : (
-        <p className="muted benchmark-clip-empty-hint">
-          A short reference clip is needed to benchmark candidates under identical conditions.
-          Provide a local video path or upload a file, then click Prepare.
-        </p>
-      )}
-
-      <form className="benchmark-clip-form" onSubmit={handleSubmit}>
-        <label>
-          <span className="micro-label">Local video path</span>
+        <label className="grid gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Local clip path</span>
           <input
             type="text"
             value={clipSourcePath}
-            onChange={(e) => onClipSourcePathChange(e.target.value)}
+            onChange={(event) => onClipSourcePathChange(event.target.value)}
             placeholder="/Users/you/path/to/clip.mp4"
             disabled={selectedFile != null}
           />
         </label>
 
-        <div className="benchmark-clip-or muted">or</div>
+        <div className="grid gap-3">
+          <label className="grid gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Upload reference clip</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileChange}
+            />
+          </label>
+          {selectedFile ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border p-3" style={PANEL_STYLE}>
+              <div className="text-sm text-[color:var(--text-muted)]">
+                <strong className="text-[color:var(--text-strong)]">{selectedFile.name}</strong>
+                {' '}({(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)
+              </div>
+              <button type="button" className="compact-button" onClick={handleClearFile}>Clear file</button>
+            </div>
+          ) : null}
+        </div>
 
-        <label className="benchmark-clip-upload-label">
-          <span className="micro-label">Upload video file</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            onChange={handleFileChange}
-          />
-        </label>
-
-        {selectedFile ? (
-          <div className="benchmark-clip-selected-file">
-            <span className="muted">Selected: <strong>{selectedFile.name}</strong> ({(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)</span>
-            <button type="button" className="inline-link-button" onClick={handleClearFile}>Clear</button>
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          className="compact-button"
-          disabled={isEnsuring || !hasAnyInput}
-        >
-          {isEnsuring
-            ? 'Preparing clip...'
-            : selectedFile
-              ? `Upload and prepare ${selectedFile.name}`
-              : 'Prepare benchmark clip'}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            className="workspace-primary-action"
+            disabled={isEnsuring || !hasAnyInput}
+          >
+            {isEnsuring
+              ? 'Preparing clip...'
+              : selectedFile
+                ? `Upload ${selectedFile.name}`
+                : ready
+                  ? 'Replace benchmark clip'
+                  : 'Prepare benchmark clip'}
+          </button>
+        </div>
       </form>
 
       {clipError ? <div className="error-box">{clipError}</div> : null}
-
-      {runtimeProfile ? (
-        <div className="benchmark-runtime-summary">
-          <MicroLabelWithHelp label="Shared runtime defaults" entry={helpIndex?.get('benchmark.runtime_profile')} />
-          <div className="benchmark-runtime-grid">
-            <span className="muted">Native pipeline: <strong>{runtimeProfile.native_pipeline || runtimeProfile.pipeline || 'classic'}</strong></span>
-            <span className="muted">Native keypoint: <strong>{runtimeProfile.native_keypoint_model || runtimeProfile.keypoint_model || 'soccana_keypoint'}</strong></span>
-            <span className="muted">Tracker: <strong>{runtimeProfile.tracker_mode || 'hybrid_reid'}</strong></span>
-            <span className="muted">Ball: <strong>{runtimeProfile.include_ball ? 'yes' : 'no'}</strong></span>
-            <span className="muted">Player conf: <strong>{runtimeProfile.player_conf ?? '0.25'}</strong></span>
-            <span className="muted">Ball conf: <strong>{runtimeProfile.ball_conf ?? '0.20'}</strong></span>
-            <span className="muted">IoU: <strong>{runtimeProfile.iou ?? '0.50'}</strong></span>
-          </div>
-          {runtimeProfile.note ? (
-            <p className="muted benchmark-clip-ready-hint">{runtimeProfile.note}</p>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

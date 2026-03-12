@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 import subprocess
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +16,14 @@ SN_GAMESTATE_ENV_VAR = "SN_GAMESTATE_REPO_PATH"
 SN_GAMESTATE_REPO_URL = "https://github.com/SoccerNet/sn-gamestate"
 SN_GAMESTATE_PAPER_URL = "https://arxiv.org/abs/2404.11335"
 SN_GAMESTATE_TASK_URL = "https://www.soccer-net.org/tasks/new-game-state-reconstruction"
+MACOS_CPU_TRACKLAB_BOOTSTRAP = (
+    "import os, sys, torch; "
+    "os.environ.setdefault('PYTORCH_ENABLE_MPS_FALLBACK', '1'); "
+    "torch.backends.mps.is_available = lambda: False; "
+    "from tracklab.main import main; "
+    "sys.argv = ['tracklab', *sys.argv[1:]]; "
+    "raise SystemExit(main())"
+)
 
 
 def _repo_root() -> Path:
@@ -49,6 +59,40 @@ def resolve_sn_gamestate_repo() -> Path | None:
         if (candidate / "sn_gamestate" / "configs" / "soccernet.yaml").exists():
             return candidate.resolve()
     return None
+
+
+@lru_cache(maxsize=8)
+def _sn_gamestate_python_module_available(repo_path: str, module_name: str, uv_path: str | None = None) -> bool:
+    resolved_uv = uv_path or shutil.which("uv")
+    if not resolved_uv:
+        return False
+    command = [
+        str(resolved_uv),
+        "run",
+        "python",
+        "-c",
+        (
+            "import importlib.util, sys; "
+            f"sys.exit(0 if importlib.util.find_spec({module_name!r}) else 1)"
+        ),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=str(repo_path),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    return completed.returncode == 0
+
+
+def _review_mode_jersey_overrides(repo_path: Path, uv_path: str) -> tuple[list[str], str]:
+    if _sn_gamestate_python_module_available(str(repo_path), "mmcv", uv_path):
+        return [], "mmocr"
+    if _sn_gamestate_python_module_available(str(repo_path), "easyocr", uv_path):
+        return ["modules/jersey_number_detect=easyocr"], "easyocr_fallback"
+    return [], "mmocr_missing"
 
 
 def sn_gamestate_status() -> dict[str, Any]:
@@ -117,6 +161,41 @@ def _find_visualization_video(external_run_dir: Path) -> Path:
     return videos[0]
 
 
+def _build_sn_gamestate_command(
+    *,
+    uv_path: str,
+    source_video_path: Path,
+    external_run_dir: Path,
+    jersey_overrides: list[str],
+) -> tuple[list[str], dict[str, str], str]:
+    common_args = [
+        "-cn",
+        "soccernet",
+        "dataset=youtube",
+        "dataset.eval_set=val",
+        f"dataset.video_path={source_video_path}",
+        "eval_tracking=False",
+        "test_tracking=True",
+        "visualization.cfg.save_videos=True",
+        "experiment_name=fpw-sn-gamestate",
+        f"hydra.run.dir={external_run_dir}",
+    ]
+    common_args.extend(jersey_overrides)
+
+    process_env = os.environ.copy()
+    process_env.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
+    if platform.system() == "Darwin":
+        common_args.append("num_cores=0")
+        return (
+            [uv_path, "run", "python", "-c", MACOS_CPU_TRACKLAB_BOOTSTRAP, *common_args],
+            process_env,
+            "cpu_safe_macos",
+        )
+
+    return [uv_path, "run", "tracklab", *common_args], process_env, "default"
+
+
 def run_sn_gamestate_analysis(
     *,
     job_id: str,
@@ -133,25 +212,32 @@ def run_sn_gamestate_analysis(
     outputs_dir.mkdir(parents=True, exist_ok=True)
     external_run_dir = run_dir / "sn_gamestate_run"
     external_run_dir.mkdir(parents=True, exist_ok=True)
-
-    command = [
-        str(status["uv_path"]),
-        "run",
-        "tracklab",
-        "-cn",
-        "soccernet",
-        "dataset=youtube",
-        f"dataset.video_path={source_video_path}",
-        "eval_tracking=False",
-        "test_tracking=False",
-        "visualization.cfg.save_videos=True",
-        "experiment_name=fpw-sn-gamestate",
-        f"hydra.run.dir={external_run_dir}",
-    ]
+    jersey_overrides, jersey_backend = _review_mode_jersey_overrides(repo_path, str(status["uv_path"]))
+    command, process_env, execution_mode = _build_sn_gamestate_command(
+        uv_path=str(status["uv_path"]),
+        source_video_path=source_video_path,
+        external_run_dir=external_run_dir,
+        jersey_overrides=jersey_overrides,
+    )
 
     job_manager.log(job_id, f"Running sn-gamestate from {repo_path}")
     job_manager.log(job_id, f"Command: {' '.join(command)}")
     job_manager.log(job_id, status["note"])
+    if execution_mode == "cpu_safe_macos":
+        job_manager.log(
+            job_id,
+            "macOS stability mode is enabled for sn-gamestate: forcing CPU inference and single-process loaders to avoid MPS crashes during arbitrary-clip review runs.",
+        )
+    if jersey_backend == "easyocr_fallback":
+        job_manager.log(
+            job_id,
+            "MMOCR is unavailable in the local sn-gamestate environment, so this arbitrary-clip review run is using EasyOCR for jersey number detection instead.",
+        )
+    elif jersey_backend == "mmocr_missing":
+        job_manager.log(
+            job_id,
+            "MMOCR dependencies are missing in the local sn-gamestate environment and no EasyOCR fallback was found. The external baseline may fail before producing an overlay.",
+        )
     job_manager.log(
         job_id,
         "Official GS-HOTA evaluation is only available on labeled SoccerNetGS splits. Arbitrary external videos get overlay output but no official accuracy metric.",
@@ -164,6 +250,7 @@ def run_sn_gamestate_analysis(
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        env=process_env,
     )
     try:
         if process.stdout is not None:
@@ -246,6 +333,8 @@ def run_sn_gamestate_analysis(
             "evaluation_metric": status["evaluation"]["metric"],
             "evaluation_enabled": False,
             "weights_mode": status["weights"]["mode"],
+            "jersey_number_backend": jersey_backend,
+            "execution_mode": execution_mode,
         },
     }
     summary_json_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
