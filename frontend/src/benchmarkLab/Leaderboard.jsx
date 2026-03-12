@@ -4,7 +4,7 @@ import { SectionTitleWithHelp } from '../helpUi';
 
 const SORT_FIELDS = [
   { id: 'rank', label: 'Rank' },
-  { id: 'composite', label: 'Composite' },
+  { id: 'composite', label: 'Proxy' },
   { id: 'track_stability', label: 'Track Stability' },
   { id: 'calibration', label: 'Calibration' },
   { id: 'coverage', label: 'Coverage' },
@@ -71,7 +71,7 @@ export default function Leaderboard({
       <div className="benchmark-leaderboard-header">
         <SectionTitleWithHelp title="Leaderboard" entry={helpIndex?.get('benchmark.leaderboard')} />
         <span className="benchmark-honest-label muted">
-          Heuristic operational benchmarking -- not ground-truth accuracy
+          Proxy clip comparison -- not label-backed accuracy
         </span>
       </div>
 
@@ -168,7 +168,7 @@ export default function Leaderboard({
           </table>
           {isRunning ? null : (
             <div className="benchmark-score-legend muted">
-              Scores 0-100. Weights: track stability 30%, calibration 25%, coverage 25%, throughput 20%.
+              Proxy score 0-100. Weights: track stability 30%, calibration 25%, coverage 25%, throughput 20%.
             </div>
           )}
         </div>

@@ -45,6 +45,7 @@ from app.schemas import (
     SoccerNetGamesResponse,
     SourceResponse,
 )
+from app.sn_gamestate import run_sn_gamestate_analysis, sn_gamestate_status
 from app.training import (
     build_training_backend_config,
     inspect_training_dataset,
@@ -806,6 +807,7 @@ def config() -> ConfigResponse:
         "active_detector_label": active_detector_entry.get("label", "soccana (football-pretrained)"),
         "active_detector_is_custom": str(active_detector_entry.get("id", "soccana")) != "soccana",
         "runtime_profile": runtime_profile,
+        "sn_gamestate": sn_gamestate_status(),
     })
 
 
@@ -2081,8 +2083,13 @@ def live_preview(
     ball_conf: float = Query(default=0.20),
     iou: float = Query(default=0.50),
 ) -> StreamingResponse:
+    if pipeline == "sn_gamestate":
+        raise HTTPException(status_code=409, detail="Live preview is not available for the external sn-gamestate baseline. Use Analyze loaded clip instead.")
     source_video_path = resolve_source_path(source_id=source_id, local_video_path=local_video_path)
-    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
+    if pipeline == "sn_gamestate":
+        resolved_detector_model = "sn-gamestate external baseline"
+    else:
+        resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
 
     stream = generate_live_preview_stream(
         source_video_path=source_video_path,
@@ -2168,7 +2175,10 @@ async def analyze(
     else:
         source_video_path = resolve_source_path(local_video_path=local_video_path)
 
-    resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
+    if pipeline == "sn_gamestate":
+        resolved_detector_model = "sn-gamestate external baseline"
+    else:
+        resolved_detector_model = resolve_analysis_detector_model(detector_model, player_model)
 
     config_payload = {
         "source_video_path": str(source_video_path),
@@ -2202,13 +2212,21 @@ async def analyze(
 def _run_analysis_job(job_id: str, run_dir: Path, config_payload: dict[str, Any]) -> None:
     try:
         control = job_control_manager.get(job_id)
-        summary = analyze_wide_angle_video(
-            job_id=job_id,
-            run_dir=run_dir,
-            config_payload=config_payload,
-            job_manager=job_manager,
-            job_control=control,
-        )
+        if str(config_payload.get("pipeline") or "") == "sn_gamestate":
+            summary = run_sn_gamestate_analysis(
+                job_id=job_id,
+                run_dir=run_dir,
+                source_video_path=Path(str(config_payload["source_video_path"])).expanduser().resolve(),
+                job_manager=job_manager,
+            )
+        else:
+            summary = analyze_wide_angle_video(
+                job_id=job_id,
+                run_dir=run_dir,
+                config_payload=config_payload,
+                job_manager=job_manager,
+                job_control=control,
+            )
         job_manager.update(job_id, status="completed", progress=100.0, summary=summary)
         job_manager.log(job_id, "Run completed")
     except AnalysisStoppedError:

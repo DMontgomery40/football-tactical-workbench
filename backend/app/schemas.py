@@ -312,6 +312,7 @@ class ConfigResponse(BoundaryModel):
     active_detector_label: str
     active_detector_is_custom: bool
     runtime_profile: RuntimeProfileResponse | dict[str, Any] = Field(default_factory=dict)
+    sn_gamestate: dict[str, Any] = Field(default_factory=dict)
 
 
 class SoccerNetConfigResponse(BoundaryModel):

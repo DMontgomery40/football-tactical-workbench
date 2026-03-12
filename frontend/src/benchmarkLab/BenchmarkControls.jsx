@@ -21,8 +21,8 @@ export default function BenchmarkControls({
       <SectionTitleWithHelp title="Run benchmark" entry={helpIndex?.get('benchmark.runtime_profile')} />
 
       <p className="muted benchmark-controls-explainer">
-        Each candidate detector runs the same clip under identical conditions. Results are
-        heuristic operational benchmarking, not ground-truth accuracy evaluation.
+        Each candidate detector runs the same clip under identical conditions. The current ranking is a
+        proxy comparison over runtime evidence, not a label-backed accuracy score.
       </p>
 
       <div className="benchmark-run-actions">

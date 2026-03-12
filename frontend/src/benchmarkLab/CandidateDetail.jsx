@@ -43,7 +43,7 @@ export default function CandidateDetail({
         <div className="benchmark-detail-metrics">
           <div className="benchmark-detail-metric-grid">
             <div className="benchmark-metric-item">
-              <span className="micro-label">Composite</span>
+              <span className="micro-label">Proxy score</span>
               <span className="benchmark-metric-value benchmark-metric-primary">{formatScore(result.composite)}</span>
             </div>
             <div className="benchmark-metric-item">

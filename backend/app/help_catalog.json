@@ -18,7 +18,8 @@
     "summary": "Selects the detection and field-registration architecture that drives the entire analysis run.",
     "body": [
       "Classic uses the soccana detector for player/ball detection plus soccana_keypoint for field registration. These are separate models with independent weights and confidence thresholds.",
-      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both."
+      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both.",
+      "sn-gamestate is different again: it is an external TrackLab-based Game State Reconstruction baseline from SoccerNet. In this app it behaves as an external pipeline option rather than a local detector checkpoint, so live preview is unavailable and the native detector/tracker sliders do not control it."
     ],
     "targets": [
       "analysis.pipeline"
@@ -1780,11 +1781,11 @@
   },
   {
     "id": "benchmark.composite_score",
-    "title": "Composite benchmark score",
-    "summary": "This is a transparent weighted heuristic across stability, calibration, coverage, and throughput.",
+    "title": "Proxy comparison score",
+    "summary": "This is a transparent weighted proxy across stability, calibration, coverage, and throughput, not a labeled accuracy metric.",
     "body": [
       "The score is meant to shortlist candidates, not replace judgment. Two close scores should send you to the overlay and diagnostics rather than straight to promotion.",
-      "Track stability and calibration matter most because this repo is judged by usable overlays and field projections, not detector bragging rights in isolation."
+      "This surface does not yet compare predictions against a labeled benchmark clip. It ranks runtime evidence from this app itself, which is why the score is helpful for review but not the same thing as model accuracy."
     ],
     "targets": [
       "benchmark.composite_score"
@@ -1797,7 +1798,7 @@
     "summary": "The leaderboard ranks candidates for one benchmark run and should be read together with overlay and diagnostics evidence.",
     "body": [
       "A candidate can score well overall but still have suspicious overlay behavior on hard moments. That is why this surface keeps the selected candidate detail beside the ranking.",
-      "Use the raw sub-metrics and the overlay video to understand why a model ranked where it did."
+      "Use the raw sub-metrics and the overlay video to understand why a model ranked where it did. If you need official accuracy, use a labeled SoccerNetGS evaluation path such as GS-HOTA instead of this proxy leaderboard."
     ],
     "targets": [
       "benchmark.leaderboard"
@@ -1806,11 +1807,11 @@
   },
   {
     "id": "benchmark.sn_gamestate",
-    "title": "sn-gamestate reference",
+    "title": "sn-gamestate baseline",
     "summary": "The official SoccerNet Game State Reconstruction devkit is an external TrackLab-based baseline and evaluation reference.",
     "body": [
-      "This repo does not run the full sn-gamestate stack inline. Instead, Benchmark Lab links it as the canonical external reference for task scope, dataset conventions, and the GS-HOTA benchmark.",
-      "That distinction matters: sn-gamestate is a broader game-state pipeline, while this workbench benchmark ranks detector candidates inside this product's own runtime."
+      "sn-gamestate is the official SoccerNet baseline and evaluator stack for Game State Reconstruction. Its dataset and model weights are downloaded automatically on first run.",
+      "Its published accuracy contract is GS-HOTA on labeled SoccerNetGS clips. That is different from this workbench's current proxy clip-comparison score, which does not yet run the official labeled evaluator inline."
     ],
     "targets": [
       "benchmark.sn_gamestate"

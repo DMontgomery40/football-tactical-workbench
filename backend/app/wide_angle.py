@@ -100,6 +100,11 @@ PIPELINE_OPTIONS = {
         "detector": "soccermaster",
         "calibration": "soccermaster",
     },
+    "sn_gamestate": {
+        "label": "sn-gamestate (external TrackLab baseline)",
+        "detector": "external_tracklab",
+        "calibration": "external_tracklab",
+    },
 }
 DEFAULT_PIPELINE = "classic"
 

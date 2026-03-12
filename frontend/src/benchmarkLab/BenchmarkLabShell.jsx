@@ -35,10 +35,13 @@ function extractResponseError(payload, fallback) {
 function SnGamestateReferenceCard({ helpIndex }) {
   return (
     <section className="card benchmark-reference-card">
-      <SectionTitleWithHelp title="sn-gamestate reference" entry={helpIndex.get('benchmark.sn_gamestate')} />
+      <SectionTitleWithHelp title="sn-gamestate baseline" entry={helpIndex.get('benchmark.sn_gamestate')} />
       <p className="field-note">
-        SoccerNet&apos;s official Game State Reconstruction devkit is a separate TrackLab-based baseline and evaluation stack.
-        It is not a drop-in detector candidate in this workbench, but it is the right external reference for GSR task scope, dataset conventions, and GS-HOTA.
+        SoccerNet&apos;s official Game State Reconstruction devkit is a separate TrackLab-based baseline and evaluator stack.
+        It auto-downloads its dataset and weights on first run, and its real accuracy metric is GS-HOTA on labeled SoccerNetGS clips.
+      </p>
+      <p className="field-note">
+        This workbench can review arbitrary clips, but that is not the same as official label-backed evaluation. Use the SoccerNet baseline when you need the published GSR scoring contract.
       </p>
       <div className="path-list">
         <a href="https://github.com/SoccerNet/sn-gamestate" target="_blank" rel="noreferrer">Repository</a>
@@ -282,8 +285,8 @@ export default function BenchmarkLabShell({ apiBase, helpCatalog = [], activePip
             <span>Benchmark Lab</span>
           </div>
           <p className="studio-intro">
-            Compare detector models on a locked reference clip under identical runtime conditions.
-            Results are heuristic operational benchmarking, not ground-truth accuracy evaluation.
+            Compare model outputs on a locked reference clip under identical runtime conditions.
+            This surface currently produces a proxy clip-comparison score, not a label-backed accuracy benchmark.
           </p>
           {activePipeline !== (state.runtimeProfile?.pipeline || 'classic') ? (
             <p className="benchmark-pipeline-notice">
