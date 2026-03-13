@@ -63,3 +63,81 @@ export function fetchActiveExperiment(apiBase: string, fetchImpl?: typeof fetch)
     'Could not load active experiment',
   );
 }
+
+export function fetchBenchmarkConfig(apiBase: string, fetchImpl?: typeof fetch) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).GET('/api/benchmark/config'),
+    'Could not load benchmark config',
+  );
+}
+
+export function fetchBenchmarkHistory(apiBase: string, limit = 20, fetchImpl?: typeof fetch) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).GET('/api/benchmark/history', { params: { query: { limit } } }),
+    'Could not load benchmark history',
+  );
+}
+
+export function fetchBenchmarkJob(apiBase: string, benchmarkId: string, fetchImpl?: typeof fetch) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).GET('/api/benchmark/jobs/{benchmark_id}', { params: { path: { benchmark_id: benchmarkId } } }),
+    'Could not load benchmark job',
+  );
+}
+
+export function runBenchmark(
+  apiBase: string,
+  payload: { suite_ids: string[]; recipe_ids: string[]; label?: string },
+  fetchImpl?: typeof fetch,
+) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).POST('/api/benchmark/run', {
+      body: {
+        suite_ids: payload.suite_ids,
+        recipe_ids: payload.recipe_ids,
+        label: payload.label ?? '',
+      },
+    }),
+    'Could not start benchmark',
+  );
+}
+
+export function ensureBenchmarkClip(apiBase: string, sourcePath: string, fetchImpl?: typeof fetch) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).POST('/api/benchmark/ensure-clip', { body: { source_path: sourcePath } }),
+    'Could not prepare benchmark clip',
+  );
+}
+
+export function importBenchmarkLocal(
+  apiBase: string,
+  payload: { checkpoint_path: string; label?: string },
+  fetchImpl?: typeof fetch,
+) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).POST('/api/benchmark/candidates/import-local', {
+      body: {
+        checkpoint_path: payload.checkpoint_path,
+        label: payload.label ?? '',
+      },
+    }),
+    'Could not import local checkpoint',
+  );
+}
+
+export function importBenchmarkHf(
+  apiBase: string,
+  payload: { repo_id: string; filename?: string; label?: string },
+  fetchImpl?: typeof fetch,
+) {
+  return requireJsonResponse(
+    createClient<paths>({ baseUrl: apiBase, fetch: fetchImpl }).POST('/api/benchmark/candidates/import-hf', {
+      body: {
+        repo_id: payload.repo_id,
+        filename: payload.filename ?? 'best.pt',
+        label: payload.label ?? '',
+      },
+    }),
+    'Could not import Hugging Face checkpoint',
+  );
+}

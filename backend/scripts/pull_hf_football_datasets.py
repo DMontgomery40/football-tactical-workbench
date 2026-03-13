@@ -99,6 +99,70 @@ DATASET_SPECS: dict[str, DatasetSpec] = {
         recommended_scan_subpath=None,
         max_workers=1,
     ),
+    "gsr_medium": DatasetSpec(
+        key="gsr_medium",
+        repo_id="SoccerNet/SN-GSR-2025",
+        local_dir_name="soccernet_sn_gsr_2025_medium",
+        purpose="Game-state reconstruction medium tier with validation metadata plus a fixed 12-clip subset manifest.",
+        format_hint="Official SoccerNet GSR zips; benchmark-ready after unpacking the validation assets referenced by the manifest",
+        training_ready=False,
+        allow_patterns=("README.md", "valid.zip"),
+        notes=(
+            "Pulls the validation archive for SN-GSR-2025 so Benchmark Lab can materialize the fixed 12-clip medium tier.",
+            "Use together with backend/benchmarks/_manifests/gsr.medium_v1.json.",
+            "License and usage terms follow the SoccerNet dataset card.",
+        ),
+        recommended_scan_subpath=None,
+        max_workers=1,
+    ),
+    "gsr_long": DatasetSpec(
+        key="gsr_long",
+        repo_id="SoccerNet/SN-GSR-2025",
+        local_dir_name="soccernet_sn_gsr_2025_long",
+        purpose="Full SoccerNet GSR validation pull for the long benchmark tier.",
+        format_hint="Official SoccerNet GSR validation zip for long-running benchmark evaluation",
+        training_ready=False,
+        allow_patterns=("README.md", "valid.zip"),
+        notes=(
+            "Pulls the full validation archive for SN-GSR-2025.",
+            "Use for the long GS-HOTA benchmark tier.",
+            "License and usage terms follow the SoccerNet dataset card.",
+        ),
+        recommended_scan_subpath=None,
+        max_workers=1,
+    ),
+    "team_bas_val": DatasetSpec(
+        key="team_bas_val",
+        repo_id="SoccerNet/SN-BAS-2025",
+        local_dir_name="soccernet_sn_bas_2025",
+        purpose="Team BAS validation archive plus companion labels archive for Benchmark Lab Stage 2 materialization work.",
+        format_hint="Official SoccerNet Ball action spotting validation ZIP with encrypted members that still require the SoccerNet password to extract",
+        training_ready=False,
+        allow_patterns=("README.md", "valid.zip", "ExtraLabelsActionSpotting500games/valid_labels.zip"),
+        notes=(
+            "Pulls the validation archive used by spot.team_bas_quick_v1.",
+            "The archive itself is downloadable from Hugging Face, but the official valid.zip members are still password-protected at extraction time on this machine.",
+            "The extra labels ZIP is not a substitute for the ball-spotting Labels-ball.json tree required by the Benchmark Lab evaluator.",
+        ),
+        recommended_scan_subpath=None,
+        max_workers=1,
+    ),
+    "pcbas_val": DatasetSpec(
+        key="pcbas_val",
+        repo_id="SoccerNet/SN-PCBAS-2026",
+        local_dir_name="soccernet_sn_pcbas_2026",
+        purpose="PCBAS validation tactical-data archive for Benchmark Lab Stage 2 materialization work.",
+        format_hint="Official FOOTPASS tactical-data validation ZIP; gated at the file-download level on Hugging Face",
+        training_ready=False,
+        allow_patterns=("tactical_data_VAL.zip", "tactical_data_format.txt", "README.md"),
+        notes=(
+            "Pulls the official validation tactical-data archive used by spot.pcbas_medium_v1.",
+            "On this machine the Hugging Face repo is gated and returns a 401 until the operator is authenticated for SoccerNet/SN-PCBAS-2026.",
+            "Benchmark Lab can still stage the vendored playbyplay_val.json ground-truth file locally, but the official tactical/video archives remain separate upstream artifacts.",
+        ),
+        recommended_scan_subpath=None,
+        max_workers=1,
+    ),
 }
 
 
@@ -178,7 +242,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Pull recommended football datasets from Hugging Face into backend/datasets/huggingface.")
     parser.add_argument(
         "--dataset",
-        choices=["smoke", "real", "benchmark_full", "all"],
+        choices=["smoke", "real", "benchmark_full", "gsr_medium", "gsr_long", "team_bas_val", "pcbas_val", "benchmark_stage2", "all"],
         default="all",
         help="Which preset to pull.",
     )
@@ -189,7 +253,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    selected = [DATASET_SPECS["smoke"], DATASET_SPECS["real"]] if args.dataset == "all" else [DATASET_SPECS[args.dataset]]
+    if args.dataset == "all":
+        selected = [DATASET_SPECS["smoke"], DATASET_SPECS["real"]]
+    elif args.dataset == "benchmark_stage2":
+        selected = [
+            DATASET_SPECS["team_bas_val"],
+            DATASET_SPECS["pcbas_val"],
+            DATASET_SPECS["gsr_medium"],
+            DATASET_SPECS["gsr_long"],
+        ]
+    else:
+        selected = [DATASET_SPECS[args.dataset]]
 
     DATASETS_DIR.mkdir(parents=True, exist_ok=True)
     for spec in selected:

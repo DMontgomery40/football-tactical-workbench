@@ -1,0 +1,8 @@
+{
+  "schema_version": 2,
+  "suite_id": "det.roles_quick_v1",
+  "kind": "dataset_manifest",
+  "split": "test",
+  "classes": ["ball", "goalkeeper", "player", "referee"],
+  "task_coverage": ["detection"]
+}

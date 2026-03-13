@@ -1,0 +1,7 @@
+{
+  "schema_version": 2,
+  "suite_id": "ops.clip_review_v1",
+  "kind": "clip_manifest",
+  "clip_filename": "benchmark_clip.mp4",
+  "task_coverage": ["operational_review"]
+}

@@ -312,7 +312,6 @@ class ConfigResponse(BoundaryModel):
     active_detector_label: str
     active_detector_is_custom: bool
     runtime_profile: RuntimeProfileResponse | dict[str, Any] = Field(default_factory=dict)
-    sn_gamestate: dict[str, Any] = Field(default_factory=dict)
 
 
 class SoccerNetConfigResponse(BoundaryModel):
@@ -328,3 +327,152 @@ class SoccerNetGamesResponse(BoundaryModel):
     split: str
     count: int
     games: list[str] = Field(default_factory=list)
+
+
+class BenchmarkCapabilityMap(BoundaryModel):
+    detection: bool = False
+    tracking: bool = False
+    reid: bool = False
+    calibration: bool = False
+    team_id: bool = False
+    role_id: bool = False
+    jersey_ocr: bool = False
+    event_spotting: bool = False
+
+
+class BenchmarkSuiteResponse(BoundaryModel):
+    id: str
+    label: str
+    tier: str
+    family: str
+    source_url: str = ""
+    license: str = ""
+    protocol: str
+    primary_metric: str
+    metric_columns: list[str] = Field(default_factory=list)
+    required_capabilities: list[str] = Field(default_factory=list)
+    dataset_root: str = ""
+    fallback_dataset_roots: list[str] = Field(default_factory=list)
+    manifest_path: str = ""
+    dvc_required: bool = False
+    dataset_split: str | None = None
+    requires_clip: bool = False
+    notes: str = ""
+
+
+class BenchmarkDatasetStateResponse(BoundaryModel):
+    suite_id: str
+    dataset_root: str | None = None
+    dataset_exists: bool = False
+    dataset_dvc: dict[str, Any] | None = None
+    manifest_path: str | None = None
+    manifest_exists: bool = False
+    manifest_dvc: dict[str, Any] | None = None
+    conversion_root: str = ""
+    ready: bool = False
+    readiness_status: str = "blocked"
+    requires_clip: bool = False
+    dvc_required: bool = False
+    dvc_runtime: dict[str, Any] | None = None
+    note: str | None = None
+    blockers: list[str] = Field(default_factory=list)
+    manifest_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class BenchmarkAssetResponse(BoundaryModel):
+    asset_id: str
+    kind: str
+    provider: str = ""
+    source: str = ""
+    label: str
+    version: str = ""
+    architecture: str = ""
+    artifact_path: str = ""
+    bundle_mode: str = ""
+    runtime_binding: str = ""
+    available: bool = False
+    capabilities: BenchmarkCapabilityMap | dict[str, Any] = Field(default_factory=dict)
+    class_mapping: dict[str, Any] = Field(default_factory=dict)
+    artifact_dvc: dict[str, Any] | None = None
+    availability_error: str | None = None
+    training_run_id: str | None = None
+    metrics: dict[str, Any] | None = None
+    import_origin: str | None = None
+    imported_at: str | None = None
+
+
+class BenchmarkRecipeResponse(BoundaryModel):
+    id: str
+    label: str
+    kind: str
+    asset_id: str = ""
+    source_asset_ids: list[str] = Field(default_factory=list)
+    pipeline: str = ""
+    detector_asset_id: str | None = None
+    tracker_asset_id: str | None = None
+    requested_tracker_mode: str | None = None
+    keypoint_model: str | None = None
+    bundle_mode: str = ""
+    runtime_binding: str = ""
+    available: bool = False
+    artifact_path: str = ""
+    capabilities: BenchmarkCapabilityMap | dict[str, Any] = Field(default_factory=dict)
+    class_mapping: dict[str, Any] = Field(default_factory=dict)
+    compatible_suite_ids: list[str] = Field(default_factory=list)
+
+
+class BenchmarkConfigResponse(BoundaryModel):
+    schema_version: int = 2
+    suites: list[BenchmarkSuiteResponse | dict[str, Any]] = Field(default_factory=list)
+    dataset_states: list[BenchmarkDatasetStateResponse | dict[str, Any]] = Field(default_factory=list)
+    assets: list[BenchmarkAssetResponse | dict[str, Any]] = Field(default_factory=list)
+    recipes: list[BenchmarkRecipeResponse | dict[str, Any]] = Field(default_factory=list)
+    dvc_runtime: dict[str, Any] | None = None
+    legacy_clip_status: dict[str, Any] | None = None
+    benchmarks_dir: str = ""
+
+
+class BenchmarkHistoryItemResponse(BoundaryModel):
+    benchmark_id: str
+    label: str = ""
+    status: str
+    created_at: str
+    primary_suite_id: str | None = None
+    suite_ids: list[str] = Field(default_factory=list)
+    recipe_count: int = 0
+    legacy_record: bool = False
+
+
+class BenchmarkRunResultResponse(BoundaryModel):
+    suite_id: str
+    recipe_id: str
+    status: str
+    error: str | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    flattened_metrics: dict[str, Any] = Field(default_factory=dict)
+    primary_metric: str | None = None
+    artifacts: dict[str, Any] = Field(default_factory=dict)
+    blockers: list[str] = Field(default_factory=list)
+    runtime_context: dict[str, Any] = Field(default_factory=dict)
+    raw_result: dict[str, Any] = Field(default_factory=dict)
+    legacy_record: bool = False
+
+
+class BenchmarkRunDetailResponse(BoundaryModel):
+    benchmark_id: str
+    schema_version: int = 2
+    legacy_record: bool = False
+    label: str = ""
+    status: str
+    created_at: str
+    primary_suite_id: str | None = None
+    suite_ids: list[str] = Field(default_factory=list)
+    recipe_ids: list[str] = Field(default_factory=list)
+    assets: list[BenchmarkAssetResponse | dict[str, Any]] = Field(default_factory=list)
+    recipes: list[BenchmarkRecipeResponse | dict[str, Any]] = Field(default_factory=list)
+    suite_results: dict[str, dict[str, BenchmarkRunResultResponse | dict[str, Any]]] = Field(default_factory=dict)
+    progress: float = 0.0
+    logs: list[str] = Field(default_factory=list)
+    error: str | None = None
+    dvc_runtime: dict[str, Any] | None = None
+    legacy_clip_status: dict[str, Any] | None = None

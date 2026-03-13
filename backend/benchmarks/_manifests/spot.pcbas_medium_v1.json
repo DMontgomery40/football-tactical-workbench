@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "suite_id": "spot.pcbas_medium_v1",
+  "kind": "dataset_manifest",
+  "split": "validation",
+  "selection": "validation_ground_truth_only_v1",
+  "items": ["playbyplay_val"],
+  "task_coverage": ["pcbas_playbyplay_eval"],
+  "materialization": {
+    "status": "partial",
+    "source_archives": [
+      "backend/third_party/soccernet/FOOTPASS/playbyplay_GT/playbyplay_val.json",
+      "backend/datasets/huggingface/soccernet_sn_pcbas_2026/tactical_data_VAL.zip",
+      "backend/datasets/huggingface/soccernet_sn_pcbas_2026/videos_352x640_VAL.zip",
+      "backend/datasets/huggingface/soccernet_sn_pcbas_2026/videos_fullHD_VAL.zip"
+    ],
+    "blockers": [
+      "Validation ground-truth is materialized locally at backend/benchmarks/_datasets/spot.pcbas_medium_v1/playbyplay_GT/playbyplay_val.json from the vendored FOOTPASS sample file, but the official validation tactical/video archives are still unavailable. A direct Hugging Face probe for SoccerNet/SN-PCBAS-2026 returned 401 GatedRepoError for tactical_data_VAL.zip, so backend/datasets/huggingface/soccernet_sn_pcbas_2026/{tactical_data_VAL.zip,videos_352x640_VAL.zip,videos_fullHD_VAL.zip} are still missing."
+    ]
+  }
+}

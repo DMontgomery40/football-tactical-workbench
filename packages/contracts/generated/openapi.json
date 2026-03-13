@@ -150,6 +150,433 @@
         "title": "AnalyzeAcceptedResponse",
         "type": "object"
       },
+      "BenchmarkAssetResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "architecture": {
+            "default": "",
+            "title": "Architecture",
+            "type": "string"
+          },
+          "artifact_dvc": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Dvc"
+          },
+          "artifact_path": {
+            "default": "",
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "availability_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability Error"
+          },
+          "available": {
+            "default": false,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "bundle_mode": {
+            "default": "",
+            "title": "Bundle Mode",
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BenchmarkCapabilityMap"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "class_mapping": {
+            "additionalProperties": true,
+            "title": "Class Mapping",
+            "type": "object"
+          },
+          "import_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Origin"
+          },
+          "imported_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imported At"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "provider": {
+            "default": "",
+            "title": "Provider",
+            "type": "string"
+          },
+          "runtime_binding": {
+            "default": "",
+            "title": "Runtime Binding",
+            "type": "string"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "training_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Run Id"
+          },
+          "version": {
+            "default": "",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "kind",
+          "label"
+        ],
+        "title": "BenchmarkAssetResponse",
+        "type": "object"
+      },
+      "BenchmarkCapabilityMap": {
+        "additionalProperties": true,
+        "properties": {
+          "calibration": {
+            "default": false,
+            "title": "Calibration",
+            "type": "boolean"
+          },
+          "detection": {
+            "default": false,
+            "title": "Detection",
+            "type": "boolean"
+          },
+          "event_spotting": {
+            "default": false,
+            "title": "Event Spotting",
+            "type": "boolean"
+          },
+          "jersey_ocr": {
+            "default": false,
+            "title": "Jersey Ocr",
+            "type": "boolean"
+          },
+          "reid": {
+            "default": false,
+            "title": "Reid",
+            "type": "boolean"
+          },
+          "role_id": {
+            "default": false,
+            "title": "Role Id",
+            "type": "boolean"
+          },
+          "team_id": {
+            "default": false,
+            "title": "Team Id",
+            "type": "boolean"
+          },
+          "tracking": {
+            "default": false,
+            "title": "Tracking",
+            "type": "boolean"
+          }
+        },
+        "title": "BenchmarkCapabilityMap",
+        "type": "object"
+      },
+      "BenchmarkConfigResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "assets": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkAssetResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "benchmarks_dir": {
+            "default": "",
+            "title": "Benchmarks Dir",
+            "type": "string"
+          },
+          "dataset_states": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkDatasetStateResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Dataset States",
+            "type": "array"
+          },
+          "dvc_runtime": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dvc Runtime"
+          },
+          "legacy_clip_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Clip Status"
+          },
+          "recipes": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkRecipeResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Recipes",
+            "type": "array"
+          },
+          "schema_version": {
+            "default": 2,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "suites": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkSuiteResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Suites",
+            "type": "array"
+          }
+        },
+        "title": "BenchmarkConfigResponse",
+        "type": "object"
+      },
+      "BenchmarkDatasetStateResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "conversion_root": {
+            "default": "",
+            "title": "Conversion Root",
+            "type": "string"
+          },
+          "dataset_dvc": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Dvc"
+          },
+          "dataset_exists": {
+            "default": false,
+            "title": "Dataset Exists",
+            "type": "boolean"
+          },
+          "dataset_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Root"
+          },
+          "dvc_required": {
+            "default": false,
+            "title": "Dvc Required",
+            "type": "boolean"
+          },
+          "dvc_runtime": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dvc Runtime"
+          },
+          "manifest_dvc": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Dvc"
+          },
+          "manifest_exists": {
+            "default": false,
+            "title": "Manifest Exists",
+            "type": "boolean"
+          },
+          "manifest_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Path"
+          },
+          "manifest_summary": {
+            "additionalProperties": true,
+            "title": "Manifest Summary",
+            "type": "object"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "readiness_status": {
+            "default": "blocked",
+            "title": "Readiness Status",
+            "type": "string"
+          },
+          "ready": {
+            "default": false,
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "requires_clip": {
+            "default": false,
+            "title": "Requires Clip",
+            "type": "boolean"
+          },
+          "suite_id": {
+            "title": "Suite Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suite_id"
+        ],
+        "title": "BenchmarkDatasetStateResponse",
+        "type": "object"
+      },
       "BenchmarkEnsureClipRequest": {
         "properties": {
           "source_path": {
@@ -159,6 +586,63 @@
           }
         },
         "title": "BenchmarkEnsureClipRequest",
+        "type": "object"
+      },
+      "BenchmarkHistoryItemResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "benchmark_id": {
+            "title": "Benchmark Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "legacy_record": {
+            "default": false,
+            "title": "Legacy Record",
+            "type": "boolean"
+          },
+          "primary_suite_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Suite Id"
+          },
+          "recipe_count": {
+            "default": 0,
+            "title": "Recipe Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "suite_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suite Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "benchmark_id",
+          "status",
+          "created_at"
+        ],
+        "title": "BenchmarkHistoryItemResponse",
         "type": "object"
       },
       "BenchmarkImportHFRequest": {
@@ -202,24 +686,510 @@
         "title": "BenchmarkImportLocalRequest",
         "type": "object"
       },
-      "BenchmarkRunRequest": {
+      "BenchmarkRecipeResponse": {
+        "additionalProperties": true,
         "properties": {
-          "candidate_ids": {
+          "artifact_path": {
+            "default": "",
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "asset_id": {
+            "default": "",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "available": {
+            "default": false,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "bundle_mode": {
+            "default": "",
+            "title": "Bundle Mode",
+            "type": "string"
+          },
+          "capabilities": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "$ref": "#/components/schemas/BenchmarkCapabilityMap"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "class_mapping": {
+            "additionalProperties": true,
+            "title": "Class Mapping",
+            "type": "object"
+          },
+          "compatible_suite_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Compatible Suite Ids",
+            "type": "array"
+          },
+          "detector_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Candidate Ids"
+            "title": "Detector Asset Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "keypoint_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keypoint Model"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pipeline": {
+            "default": "",
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "requested_tracker_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Tracker Mode"
+          },
+          "runtime_binding": {
+            "default": "",
+            "title": "Runtime Binding",
+            "type": "string"
+          },
+          "source_asset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Asset Ids",
+            "type": "array"
+          },
+          "tracker_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracker Asset Id"
           }
         },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "title": "BenchmarkRecipeResponse",
+        "type": "object"
+      },
+      "BenchmarkRunDetailResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "assets": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkAssetResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "benchmark_id": {
+            "title": "Benchmark Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "dvc_runtime": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dvc Runtime"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "legacy_clip_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Clip Status"
+          },
+          "legacy_record": {
+            "default": false,
+            "title": "Legacy Record",
+            "type": "boolean"
+          },
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Logs",
+            "type": "array"
+          },
+          "primary_suite_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Suite Id"
+          },
+          "progress": {
+            "default": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "recipe_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipe Ids",
+            "type": "array"
+          },
+          "recipes": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BenchmarkRecipeResponse"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              ]
+            },
+            "title": "Recipes",
+            "type": "array"
+          },
+          "schema_version": {
+            "default": 2,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "suite_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suite Ids",
+            "type": "array"
+          },
+          "suite_results": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/BenchmarkRunResultResponse"
+                  },
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Suite Results",
+            "type": "object"
+          }
+        },
+        "required": [
+          "benchmark_id",
+          "status",
+          "created_at"
+        ],
+        "title": "BenchmarkRunDetailResponse",
+        "type": "object"
+      },
+      "BenchmarkRunRequest": {
+        "properties": {
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "recipe_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipe Ids",
+            "type": "array"
+          },
+          "suite_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suite Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suite_ids",
+          "recipe_ids"
+        ],
         "title": "BenchmarkRunRequest",
+        "type": "object"
+      },
+      "BenchmarkRunResultResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "artifacts": {
+            "additionalProperties": true,
+            "title": "Artifacts",
+            "type": "object"
+          },
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "flattened_metrics": {
+            "additionalProperties": true,
+            "title": "Flattened Metrics",
+            "type": "object"
+          },
+          "legacy_record": {
+            "default": false,
+            "title": "Legacy Record",
+            "type": "boolean"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "primary_metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Metric"
+          },
+          "raw_result": {
+            "additionalProperties": true,
+            "title": "Raw Result",
+            "type": "object"
+          },
+          "recipe_id": {
+            "title": "Recipe Id",
+            "type": "string"
+          },
+          "runtime_context": {
+            "additionalProperties": true,
+            "title": "Runtime Context",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "suite_id": {
+            "title": "Suite Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suite_id",
+          "recipe_id",
+          "status"
+        ],
+        "title": "BenchmarkRunResultResponse",
+        "type": "object"
+      },
+      "BenchmarkSuiteResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "dataset_root": {
+            "default": "",
+            "title": "Dataset Root",
+            "type": "string"
+          },
+          "dataset_split": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Split"
+          },
+          "dvc_required": {
+            "default": false,
+            "title": "Dvc Required",
+            "type": "boolean"
+          },
+          "fallback_dataset_roots": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fallback Dataset Roots",
+            "type": "array"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "license": {
+            "default": "",
+            "title": "License",
+            "type": "string"
+          },
+          "manifest_path": {
+            "default": "",
+            "title": "Manifest Path",
+            "type": "string"
+          },
+          "metric_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Metric Columns",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "primary_metric": {
+            "title": "Primary Metric",
+            "type": "string"
+          },
+          "protocol": {
+            "title": "Protocol",
+            "type": "string"
+          },
+          "required_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Capabilities",
+            "type": "array"
+          },
+          "requires_clip": {
+            "default": false,
+            "title": "Requires Clip",
+            "type": "boolean"
+          },
+          "source_url": {
+            "default": "",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "tier",
+          "family",
+          "protocol",
+          "primary_metric"
+        ],
+        "title": "BenchmarkSuiteResponse",
         "type": "object"
       },
       "Body_analyze_api_analyze_post": {
@@ -2178,12 +3148,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
+                  "additionalProperties": true,
                   "title": "Response Benchmark Candidates Api Benchmark Candidates Get",
-                  "type": "array"
+                  "type": "object"
                 }
               }
             },
@@ -2301,9 +3268,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Benchmark Config Api Benchmark Config Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BenchmarkConfigResponse"
                 }
               }
             },
@@ -2355,6 +3320,7 @@
     },
     "/api/benchmark/ensure-clip-upload": {
       "post": {
+        "description": "Upload a video file as the benchmark clip.",
         "operationId": "benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post",
         "requestBody": {
           "content": {
@@ -2414,8 +3380,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BenchmarkHistoryItemResponse"
                   },
                   "title": "Response Benchmark History Api Benchmark History Get",
                   "type": "array"
@@ -2447,8 +3412,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BenchmarkHistoryItemResponse"
                   },
                   "title": "Response Benchmark Jobs Api Benchmark Jobs Get",
                   "type": "array"
@@ -2480,9 +3444,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Benchmark Job Detail Api Benchmark Jobs  Benchmark Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BenchmarkRunDetailResponse"
                 }
               }
             },

@@ -1,0 +1,59 @@
+# TrackLab config
+
+# The defaults list contains the files that will be used
+# to create the final config file. This item *must* be
+# the first element in the file.
+defaults:
+  - dataset: video
+  - eval: trackeval
+  - engine: offline
+  - visualization: bbox
+  - modules/bbox_detector: yolo_ultralytics
+  - modules/pose_estimator: yolo_ultralytics-pose
+  - modules/reid: kpr
+  - modules/track: oc_sort
+  - _self_
+
+# Pipeline definition:
+# - Defines the order in which the modules will be called
+# - If loading a tracking state from disk, remove modules whose outputs are already provided in the loaded state
+# Use 'pipeline: []' for an empty pipeline
+pipeline:
+  #- bbox_detector
+  - pose_estimator
+  #- reid
+  - track
+
+num_cores: 4
+
+# Logging
+experiment_name: "tracklab"
+print_config: false
+use_wandb: false
+
+# Paths
+data_dir: "${project_dir}/data"
+model_dir: "${project_dir}/pretrained_models"
+
+# State files loading/saving
+state:
+  load_file: null
+  save_file: "${project_dir}/states/${experiment_name}.pklz"
+  load_from_public_dets: false
+  load_from_groundtruth: false
+
+# Flag parameters
+test_tracking: true
+eval_tracking: true
+use_rich: true
+
+# configure Hydra to use the current working directory
+# and set up the output directory according to experiment_name
+project_dir: "${hydra:runtime.cwd}"
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: "outputs/${experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+  sweep:
+    dir: "multirun_outputs/${experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}"

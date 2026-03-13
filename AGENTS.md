@@ -27,6 +27,25 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - Read `README.md` first for the current product surface, startup flow, and doc links before making broad repo assumptions.
 - For training durability or registry changes, also read `docs/workflows.md` and `docs/outputs-and-api.md`.
 
+## Project Memory Discipline
+
+- Read [.codex/MEMORY.md](.codex/MEMORY.md) before broad repo changes, major plan execution, or resuming interrupted work. That file is the repo-local bridge to the canonical project-local memory under `~/.codex/projects/-Users-davidmontgomery-football_pose_workbench/`.
+- Reading memory is required, not optional, for any substantial continuation task. If you skip it, you are likely to repeat drift the user has already paid to correct.
+- Updating memory is required whenever important facts change. This includes major implementation decisions, source-of-truth plans, benchmark evaluator/vendor state, DVC state, live-port/workspace mismatches, and any user callout about drift or forgotten requirements.
+- Canonical memory writes belong under `~/.codex/projects/-Users-davidmontgomery-football_pose_workbench/`. Keep [.codex/MEMORY.md](.codex/MEMORY.md) updated with links to the relevant project-local memory entries so future agents can find them from inside the repo.
+- Read [`.codex/MEMORY.md`](/Users/davidmontgomery/football_pose_workbench/.codex/MEMORY.md) at the start of substantive work. It is the repo-local pointer index for important project memory.
+- Treat the canonical writable memory as `~/.codex/projects/-Users-davidmontgomery-football_pose_workbench/MEMORY.md` and its `memory/` directory.
+- If a task uncovers an important durable fact, pitfall, source-of-truth decision, or postmortem-worthy mistake, update the canonical project memory in the same turn before you stop.
+- If you add or update a memory entry, also update [`.codex/MEMORY.md`](/Users/davidmontgomery/football_pose_workbench/.codex/MEMORY.md) so future agents can find it quickly from inside the repo.
+
+## Memory Discipline
+
+- Before substantial work, resuming interrupted work, or making architecture/process changes, read [`.codex/MEMORY.md`](/Users/davidmontgomery/football_pose_workbench/.codex/MEMORY.md) and then read the linked project-local memory index and any directly relevant memory files.
+- Treat the project-local memory under `~/.codex/projects/-Users-davidmontgomery-football_pose_workbench/` as required working context, not optional background.
+- When an important product decision, architecture change, workflow rule, debugging lesson, or agent-process lesson becomes clear, update the relevant project-local memory file in the same turn.
+- If no memory file fits the new lesson, create one under `~/.codex/projects/-Users-davidmontgomery-football_pose_workbench/memory/`, add it to the project-local memory index, and add or update the pointer entry in [`.codex/MEMORY.md`](/Users/davidmontgomery/football_pose_workbench/.codex/MEMORY.md).
+- Do not let plan files or memory drift apart. If [`.codex/benchmark_PLAN.md`](/Users/davidmontgomery/football_pose_workbench/.codex/benchmark_PLAN.md) changes materially, update the relevant memory entry in the same turn.
+
 ## Repository map
 
 - `backend/app/main.py`
@@ -79,7 +98,11 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - `frontend/src/trainingStudio/`
   - Training Studio shell, jobs, registry, and durable-artifact review UI
 - `frontend/src/styles.css`
-  - styling for the single-page UI
+  - legacy hand-rolled styles and CSS custom properties for theming
+- `frontend/src/main.jsx`
+  - app entry; imports Tailwind CSS v4 before local styles
+- `frontend/src/benchmarkLab/`
+  - Benchmark Lab shell, controls, leaderboard, and candidate views
 
 ## Backend rules
 
@@ -124,6 +147,7 @@ Do not reintroduce the earlier manual homography-point workflow unless the user 
 - SoccerNet browsing should be reactive and scalable. Avoid giant scroll dumps and avoid unnecessary “fetch” clicks for simple filtering.
 - Do not add controls that the backend no longer uses.
 - Avoid stale or duplicate controls. If a workflow is removed backend-side, remove its UI.
+- Tailwind CSS v4 is available via `@tailwindcss/vite`. Use Tailwind utility classes for all new styling. Existing `styles.css` coexists and handles theming via CSS custom properties.
 - If the UI starts getting worse from incremental patches, prefer a coherent refactor over more local fixes.
 - In Training Studio, durable-artifact state belongs in the product surface. Do not hide training provenance, promoted checkpoint paths, or DVC tracked/untracked state behind logs alone.
 - Pretrained `soccana` and activated custom detectors are not the same thing. Preserve that distinction visually in the registry.

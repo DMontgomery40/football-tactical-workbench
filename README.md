@@ -2,7 +2,7 @@
 
 Browser-first football analysis and detector-fine-tuning workbench built with React and FastAPI.
 
-The app now has two top-level product surfaces:
+The app now has three top-level product surfaces:
 
 - `Analysis Workspace`
   - load a local clip or upload a source
@@ -16,9 +16,12 @@ The app now has two top-level product surfaces:
   - monitor training jobs, logs, and artifacts
   - register a finished checkpoint and optionally promote it into analysis defaults
 - `Benchmark Lab`
-  - lock one benchmark clip and one runtime profile
-  - compare pretrained, registry, and imported detector candidates on that same clip
-  - rank candidates with a transparent leaderboard while keeping overlay and diagnostics visible
+  - choose one or more benchmark suites with fixed metric contracts
+  - browse assets and runnable recipes from the registry, promoted custom checkpoints, local imports, or Hugging Face imports
+  - benchmark first-class recipe rows including `detector:soccana`, `pipeline:soccermaster`, and `pipeline:tracklab-sn-gamestate`
+  - run suite-by-recipe benchmark matrices and reopen persisted benchmark records
+  - inspect matrix-synced benchmark charts plus suite-evaluation charts without collapsing tasks into one composite score
+  - keep blocked or unsupported suite cells visible with explicit reasons instead of silently dropping them
 
 This README stays intentionally high-level. The detailed setup, workflow, and API contracts live in the linked docs below.
 
@@ -131,10 +134,12 @@ For the full setup guide, environment variables, training notes, and first valid
 ### Benchmark quick pass
 
 1. Switch to `Benchmark Lab`.
-2. Prepare one benchmark clip from a local path or upload.
-3. Review the locked runtime profile.
-4. Add candidates from the built-in detector, Training Studio registry, or an imported checkpoint.
-5. Run the benchmark and inspect the leaderboard, overlay, diagnostics, and logs before promoting anything.
+2. Select one or more benchmark suites and prepare the operational clip if you want overlay review.
+3. Select recipes: built-in assets, promoted custom checkpoints, a local `.pt` import, or a Hugging Face import.
+4. Run the selected suite-by-recipe matrix.
+5. Use `Matrix Filters` to pick the active suite, narrow the recipe pool, and sort the comparison honestly.
+6. Read `Benchmark Charts` for primary-metric, runtime, and per-metric profile views, then use `Suite Evaluation Charts` to judge which suites are discriminative, blocked, or expensive.
+7. Inspect the `Detail Panel` and `Operational Review` beside the matrix before making a promotion decision.
 
 The full UI walk-through lives in [Workflows](docs/workflows.md).
 
@@ -180,12 +185,12 @@ The full UI walk-through lives in [Workflows](docs/workflows.md).
   Detector fine-tuning worker subprocess entrypoint.
 - `frontend/src/App.jsx`
   Top-level app shell, Analysis Workspace, persisted state, SoccerNet UI, and review flows.
+- `backend/app/benchmark.py`
+  Benchmark Lab orchestration, suite/recipe execution, evaluator dispatch, and benchmark persistence.
 - `frontend/src/TrainingStudio.jsx`
   Dedicated training shell for dataset scan, training form, jobs, and registry.
-- `backend/app/benchmark.py`
-  Benchmark Lab clip management, candidate imports, scoring, and benchmark orchestration.
 - `frontend/src/benchmarkLab/`
-  Benchmark Lab shell, reducer state, candidate library, clip prep, leaderboard, and detail review.
+  Benchmark Lab shell, suite selector, asset browser, matrix filters, results matrix, benchmark charts, suite evaluation charts, detail panel, and operational review surface.
 - `frontend/src/styles.css`
   Full shared styling for analysis, training, and benchmark surfaces.
 

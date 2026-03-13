@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "suite_id": "calib.sn_calib_medium_v1",
+  "kind": "dataset_manifest",
+  "split": "valid",
+  "selection": "official_valid_split_v1",
+  "task_coverage": ["camera_calibration"],
+  "materialization": {
+    "status": "blocked",
+    "expected_files": [
+      "backend/benchmarks/_datasets/calib.sn_calib_medium_v1/valid/<frame_id>.jpg",
+      "backend/benchmarks/_datasets/calib.sn_calib_medium_v1/valid/<frame_id>.json"
+    ],
+    "blockers": [
+      "No official calibration validation assets are materialized locally. The expected source is the SoccerNet downloader task calibration-2023/valid from the vendored sn-calibration README, but this workspace has no extracted valid/ tree under backend/benchmarks/_datasets/calib.sn_calib_medium_v1."
+    ]
+  }
+}

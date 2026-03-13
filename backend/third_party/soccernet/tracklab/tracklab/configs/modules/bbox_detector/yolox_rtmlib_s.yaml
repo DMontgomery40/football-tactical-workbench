@@ -1,0 +1,18 @@
+_target_: tracklab.wrappers.bbox_detector.rtmlib_api.RTMLibDetector
+_recursive_: false
+
+model:
+  _target_: rtmlib.YOLOX
+  onnx_model: "https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_s_8xb8-300e_humanart-3ef259a7.zip"
+  model_input_size: [640, 640]
+
+# ----------- YOLOX -------------
+#|                                                          ONNX Model                                                           | Input Size | AP (person) |       Description        |
+#| :---------------------------------------------------------------------------------------------------------------------------: | :--------: | :---------: | :----------------------: |
+#| [YOLOX-l](https://drive.google.com/file/d/1w9pXC8tT0p9ndMN-CArp1__b2GbzewWI/view?usp=sharing)                                 |  640x640   |      -      |     trained on COCO      |
+#| [YOLOX-nano](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_nano_8xb8-300e_humanart-40f6f0d0.zip) |  416x416   |    38.9     | trained on HumanArt+COCO |
+#| [YOLOX-tiny](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_tiny_8xb8-300e_humanart-6f3252f9.zip) |  416x416   |    47.7     | trained on HumanArt+COCO |
+#| [YOLOX-s](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_s_8xb8-300e_humanart-3ef259a7.zip)       |  640x640   |    54.6     | trained on HumanArt+COCO |
+#| [YOLOX-m](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_m_8xb8-300e_humanart-c2c7a14a.zip)       |  640x640   |    59.1     | trained on HumanArt+COCO |
+#| [YOLOX-l](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_l_8xb8-300e_humanart-ce1d7a62.zip)       |  640x640   |    60.2     | trained on HumanArt+COCO |
+#| [YOLOX-x](https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/onnx_sdk/yolox_x_8xb8-300e_humanart-a39d44ed.zip)       |  640x640   |    61.3     | trained on HumanArt+COCO |

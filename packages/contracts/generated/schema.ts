@@ -132,7 +132,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Benchmark Ensure Clip Upload */
+        /**
+         * Benchmark Ensure Clip Upload
+         * @description Upload a video file as the benchmark clip.
+         */
         post: operations["benchmark_ensure_clip_upload_api_benchmark_ensure_clip_upload_post"];
         delete?: never;
         options?: never;
@@ -886,6 +889,231 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** BenchmarkAssetResponse */
+        BenchmarkAssetResponse: {
+            /**
+             * Architecture
+             * @default
+             */
+            architecture: string;
+            /** Artifact Dvc */
+            artifact_dvc?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Artifact Path
+             * @default
+             */
+            artifact_path: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Availability Error */
+            availability_error?: string | null;
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Bundle Mode
+             * @default
+             */
+            bundle_mode: string;
+            /** Capabilities */
+            capabilities?: components["schemas"]["BenchmarkCapabilityMap"] | {
+                [key: string]: unknown;
+            };
+            /** Class Mapping */
+            class_mapping?: {
+                [key: string]: unknown;
+            };
+            /** Import Origin */
+            import_origin?: string | null;
+            /** Imported At */
+            imported_at?: string | null;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Metrics */
+            metrics?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Provider
+             * @default
+             */
+            provider: string;
+            /**
+             * Runtime Binding
+             * @default
+             */
+            runtime_binding: string;
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+            /** Training Run Id */
+            training_run_id?: string | null;
+            /**
+             * Version
+             * @default
+             */
+            version: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** BenchmarkCapabilityMap */
+        BenchmarkCapabilityMap: {
+            /**
+             * Calibration
+             * @default false
+             */
+            calibration: boolean;
+            /**
+             * Detection
+             * @default false
+             */
+            detection: boolean;
+            /**
+             * Event Spotting
+             * @default false
+             */
+            event_spotting: boolean;
+            /**
+             * Jersey Ocr
+             * @default false
+             */
+            jersey_ocr: boolean;
+            /**
+             * Reid
+             * @default false
+             */
+            reid: boolean;
+            /**
+             * Role Id
+             * @default false
+             */
+            role_id: boolean;
+            /**
+             * Team Id
+             * @default false
+             */
+            team_id: boolean;
+            /**
+             * Tracking
+             * @default false
+             */
+            tracking: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** BenchmarkConfigResponse */
+        BenchmarkConfigResponse: {
+            /** Assets */
+            assets?: (components["schemas"]["BenchmarkAssetResponse"] | {
+                [key: string]: unknown;
+            })[];
+            /**
+             * Benchmarks Dir
+             * @default
+             */
+            benchmarks_dir: string;
+            /** Dataset States */
+            dataset_states?: (components["schemas"]["BenchmarkDatasetStateResponse"] | {
+                [key: string]: unknown;
+            })[];
+            /** Dvc Runtime */
+            dvc_runtime?: {
+                [key: string]: unknown;
+            } | null;
+            /** Legacy Clip Status */
+            legacy_clip_status?: {
+                [key: string]: unknown;
+            } | null;
+            /** Recipes */
+            recipes?: (components["schemas"]["BenchmarkRecipeResponse"] | {
+                [key: string]: unknown;
+            })[];
+            /**
+             * Schema Version
+             * @default 2
+             */
+            schema_version: number;
+            /** Suites */
+            suites?: (components["schemas"]["BenchmarkSuiteResponse"] | {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** BenchmarkDatasetStateResponse */
+        BenchmarkDatasetStateResponse: {
+            /** Blockers */
+            blockers?: string[];
+            /**
+             * Conversion Root
+             * @default
+             */
+            conversion_root: string;
+            /** Dataset Dvc */
+            dataset_dvc?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Dataset Exists
+             * @default false
+             */
+            dataset_exists: boolean;
+            /** Dataset Root */
+            dataset_root?: string | null;
+            /**
+             * Dvc Required
+             * @default false
+             */
+            dvc_required: boolean;
+            /** Dvc Runtime */
+            dvc_runtime?: {
+                [key: string]: unknown;
+            } | null;
+            /** Manifest Dvc */
+            manifest_dvc?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Manifest Exists
+             * @default false
+             */
+            manifest_exists: boolean;
+            /** Manifest Path */
+            manifest_path?: string | null;
+            /** Manifest Summary */
+            manifest_summary?: {
+                [key: string]: unknown;
+            };
+            /** Note */
+            note?: string | null;
+            /**
+             * Readiness Status
+             * @default blocked
+             */
+            readiness_status: string;
+            /**
+             * Ready
+             * @default false
+             */
+            ready: boolean;
+            /**
+             * Requires Clip
+             * @default false
+             */
+            requires_clip: boolean;
+            /** Suite Id */
+            suite_id: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** BenchmarkEnsureClipRequest */
         BenchmarkEnsureClipRequest: {
             /**
@@ -893,6 +1121,36 @@ export interface components {
              * @default
              */
             source_path: string;
+        };
+        /** BenchmarkHistoryItemResponse */
+        BenchmarkHistoryItemResponse: {
+            /** Benchmark Id */
+            benchmark_id: string;
+            /** Created At */
+            created_at: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Legacy Record
+             * @default false
+             */
+            legacy_record: boolean;
+            /** Primary Suite Id */
+            primary_suite_id?: string | null;
+            /**
+             * Recipe Count
+             * @default 0
+             */
+            recipe_count: number;
+            /** Status */
+            status: string;
+            /** Suite Ids */
+            suite_ids?: string[];
+        } & {
+            [key: string]: unknown;
         };
         /** BenchmarkImportHFRequest */
         BenchmarkImportHFRequest: {
@@ -919,10 +1177,245 @@ export interface components {
              */
             label: string;
         };
+        /** BenchmarkRecipeResponse */
+        BenchmarkRecipeResponse: {
+            /**
+             * Artifact Path
+             * @default
+             */
+            artifact_path: string;
+            /**
+             * Asset Id
+             * @default
+             */
+            asset_id: string;
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Bundle Mode
+             * @default
+             */
+            bundle_mode: string;
+            /** Capabilities */
+            capabilities?: components["schemas"]["BenchmarkCapabilityMap"] | {
+                [key: string]: unknown;
+            };
+            /** Class Mapping */
+            class_mapping?: {
+                [key: string]: unknown;
+            };
+            /** Compatible Suite Ids */
+            compatible_suite_ids?: string[];
+            /** Detector Asset Id */
+            detector_asset_id?: string | null;
+            /** Id */
+            id: string;
+            /** Keypoint Model */
+            keypoint_model?: string | null;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /**
+             * Pipeline
+             * @default
+             */
+            pipeline: string;
+            /** Requested Tracker Mode */
+            requested_tracker_mode?: string | null;
+            /**
+             * Runtime Binding
+             * @default
+             */
+            runtime_binding: string;
+            /** Source Asset Ids */
+            source_asset_ids?: string[];
+            /** Tracker Asset Id */
+            tracker_asset_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** BenchmarkRunDetailResponse */
+        BenchmarkRunDetailResponse: {
+            /** Assets */
+            assets?: (components["schemas"]["BenchmarkAssetResponse"] | {
+                [key: string]: unknown;
+            })[];
+            /** Benchmark Id */
+            benchmark_id: string;
+            /** Created At */
+            created_at: string;
+            /** Dvc Runtime */
+            dvc_runtime?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Legacy Clip Status */
+            legacy_clip_status?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Legacy Record
+             * @default false
+             */
+            legacy_record: boolean;
+            /** Logs */
+            logs?: string[];
+            /** Primary Suite Id */
+            primary_suite_id?: string | null;
+            /**
+             * Progress
+             * @default 0
+             */
+            progress: number;
+            /** Recipe Ids */
+            recipe_ids?: string[];
+            /** Recipes */
+            recipes?: (components["schemas"]["BenchmarkRecipeResponse"] | {
+                [key: string]: unknown;
+            })[];
+            /**
+             * Schema Version
+             * @default 2
+             */
+            schema_version: number;
+            /** Status */
+            status: string;
+            /** Suite Ids */
+            suite_ids?: string[];
+            /** Suite Results */
+            suite_results?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["BenchmarkRunResultResponse"] | {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        } & {
+            [key: string]: unknown;
+        };
         /** BenchmarkRunRequest */
         BenchmarkRunRequest: {
-            /** Candidate Ids */
-            candidate_ids?: string[] | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Recipe Ids */
+            recipe_ids: string[];
+            /** Suite Ids */
+            suite_ids: string[];
+        };
+        /** BenchmarkRunResultResponse */
+        BenchmarkRunResultResponse: {
+            /** Artifacts */
+            artifacts?: {
+                [key: string]: unknown;
+            };
+            /** Blockers */
+            blockers?: string[];
+            /** Error */
+            error?: string | null;
+            /** Flattened Metrics */
+            flattened_metrics?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Legacy Record
+             * @default false
+             */
+            legacy_record: boolean;
+            /** Metrics */
+            metrics?: {
+                [key: string]: unknown;
+            };
+            /** Primary Metric */
+            primary_metric?: string | null;
+            /** Raw Result */
+            raw_result?: {
+                [key: string]: unknown;
+            };
+            /** Recipe Id */
+            recipe_id: string;
+            /** Runtime Context */
+            runtime_context?: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /** Suite Id */
+            suite_id: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** BenchmarkSuiteResponse */
+        BenchmarkSuiteResponse: {
+            /**
+             * Dataset Root
+             * @default
+             */
+            dataset_root: string;
+            /** Dataset Split */
+            dataset_split?: string | null;
+            /**
+             * Dvc Required
+             * @default false
+             */
+            dvc_required: boolean;
+            /** Fallback Dataset Roots */
+            fallback_dataset_roots?: string[];
+            /** Family */
+            family: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * License
+             * @default
+             */
+            license: string;
+            /**
+             * Manifest Path
+             * @default
+             */
+            manifest_path: string;
+            /** Metric Columns */
+            metric_columns?: string[];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Primary Metric */
+            primary_metric: string;
+            /** Protocol */
+            protocol: string;
+            /** Required Capabilities */
+            required_capabilities?: string[];
+            /**
+             * Requires Clip
+             * @default false
+             */
+            requires_clip: boolean;
+            /**
+             * Source Url
+             * @default
+             */
+            source_url: string;
+            /** Tier */
+            tier: string;
+        } & {
+            [key: string]: unknown;
         };
         /** Body_analyze_api_analyze_post */
         Body_analyze_api_analyze_post: {
@@ -2091,7 +2584,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-                    }[];
+                    };
                 };
             };
         };
@@ -2203,9 +2696,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BenchmarkConfigResponse"];
                 };
             };
         };
@@ -2297,9 +2788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["BenchmarkHistoryItemResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -2328,9 +2817,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["BenchmarkHistoryItemResponse"][];
                 };
             };
         };
@@ -2352,9 +2839,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BenchmarkRunDetailResponse"];
                 };
             };
             /** @description Validation Error */
