@@ -86,13 +86,10 @@ def _dataset_structure_present(suite_id: str, dataset_root: Path) -> bool:
             for path in valid_root.rglob("Labels-GameState.json")
         )
     if suite_id == "gsr.long_v1":
-        return (
-            dataset_root.exists()
-            and all((dataset_root / split).exists() for split in ("train", "valid", "test"))
-            and any(
-                path.is_file() and path.name == "Labels-GameState.json" and _looks_like_json_file(path)
-                for path in (dataset_root / "valid").rglob("Labels-GameState.json")
-            )
+        valid_root = dataset_root / "valid"
+        return valid_root.exists() and any(
+            path.is_file() and path.name == "Labels-GameState.json" and _looks_like_json_file(path)
+            for path in valid_root.rglob("Labels-GameState.json")
         )
     if suite_id == "calib.sn_calib_medium_v1":
         split_dir = dataset_root / "valid"
@@ -256,7 +253,7 @@ def _suite_note(
         blocker = _suite_execution_blocker(suite)
         root_text = str(expected_root) if expected_root is not None else "backend/benchmarks/_datasets/gsr.long_v1/SoccerNetGS"
         dataset_clause = (
-            f"Expected a full SoccerNetGS tree at {root_text} with train/, valid/, and test/ splits."
+            f"Expected a SoccerNetGS tree at {root_text} with a valid/ split and Labels-GameState.json files for the full validation suite."
             if not dataset_exists
             else f"SoccerNetGS tree is present at {root_text}."
         )

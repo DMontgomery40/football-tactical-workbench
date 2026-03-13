@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+import zipfile
 from unittest.mock import patch
 from pathlib import Path
+
+import numpy as np
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT_DIR / "backend"
@@ -60,32 +63,51 @@ def test_tracking_dataset_state_reports_concrete_expected_root_and_adapter_block
     assert state["readiness_status"] == "blocked"
     assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT")
     assert any("SoccerNetMOT" in blocker for blocker in state["blockers"])
-    assert any("evaluate_soccernet_v3_tracking.py" in blocker for blocker in state["blockers"])
-    assert any("recipe-to-submission bridge is still missing" in blocker for blocker in state["blockers"])
+    assert any("sample_submission.zip" in blocker for blocker in state["blockers"])
+    assert any("gt.zip" in blocker for blocker in state["blockers"])
+    assert not any("recipe-to-submission bridge is still missing" in blocker for blocker in state["blockers"])
     assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
-def test_gsr_dataset_state_reports_concrete_expected_root_and_adapter_blocker() -> None:
+def test_gsr_dataset_state_is_materialized() -> None:
     suite = get_suite_definition("gsr.medium_v1")
     state = build_suite_dataset_state(suite)
 
-    assert state["ready"] is False
-    assert state["readiness_status"] == "blocked"
+    assert state["ready"] is True
+    assert state["readiness_status"] == "ready"
     assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS")
-    assert any("SoccerNetGS" in blocker for blocker in state["blockers"])
-    assert any("TrackLab/sn-gamestate" in blocker for blocker in state["blockers"])
+    assert state["blockers"] == []
+    assert state["manifest_summary"]["materialization_status"] == "materialized"
+
+
+def test_ball_quick_dataset_state_is_materialized() -> None:
+    suite = get_suite_definition("det.ball_quick_v1")
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is True
+    assert state["manifest_exists"] is True
+    assert state["blockers"] == []
+    assert state["manifest_summary"]["materialization_status"] == "materialized"
+
+
+def test_team_bas_dataset_state_is_materialized() -> None:
+    suite = get_suite_definition("spot.team_bas_quick_v1")
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is True
+    assert state["blockers"] == []
+    assert state["manifest_summary"]["materialization_status"] == "materialized"
+    assert suite["dataset_split"] == "validation"
+
+
+def test_synloc_stage2_manifest_uses_exact_blocker_not_generic_missing_root() -> None:
+    suite = get_suite_definition("loc.synloc_quick_v1")
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is False
+    assert state["manifest_exists"] is True
+    assert state["blockers"]
     assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
-
-
-def test_quick_stage2_target_suites_use_exact_manifest_blockers_not_generic_missing_root() -> None:
-    for suite_id in ("det.ball_quick_v1", "loc.synloc_quick_v1"):
-        suite = get_suite_definition(suite_id)
-        state = build_suite_dataset_state(suite)
-
-        assert state["ready"] is False
-        assert state["manifest_exists"] is True
-        assert state["blockers"]
-        assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
 def test_backend_default_runtime_profile_matches_current_process() -> None:
@@ -157,30 +179,266 @@ def test_blocked_tracking_cells_surface_truthful_reason_in_run_results(tmp_path:
 
     assert result["status"] == "blocked"
     assert "SoccerNetMOT" in str(result["error"])
-    assert "evaluate_soccernet_v3_tracking.py" in str(result["error"])
+    assert "sample_submission.zip" in str(result["error"])
     assert result["blockers"]
     assert result["runtime_context"] == {}
 
 
+def test_tracking_cells_surface_precise_missing_sequence_image_tree(tmp_path: Path) -> None:
+    suite = get_suite_definition("track.sn_tracking_medium_v1")
+    dataset_root = tmp_path / "tracking_dataset"
+    (dataset_root / "train").mkdir(parents=True)
+    (dataset_root / "test").mkdir(parents=True)
+    with zipfile.ZipFile(dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+    with zipfile.ZipFile(dataset_root / "gt.zip", "w") as archive:
+        archive.writestr("test/SNMOT-001/seqinfo.ini", "[Sequence]\nseqLength=1\n")
+        archive.writestr("test/SNMOT-001/gt/gt.txt", "1,1,10,20,30,40,1,-1,-1,-1\n")
+    (dataset_root / "seqmap.txt").write_text("name\nSNMOT-001\n", encoding="utf-8")
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "tracker:soccana+bytetrack+soccana_keypoint")
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_tracking_export_blocker",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state={"ready": True, "blockers": []},
+        recipe=recipe,
+        dataset_root=str(dataset_root),
+    )
+
+    assert result["status"] == "blocked"
+    assert "img1" in str(result["error"])
+    assert result["blockers"]
+
+
+def test_tracking_cell_completes_via_full_benchmark_path_with_synthetic_dataset(tmp_path: Path) -> None:
+    suite = get_suite_definition("track.sn_tracking_medium_v1")
+    dataset_root = tmp_path / "tracking_dataset"
+    (dataset_root / "train").mkdir(parents=True)
+    (dataset_root / "test").mkdir(parents=True)
+    with zipfile.ZipFile(dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+    with zipfile.ZipFile(dataset_root / "gt.zip", "w") as archive:
+        archive.writestr(
+            "test/SNMOT-001/seqinfo.ini",
+            "\n".join(
+                [
+                    "[Sequence]",
+                    "name=SNMOT-001",
+                    "imDir=img1",
+                    "frameRate=25",
+                    "seqLength=2",
+                    "imWidth=960",
+                    "imHeight=540",
+                    "imExt=.jpg",
+                ]
+            )
+            + "\n",
+        )
+        archive.writestr(
+            "test/SNMOT-001/gt/gt.txt",
+            "\n".join(
+                [
+                    "1,1,10,20,30,40,1,-1,-1,-1",
+                    "2,1,12,21,30,40,1,-1,-1,-1",
+                ]
+            )
+            + "\n",
+        )
+    (dataset_root / "seqmap.txt").write_text("name\nSNMOT-001\n", encoding="utf-8")
+    prediction_source = tmp_path / "recipe_tracking_predictions.json"
+    prediction_source.write_text(
+        json.dumps(
+            {
+                "sequences": [
+                    {
+                        "sequence": "SNMOT-001",
+                        "detections": [
+                            {
+                                "frame": 1,
+                                "track_id": 1,
+                                "bbox_ltwh": [10, 20, 30, 40],
+                                "confidence": 1.0,
+                            },
+                            {
+                                "frame": 2,
+                                "track_id": 1,
+                                "bbox_ltwh": [12, 21, 30, 40],
+                                "confidence": 1.0,
+                            },
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    recipe = dict(
+        next(recipe for recipe in list_recipes() if recipe["id"] == "tracker:soccana+hybrid_reid+soccana_keypoint")
+    )
+    recipe["tracking_prediction_json"] = str(prediction_source)
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_tracking_completed",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state={"ready": True, "blockers": []},
+        recipe=recipe,
+        dataset_root=str(dataset_root),
+    )
+
+    assert result["status"] == "completed"
+    assert result["error"] is None
+    assert result["metrics"]["hota"]["value"] is not None and result["metrics"]["hota"]["value"] > 0.99
+    assert result["metrics"]["deta"]["value"] is not None and result["metrics"]["deta"]["value"] > 0.99
+    assert result["metrics"]["assa"]["value"] is not None and result["metrics"]["assa"]["value"] > 0.99
+    assert Path(str(result["artifacts"]["tracker_submission_zip"])).exists()
+    assert Path(str(result["artifacts"]["external_result_json"])).exists()
+
+
+def test_synloc_cell_completes_via_full_benchmark_path_with_synthetic_dataset(tmp_path: Path) -> None:
+    suite = get_suite_definition("loc.synloc_quick_v1")
+    dataset_root = tmp_path / "synloc_dataset"
+    (dataset_root / "annotations").mkdir(parents=True)
+    (dataset_root / "val").mkdir(parents=True)
+    (dataset_root / "val" / "000001.jpg").write_bytes(b"not-a-real-image")
+    (dataset_root / "annotations" / "val.json").write_text(
+        json.dumps(
+            {
+                "images": [
+                    {
+                        "id": 1,
+                        "file_name": "000001.jpg",
+                        "width": 960,
+                        "height": 540,
+                        "camera_matrix": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                        "undist_poly": [0.0, 0.0, 0.0],
+                    }
+                ],
+                "annotations": [
+                    {
+                        "id": 1,
+                        "image_id": 1,
+                        "category_id": 1,
+                        "bbox": [10.0, 20.0, 30.0, 40.0],
+                        "area": 1200.0,
+                        "position_on_pitch": [1.0, 2.0],
+                    }
+                ],
+                "categories": [{"id": 1, "name": "person"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "tracker:soccana+hybrid_reid+soccana_keypoint")
+
+    with patch(
+        "app.benchmark_eval.prediction_exports._build_synloc_predictor",
+        return_value={"detector_model": object(), "detector_device": "cpu", "detector_spec": {"player_class_ids": [0]}},
+    ), patch(
+        "app.benchmark_eval.prediction_exports.cv2.imread",
+        return_value=np.zeros((540, 960, 3), dtype=np.uint8),
+    ), patch(
+        "app.benchmark_eval.prediction_exports._run_synloc_detector_on_image",
+        return_value=[
+            {
+                "bbox": [10.0, 20.0, 30.0, 40.0],
+                "score": 0.9,
+                "anchor": [25.0, 60.0],
+            }
+        ],
+    ), patch(
+        "app.benchmark_eval.prediction_exports._project_synloc_anchor_to_pitch",
+        return_value=[1.0, 2.0],
+    ):
+        result = benchmark_orchestrator._run_suite_recipe(
+            benchmark_id="test_synloc_completed",
+            benchmark_dir=tmp_path,
+            suite=suite,
+            suite_dataset_state={"ready": True, "blockers": []},
+            recipe=recipe,
+            dataset_root=str(dataset_root),
+        )
+
+    assert result["status"] == "completed"
+    assert result["error"] is None
+    assert result["metrics"]["map_locsim"]["value"] is not None and result["metrics"]["map_locsim"]["value"] > 0.99
+    assert Path(str(result["artifacts"]["predictions_json"])).exists()
+    assert Path(str(result["artifacts"]["ground_truth_json"])).exists()
+    assert Path(str(result["artifacts"]["external_result_json"])).exists()
+
+
 def test_blocked_gsr_cells_surface_truthful_reason_in_run_results(tmp_path: Path) -> None:
     suite = get_suite_definition("gsr.medium_v1")
-    suite_state = build_suite_dataset_state(suite)
-    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "pipeline:sn-gamestate-tracklab")
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "tracker:soccana+hybrid_reid+soccana_keypoint")
 
     result = benchmark_orchestrator._run_suite_recipe(
         benchmark_id="test_gsr_blocked",
         benchmark_dir=tmp_path,
         suite=suite,
-        suite_dataset_state=suite_state,
+        suite_dataset_state={"ready": True, "blockers": []},
         recipe=recipe,
-        dataset_root=str(suite_state.get("dataset_root") or ""),
+        dataset_root=str(get_suite_definition("gsr.medium_v1").get("dataset_root") or ""),
     )
 
     assert result["status"] == "blocked"
-    assert "SoccerNetGS" in str(result["error"])
-    assert "TrackLab/sn-gamestate" in str(result["error"])
+    assert "non-baseline recipe rows" in str(result["error"])
+    assert recipe["id"] in str(result["error"])
     assert result["blockers"]
-    assert result["runtime_context"] == {}
+    assert result["runtime_context"]["duration_seconds"] >= 0.0
+
+
+def test_gsr_baseline_cell_completes_when_wrapper_returns_metrics(tmp_path: Path) -> None:
+    suite = get_suite_definition("gsr.medium_v1")
+    dataset_root = tmp_path / "gsr_dataset" / "valid" / "SNGS-021"
+    dataset_root.mkdir(parents=True)
+    (dataset_root / "Labels-GameState.json").write_text(
+        json.dumps({"info": {"version": "1.3"}, "images": [], "annotations": [], "categories": []}),
+        encoding="utf-8",
+    )
+    state_file = tmp_path / "baseline_state.pklz"
+    state_file.write_bytes(b"stub-state")
+    recipe = dict(next(recipe for recipe in list_recipes() if recipe["id"] == "pipeline:sn-gamestate-tracklab"))
+    recipe["gamestate_state_file"] = str(state_file)
+
+    with patch(
+        "app.benchmark_eval.gamestate.run_external_json_command",
+        return_value={
+            "_external_result_path": str(tmp_path / "external_result.json"),
+            "gs_hota": 0.24168,
+            "hota": 0.24168,
+            "deta": 0.1613,
+            "assa": 0.36241,
+            "frames_per_second": 152.4,
+            "summary_path": str(tmp_path / "summary.txt"),
+            "predictions_zip": str(tmp_path / "predictions.zip"),
+            "main_log": str(tmp_path / "main.log"),
+        },
+    ):
+        result = benchmark_orchestrator._run_suite_recipe(
+            benchmark_id="test_gsr_baseline_completed",
+            benchmark_dir=tmp_path,
+            suite=suite,
+            suite_dataset_state={"ready": True, "blockers": []},
+            recipe=recipe,
+            dataset_root=str(tmp_path / "gsr_dataset"),
+        )
+
+    assert result["status"] == "completed"
+    assert result["metrics"]["gs_hota"]["value"] == 0.24168
+    assert result["metrics"]["deta"]["value"] == 0.1613
+    assert result["artifacts"]["summary_txt"].endswith("summary.txt")
+    assert result["artifacts"]["predictions_zip"].endswith("predictions.zip")
+    assert result["artifacts"]["tracklab_main_log"].endswith("main.log")
+    persisted_result = json.loads(
+        (tmp_path / "suite_results" / "gsr.medium_v1" / "pipeline:sn-gamestate-tracklab" / "result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert persisted_result["artifacts"]["summary_txt"].endswith("summary.txt")
+    assert persisted_result["artifacts"]["predictions_zip"].endswith("predictions.zip")
+    assert persisted_result["artifacts"]["tracklab_main_log"].endswith("main.log")
+    assert persisted_result["artifacts"]["external_result_json"].endswith("external_result.json")
 
 
 def test_team_spotting_cells_surface_precise_missing_raw_prediction_artifact(tmp_path: Path) -> None:

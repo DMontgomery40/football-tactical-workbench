@@ -8,14 +8,14 @@
     "status": "blocked",
     "expected_files": [
       "backend/benchmarks/_datasets/loc.synloc_quick_v1/<challenge-or-converted-root>",
-      "backend/benchmarks/_datasets/loc.synloc_quick_v1/<annotations-and-camera-or-world-coordinate-labels>",
-      "backend/third_party/soccernet/sskit"
+      "backend/benchmarks/_datasets/loc.synloc_quick_v1/<annotations-and-camera-or-world-coordinate-labels>"
     ],
     "source_artifacts": [
+      "https://research.spiideo.com/",
       "https://github.com/Spiideo/sskit"
     ],
     "blockers": [
-      "SynLoc benchmark materialization is still missing. Expected evaluator-ready localization data under backend/benchmarks/_datasets/loc.synloc_quick_v1, but no local SynLoc archive or converted suite root is present in this workspace and no vendored `sskit` checkout exists under backend/third_party/soccernet/sskit."
+      "SynLoc benchmark materialization is still missing. The vendored `sskit` checkout now exists under backend/third_party/soccernet/sskit and the repo-owned SynLoc evaluator/export bridge is present, but the official SoccerNet downloader for `SpiideoSynLoc` immediately prompts for `research.spiideo.com` credentials on this machine before any `valid.zip` or `annotations.zip` archive can be fetched, so no local evaluator-ready dataset root is materialized under backend/benchmarks/_datasets/loc.synloc_quick_v1."
     ]
   }
 }

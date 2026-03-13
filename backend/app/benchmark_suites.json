@@ -95,6 +95,7 @@
       "fallback_dataset_roots": [],
       "manifest_path": "backend/benchmarks/_manifests/spot.team_bas_quick_v1.json",
       "dvc_required": true,
+      "dataset_split": "validation",
       "notes": "Ball action spotting with team-side labels."
     },
     {

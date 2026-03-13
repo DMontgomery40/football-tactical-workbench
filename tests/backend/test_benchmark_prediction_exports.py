@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -69,6 +70,149 @@ def test_prepare_calibration_exports_writes_camera_json_and_manifest(tmp_path: P
     assert prepared["artifacts"]["prediction_export_json"] == str(manifest_path)
     assert manifest["status"] == "ready"
     assert manifest["counts"]["generated_camera_files"] == 1
+
+
+def test_prepare_calibration_exports_ignores_match_metadata_json(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "calibration_dataset"
+    split_dir = dataset_root / "valid"
+    split_dir.mkdir(parents=True)
+    (split_dir / "0001.json").write_text("{}", encoding="utf-8")
+    (split_dir / "0001.jpg").write_bytes(b"not-a-real-image")
+    (split_dir / "match_info.json").write_text("{}", encoding="utf-8")
+    (split_dir / "per_match_info.json").write_text("{}", encoding="utf-8")
+    artifacts_dir = tmp_path / "artifacts"
+
+    fake_camera = {
+        "pan_degrees": 0.0,
+        "tilt_degrees": 0.0,
+        "roll_degrees": 0.0,
+        "position_meters": [0.0, 0.0, 20.0],
+        "x_focal_length": 1000.0,
+        "y_focal_length": 1000.0,
+        "principal_point": [480.0, 270.0],
+        "radial_distortion": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "tangential_distortion": [0.0, 0.0],
+        "thin_prism_distortion": [0.0, 0.0, 0.0, 0.0],
+    }
+
+    with patch("app.wide_angle.choose_device", return_value="cpu"), patch(
+        "app.wide_angle.choose_keypoint_device",
+        return_value="cpu",
+    ), patch(
+        "app.wide_angle.detect_pitch_homography",
+        return_value=(np.eye(3, dtype=np.float64), None, 8, 8, 0.0),
+    ), patch(
+        "app.benchmark_eval.prediction_exports.cv2.imread",
+        return_value=np.zeros((540, 960, 3), dtype=np.uint8),
+    ), patch(
+        "app.benchmark_eval.prediction_exports._camera_payload_from_pipeline_homography",
+        return_value=fake_camera,
+    ):
+        prepare_prediction_exports(
+            suite={"id": "calib.sn_calib_medium_v1", "protocol": "calibration"},
+            recipe={"id": "pipeline:soccermaster", "pipeline": "soccermaster"},
+            dataset_root=str(dataset_root),
+            artifacts_dir=artifacts_dir,
+            benchmark_id="bench_calibration_metadata",
+        )
+
+    manifest = json.loads((artifacts_dir / "prediction_export.json").read_text(encoding="utf-8"))
+
+    assert manifest["status"] == "ready"
+    assert manifest["counts"]["annotation_files"] == 1
+    assert "missing_image_frame_ids" not in manifest["inputs"]
+
+
+def test_prepare_synloc_exports_falls_back_to_recipe_inference_and_writes_results(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "synloc_dataset"
+    annotations_dir = dataset_root / "annotations"
+    image_dir = dataset_root / "val"
+    annotations_dir.mkdir(parents=True)
+    image_dir.mkdir(parents=True)
+    (image_dir / "000001.jpg").write_bytes(b"not-a-real-image")
+    (annotations_dir / "val.json").write_text(
+        json.dumps(
+            {
+                "images": [
+                    {
+                        "id": 1,
+                        "file_name": "000001.jpg",
+                        "width": 960,
+                        "height": 540,
+                        "camera_matrix": np.eye(3, dtype=np.float32).tolist(),
+                        "undist_poly": [0.0, 0.0, 0.0],
+                    }
+                ],
+                "annotations": [
+                    {
+                        "id": 1,
+                        "image_id": 1,
+                        "category_id": 1,
+                        "bbox": [10.0, 20.0, 30.0, 40.0],
+                        "area": 1200.0,
+                        "position_on_pitch": [1.0, 2.0],
+                    }
+                ],
+                "categories": [{"id": 1, "name": "person"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    artifacts_dir = tmp_path / "artifacts"
+
+    with patch(
+        "app.benchmark_eval.prediction_exports._build_synloc_predictor",
+        return_value={"detector_model": object(), "detector_device": "cpu", "detector_spec": {"player_class_ids": [0]}},
+    ), patch(
+        "app.benchmark_eval.prediction_exports.cv2.imread",
+        return_value=np.zeros((540, 960, 3), dtype=np.uint8),
+    ), patch(
+        "app.benchmark_eval.prediction_exports._run_synloc_detector_on_image",
+        return_value=[
+            {
+                "bbox": [10.0, 20.0, 30.0, 40.0],
+                "score": 0.9,
+                "anchor": [25.0, 60.0],
+            }
+        ],
+    ), patch(
+        "app.benchmark_eval.prediction_exports._project_synloc_anchor_to_pitch",
+        return_value=[1.0, 2.0],
+    ):
+        prepared = prepare_prediction_exports(
+            suite={"id": "loc.synloc_quick_v1", "protocol": "synloc"},
+            recipe={"id": "tracker:soccana+hybrid_reid+soccana_keypoint", "artifact_path": "/tmp/model.pt"},
+            dataset_root=str(dataset_root),
+            artifacts_dir=artifacts_dir,
+            benchmark_id="bench_synloc",
+        )
+
+    predictions_path = artifacts_dir / "results.json"
+    metadata_path = artifacts_dir / "metadata.json"
+    manifest_path = artifacts_dir / "prediction_export.json"
+    predictions = json.loads(predictions_path.read_text(encoding="utf-8"))
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert prepared["artifacts"]["predictions_json"] == str(predictions_path)
+    assert predictions == [
+        {
+            "id": 1,
+            "image_id": 1,
+            "category_id": 1,
+            "bbox": [10.0, 20.0, 30.0, 40.0],
+            "area": 1200.0,
+            "score": 0.9,
+            "position_on_pitch": [1.0, 2.0],
+        }
+    ]
+    assert metadata == {
+        "score_threshold": None,
+        "position_from_keypoint_index": None,
+    }
+    assert manifest["status"] == "ready"
+    assert manifest["counts"]["generated_predictions"] == 1
+    assert manifest["counts"]["source_raw_detections"] == 1
 
 
 def test_prepare_team_spotting_exports_converts_repo_owned_source_json(tmp_path: Path) -> None:
@@ -179,6 +323,93 @@ def test_prepare_footpass_exports_converts_repo_owned_source_json(tmp_path: Path
     }
 
 
+def test_prepare_tracking_exports_converts_repo_owned_source_json(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "tracking_dataset"
+    dataset_root.mkdir(parents=True)
+    with zipfile.ZipFile(dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+        archive.writestr("SNMOT-002.txt", "")
+
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir(parents=True)
+    source_path = artifacts_dir / prediction_exports.TRACKING_SOURCE_FILENAME
+    source_path.write_text(
+        json.dumps(
+            {
+                "sequences": [
+                    {
+                        "sequence": "SNMOT-001",
+                        "detections": [
+                            {
+                                "frame": 1,
+                                "track_id": 7,
+                                "bbox_ltwh": [10, 20, 30, 40],
+                                "confidence": 0.95,
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prepare_prediction_exports(
+        suite={"id": "track.sn_tracking_medium_v1", "protocol": "tracking"},
+        recipe={"id": "synthetic:tracking"},
+        dataset_root=str(dataset_root),
+        artifacts_dir=artifacts_dir,
+        benchmark_id="bench_tracking",
+    )
+
+    tracker_submission_zip = artifacts_dir / "tracker_submission.zip"
+    manifest = json.loads((artifacts_dir / "prediction_export.json").read_text(encoding="utf-8"))
+    with zipfile.ZipFile(tracker_submission_zip, "r") as archive:
+        members = sorted(archive.namelist())
+        payload = archive.read("SNMOT-001.txt").decode("utf-8")
+        empty_payload = archive.read("SNMOT-002.txt").decode("utf-8")
+
+    assert members == ["SNMOT-001.txt", "SNMOT-002.txt"]
+    assert payload.strip() == "1,7,10,20,30,40,0.95,-1,-1,-1"
+    assert empty_payload == ""
+    assert manifest["status"] == "partial"
+    assert manifest["counts"]["missing_template_sequences"] == 1
+
+
+def test_prepare_tracking_exports_falls_back_to_recipe_inference_when_source_json_missing(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "tracking_dataset"
+    dataset_root.mkdir(parents=True)
+    with zipfile.ZipFile(dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+
+    artifacts_dir = tmp_path / "artifacts"
+    artifacts_dir.mkdir(parents=True)
+
+    with patch(
+        "app.benchmark_eval.prediction_exports._generate_tracking_predictions_from_recipe",
+        return_value={
+            "SNMOT-001": [
+                [1, 5, 10, 20, 30, 40, 0.9, -1, -1, -1],
+            ]
+        },
+    ):
+        prepare_prediction_exports(
+            suite={"id": "track.sn_tracking_medium_v1", "protocol": "tracking"},
+            recipe={"id": "synthetic:tracking"},
+            dataset_root=str(dataset_root),
+            artifacts_dir=artifacts_dir,
+            benchmark_id="bench_tracking_fallback",
+        )
+
+    tracker_submission_zip = artifacts_dir / "tracker_submission.zip"
+    manifest = json.loads((artifacts_dir / "prediction_export.json").read_text(encoding="utf-8"))
+    with zipfile.ZipFile(tracker_submission_zip, "r") as archive:
+        payload = archive.read("SNMOT-001.txt").decode("utf-8")
+
+    assert payload.strip() == "1,5,10,20,30,40,0.9,-1,-1,-1"
+    assert any("directly from the recipe" in note for note in manifest["notes"])
+
+
 def test_suite_runner_surfaces_team_spotting_export_blocker_with_artifact_reference(tmp_path: Path) -> None:
     dataset_root = tmp_path / "team_dataset"
     game_path = "england_efl/2019-2020/2019-10-01 - Stoke City - Huddersfield Town"
@@ -259,5 +490,46 @@ def test_suite_runner_surfaces_footpass_export_blocker_with_artifact_reference(t
     assert result["status"] == "blocked"
     assert prediction_exports.FOOTPASS_SOURCE_FILENAME in str(result["error"])
     assert "decord==0.6.0" in str(result["error"])
+    assert manifest["status"] == "blocked"
+    assert result["raw_result"]["prediction_export"]["status"] == "blocked"
+
+
+def test_suite_runner_surfaces_tracking_export_blocker_with_artifact_reference(tmp_path: Path) -> None:
+    dataset_root = tmp_path / "tracking_dataset"
+    dataset_root.mkdir(parents=True)
+    with zipfile.ZipFile(dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+    with zipfile.ZipFile(dataset_root / "gt.zip", "w") as archive:
+        archive.writestr("test/SNMOT-001/seqinfo.ini", "[Sequence]\nseqLength=1\n")
+        archive.writestr("test/SNMOT-001/gt/gt.txt", "1,1,10,20,30,40,1,-1,-1,-1\n")
+    (dataset_root / "seqmap.txt").write_text("name\nSNMOT-001\n", encoding="utf-8")
+
+    suite = {
+        "id": "track.sn_tracking_medium_v1",
+        "protocol": "tracking",
+        "metric_columns": ["hota", "deta", "assa", "frames_per_second"],
+        "primary_metric": "hota",
+        "required_capabilities": ["tracking"],
+    }
+    recipe = {
+        "id": "synthetic:tracking",
+        "available": True,
+        "capabilities": {"tracking": True},
+    }
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="bench_tracking_blocked",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state={"ready": True},
+        recipe=recipe,
+        dataset_root=str(dataset_root),
+    )
+
+    manifest_path = Path(str(result["artifacts"]["prediction_export_json"]))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert result["status"] == "blocked"
+    assert prediction_exports.TRACKING_SOURCE_FILENAME in str(result["error"])
     assert manifest["status"] == "blocked"
     assert result["raw_result"]["prediction_export"]["status"] == "blocked"

@@ -27,21 +27,21 @@
   - `det.roles_quick_v1`: [martinjolif/football-player-detection](https://huggingface.co/datasets/martinjolif/football-player-detection), primary `AP@[.50:.95]`
     - Status on 2026-03-12: suite definition and manifest exist; detection evaluator is real `pycocotools`-based code. This is the most complete labeled suite path in the repo right now.
   - `det.ball_quick_v1`: [martinjolif/football-ball-detection](https://huggingface.co/datasets/martinjolif/football-ball-detection), primary `AP_ball@[.50:.95]`
-    - Status on 2026-03-12: suite definition and manifest exist; it will use the same real COCO evaluator path once dataset materialization is present.
+    - Status on 2026-03-13: suite definition and manifest exist, the official-style YOLO dataset is now materialized under `backend/benchmarks/_datasets/det.ball_quick_v1`, and a real full benchmark-path probe completed through `backend/app/benchmark.py` using `detector:soccana`. Observed metrics on that real run were `ap_ball_50_95 = 0.2007045258485739`, `ap_50 = 0.5138866993357535`, `recall = 0.2864`, and `images_per_second = 15.286369961680025`.
   - `loc.synloc_quick_v1`: [Spiideo SynLoc / `sskit`](https://github.com/Spiideo/sskit), primary `mAP-LocSim`
-    - Status on 2026-03-12: suite definition and adapter scaffold exist; vendored tool checkout and executable validation path are still missing.
+    - Status on 2026-03-13: suite definition, vendored `sskit` checkout, repo-owned JSON wrapper (`backend/app/benchmark_eval/run_synloc_eval.py`), and a repo-owned prediction export bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` can either convert repo-owned localization detections into `results.json`/`metadata.json` or fall back to direct recipe inference over the dataset images, and a full synthetic benchmark-path smoke now completes with `map_locsim = 1.0`. The remaining honest blocker is dataset access: the official SoccerNet downloader for `SpiideoSynLoc` immediately prompts for `research.spiideo.com` credentials before any `valid.zip` or `annotations.zip` archive can be fetched on this machine.
   - `spot.team_bas_quick_v1`: [SoccerNet/SN-BAS-2025](https://huggingface.co/datasets/SoccerNet/SN-BAS-2025/tree/main) via [sn-teamspotting](https://github.com/SoccerNet/sn-teamspotting) and [sn-spotting](https://github.com/SoccerNet/sn-spotting), primary `Team-mAP@1`
-    - Status on 2026-03-13: suite definition, vendored evaluator sources, isolated action-spotting runtime, repo-owned JSON wrapper, and a repo-owned prediction-tree bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` can convert raw per-game event predictions into `artifacts/predictions/<game>/results_spotting.json`, and compatible cells now fail with a precise blocker naming the missing raw source artifact (`artifacts/recipe_event_spotting_predictions.json`) or missing `Labels-ball.json` game path instead of the old placeholder “missing export” state. A real adapter smoke was run end-to-end against a minimal evaluator-valid two-game test split and repo-owned raw predictions; the wrapper/export path completed successfully and returned `map_at_1 = 0.08333333333333333` with `team_map_at_1 = NaN` on that tiny synthetic split. Stage 2 now has a real manifest plus a downloaded official `SN-BAS-2025` `valid.zip` under `backend/datasets/huggingface/soccernet_sn_bas_2025/valid.zip`, but the extracted `Labels-ball.json` under `backend/benchmarks/_datasets/spot.team_bas_quick_v1/` is still zero-filled/unreadable on this machine, so the suite remains honestly blocked on password-protected validation members and on the still-missing `event_spotting` recipe family.
+    - Status on 2026-03-13: suite definition, vendored evaluator sources, isolated action-spotting runtime, repo-owned JSON wrapper, and a repo-owned prediction-tree bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` can convert raw per-game event predictions into `artifacts/predictions/<game>/results_spotting.json`, and compatible cells now fail with a precise blocker naming the missing raw source artifact (`artifacts/recipe_event_spotting_predictions.json`) or missing `Labels-ball.json` game path instead of the old placeholder “missing export” state. A real adapter smoke was run end-to-end against a minimal evaluator-valid two-game split and repo-owned raw predictions; the wrapper/export path completed successfully and returned `map_at_1 = 0.08333333333333333` with `team_map_at_1 = NaN` on that tiny synthetic split. Stage 2 is now materially real: the official `spotting-ball-2025/valid.zip` was extracted with `SOCCERNET_PASSWORD` from `/Users/davidmontgomery/football_pose_workbench/.env`, `backend/benchmarks/_datasets/spot.team_bas_quick_v1/.../Labels-ball.json` now parses as valid JSON, and the suite registry now pins `dataset_split = validation` so the wrapper normalizes to the vendor `val` split instead of silently aiming at `test`. The remaining blocker is recipe capability truth plus baseline provisioning, not dataset readiness: the shipped catalog still has no `event_spotting`-capable recipe row, and the vendored repo has no staged baseline checkpoint under `backend/third_party/soccernet/sn-teamspotting/`.
   - `calib.sn_calib_medium_v1`: [sn-calibration](https://github.com/SoccerNet/sn-calibration), primary `Completeness x JaC@5`
-    - Status on 2026-03-13: suite definition, vendored checkout, legacy runtime, repo-owned JSON wrapper, and the prediction-export bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` runs repo-owned calibration inference over `dataset_root/valid/*.jpg`, converts image-to-pipeline homographies into SoccerNet camera JSONs, and writes `artifacts/predictions/valid/camera_<frame_id>.json` plus an export summary before the wrapper runs. A real adapter smoke was run end-to-end by extracting a frame from the local benchmark clip, deriving evaluator-valid ground-truth line annotations from the predicted camera, and then running the salvage calibration adapter; metrics came back `completeness_x_jac_5 = 1.0`, `completeness = 1.0`, `jac_5 = 1.0`. A real bug in the camera-module import path surfaced during that smoke and was fixed in the same turn. Stage 2 now also has a real suite manifest that points at the expected `calibration-2023/valid` downloader output instead of the old generic “dataset missing” prose, but the official validation tree is still absent locally.
+    - Status on 2026-03-13: suite definition, vendored checkout, legacy runtime, repo-owned JSON wrapper, and the prediction-export bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` runs repo-owned calibration inference over `dataset_root/valid/*.jpg`, converts image-to-pipeline homographies into SoccerNet camera JSONs, and writes `artifacts/predictions/valid/camera_<frame_id>.json` plus an export summary before the wrapper runs. A real bug in the camera-module import path surfaced during the first smoke and was fixed in the same turn, and a second real bug where `match_info.json` was misclassified as a frame annotation was also fixed. Stage 2 is now materialized from the official `calibration-2023/valid.zip`, and a real full benchmark-path probe completed against the official validation tree with `completeness_x_jac_5 = 0.019613181489479787`, `completeness = 0.48537647790914745`, `jac_5 = 0.0404`, and `frames_per_second = 12.589369994673897`.
   - `track.sn_tracking_medium_v1`: [sn-tracking](https://github.com/SoccerNet/sn-tracking) plus [sn-trackeval](https://github.com/SoccerNet/sn-trackeval), primary `HOTA`
-    - Status on 2026-03-13: suite definition, vendored sources, and blocker reporting exist, and Stage 2 now has a real suite manifest that names the exact missing `SoccerNetMOT` tree plus the required `gt.zip` and `sample_submission.zip`. The suite is still honestly blocked because `backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT` is not materialized and the current adapter still lacks the per-recipe `TRACKERS_FOLDER_ZIP` export bridge for `backend/third_party/soccernet/sn-tracking/tools/evaluate_soccernet_v3_tracking.py`.
+    - Status on 2026-03-13: suite definition, vendored sources, and blocker reporting exist, and Stage 2 now has a real suite manifest that names the exact missing `SoccerNetMOT` tree plus the required `gt.zip` and `sample_submission.zip`. Stage 3 has now landed the per-recipe tracking execution bridge: `backend/app/benchmark_eval/prediction_exports.py` can either convert repo-owned raw tracking predictions into `artifacts/tracker_submission.zip` or run direct recipe inference over `test/<sequence>/img1` when no staged JSON is present, and `backend/app/benchmark_eval/run_tracking_eval.py` wraps the real TrackEval family into JSON so `backend/app/benchmark.py` can persist a real tracking `result.json`. A full synthetic benchmark-path smoke now completes with HOTA/DetA/AssA all equal to `1.0`. The remaining honest blocker for real suite runs is official SoccerNetMOT materialization, not a missing bridge.
   - `spot.pcbas_medium_v1`: [SoccerNet/SN-PCBAS-2026](https://huggingface.co/datasets/SoccerNet/SN-PCBAS-2026/tree/main) via [FOOTPASS](https://github.com/JeremieOchin/FOOTPASS), primary `F1@15%`
-    - Status on 2026-03-13: suite definition, FOOTPASS checkout, evaluation runtime, repo-owned JSON wrapper, and the play-by-play export bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` converts repo-owned raw play-by-play predictions into `artifacts/predictions.json`, and `evaluate_pcbas(...)` real-smoked successfully on this machine against vendored FOOTPASS sample validation files (`playbyplay_PRED/playbyplay_TAAD_val.json` against `playbyplay_GT/playbyplay_val.json`) with F1@15% `0.40995387750724016`. Stage 2 now has a real suite manifest plus a locally staged benchmark ground-truth file at `backend/benchmarks/_datasets/spot.pcbas_medium_v1/playbyplay_GT/playbyplay_val.json`, so the suite no longer reports a generic missing root. It remains honestly blocked because the official validation tactical/video archives are gated on Hugging Face (`401 GatedRepoError` for `tactical_data_VAL.zip`) and the shipped catalog still has no compatible event-capable recipe.
+    - Status on 2026-03-13: suite definition, FOOTPASS checkout, evaluation runtime, repo-owned JSON wrapper, and the play-by-play export bridge now exist. `backend/app/benchmark_eval/prediction_exports.py` converts repo-owned raw play-by-play predictions into `artifacts/predictions.json`, and `evaluate_pcbas(...)` real-smoked successfully on this machine against vendored FOOTPASS sample validation files (`playbyplay_PRED/playbyplay_TAAD_val.json` against `playbyplay_GT/playbyplay_val.json`) with F1@15% `0.40995387750724016`. Stage 2 now has a real suite manifest plus a locally staged benchmark ground-truth file at `backend/benchmarks/_datasets/spot.pcbas_medium_v1/playbyplay_GT/playbyplay_val.json`, so the suite no longer reports a generic missing root. It remains honestly blocked because the official validation tactical/video archives are gated on Hugging Face (`401 GatedRepoError` for `tactical_data_VAL.zip`), the vendored repo has no staged baseline checkpoint under `backend/third_party/soccernet/FOOTPASS/`, and the shipped catalog still has no compatible event-capable recipe.
   - `gsr.medium_v1`: [SoccerNet/SN-GSR-2025](https://huggingface.co/datasets/SoccerNet/SN-GSR-2025), DVC-pinned 12-clip validation subset, primary `GS-HOTA`
-    - Status on 2026-03-13: suite definition, vendored TrackLab/sn-gamestate sources, blocker reporting, and the dedicated `py39 + numpy<2` runtime now exist. Stage 2 now has a real suite manifest that names the expected `valid.zip` source archive and the remaining placeholder 12-clip ids. The suite is still honestly blocked by dataset materialization and the missing TrackLab/Hydra recipe bridge, and the local archive probe now has a concrete reason: `SoccerNet/SN-GSR-2025` only exposes `valid.zip` (~11.17 GB) and this workspace does not currently have enough free disk to stage that archive.
+    - Status on 2026-03-13: suite definition, vendored TrackLab/sn-gamestate sources, blocker reporting, the dedicated `py39 + numpy<2` runtime, the repo-owned JSON wrapper (`backend/app/benchmark_eval/run_gamestate_eval.py`), and the benchmark adapter bridge in `backend/app/benchmark_eval/gamestate.py` now exist. Stage 2 is materially real: the official `gamestate-2025/valid.zip` was downloaded, a fixed 12-sequence subset (`SNGS-021` through `SNGS-032`) was extracted under `backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS/valid`, and the placeholder clip ids are gone from the manifest. A real full benchmark-path baseline run now completes through `backend/app/benchmark.py` on `pipeline:sn-gamestate-tracklab`; the refreshed artifact-complete probe under `backend/benchmarks/live_gsr_medium_probe_v2/` observed `gs_hota = 0.23428000000000002`, `deta = 0.12039`, `assa = 0.45659999999999995`, and `frames_per_second = 176.00989312495943`. The remaining blocker is no longer a Stage 3 bridge gap: only non-baseline recipe-to-TrackLab mapping remains unsupported.
   - `gsr.long_v1`: full `SN-GSR-2025` validation via [TrackLab](https://github.com/TrackingLaboratory/tracklab), [sn-gamestate](https://github.com/SoccerNet/sn-gamestate), and [sn-trackeval](https://github.com/SoccerNet/sn-trackeval), primary `GS-HOTA`
-    - Status on 2026-03-13: suite definition, long-run manifest, and the dedicated TrackLab/sn-gamestate runtime now exist. The suite is still unfinished for the same explicit dataset-materialization and TrackLab adapter reasons as `gsr.medium_v1`, and the Stage 2 blocker is now concrete: the full validation `valid.zip` is the only upstream archive and the current machine does not have enough free disk to stage and unpack it.
+    - Status on 2026-03-13: suite definition, long-run manifest, the dedicated TrackLab/sn-gamestate runtime, and the same repo-owned JSON wrapper/result-harvesting path now exist. Stage 2 is materialized for the full validation tree: the official `gamestate-2025/valid.zip` was extracted under `backend/benchmarks/_datasets/gsr.long_v1/SoccerNetGS/valid`. A real full benchmark-path baseline run now completes through `backend/app/benchmark.py` on `pipeline:sn-gamestate-tracklab`; the live probe under `backend/benchmarks/live_gsr_long_probe/` observed `gs_hota = 0.18847000000000003`, `deta = 0.079545`, `assa = 0.44728`, and `frames_per_second = 204.86144774950526`. The remaining unsupported work is non-baseline recipe mapping, not missing baseline execution plumbing.
   - `ops.clip_review_v1`: preserved clip pipeline, primary `FPS`, secondary `track_stability`, `calibration`, `coverage`, explicitly labeled non-ground-truth
     - Status on 2026-03-12: implemented and carried forward. Legacy benchmark records hydrate into this suite, and the operational evaluator wraps the real analysis pipeline.
 - No global composite for real suites. The matrix is sort/filter only. Unsupported cells render `N/A`.
@@ -55,13 +55,13 @@
 
 ### Team 1: Suite Data And Provenance
 - Write scope: [pull_hf_football_datasets.py](/Users/davidmontgomery/football_pose_workbench/backend/scripts/pull_hf_football_datasets.py), new [benchmark_suites.py](/Users/davidmontgomery/football_pose_workbench/backend/app/benchmark_suites.py), new [benchmark_provenance.py](/Users/davidmontgomery/football_pose_workbench/backend/app/benchmark_provenance.py), `backend/benchmarks/_datasets/`, `backend/benchmarks/_manifests/`, `backend/benchmarks/_conversions/`.
-  - Status on 2026-03-13: moved beyond scaffolding. The salvage tree now has real suite manifest files under `backend/benchmarks/_manifests/`, a downloaded `SN-BAS-2025` validation archive under `backend/datasets/huggingface/soccernet_sn_bas_2025/`, and a locally staged `spot.pcbas_medium_v1` validation GT JSON under `backend/benchmarks/_datasets/spot.pcbas_medium_v1/playbyplay_GT/playbyplay_val.json`.
+  - Status on 2026-03-13: moved beyond scaffolding. The salvage tree now has real suite manifest files under `backend/benchmarks/_manifests/`, a materialized `spot.team_bas_quick_v1` validation game extracted from the official archive with the NDA password in `/Users/davidmontgomery/football_pose_workbench/.env`, a materialized `calib.sn_calib_medium_v1` validation tree, a materialized `gsr.medium_v1` fixed 12-sequence subset, a materialized `gsr.long_v1` full validation tree, and a locally staged `spot.pcbas_medium_v1` validation GT JSON under `backend/benchmarks/_datasets/spot.pcbas_medium_v1/playbyplay_GT/playbyplay_val.json`.
 - Add `backend/app/benchmark_suites.json` with the 10 suite definitions above, including `tier`, `source_url`, `license`, `protocol`, `primary_metric`, `metric_columns`, `required_capabilities`, `dataset_root`, `manifest_path`, and `dvc_required=true`.
   - Status on 2026-03-12: implemented. The suite registry JSON exists and is loaded by `benchmark_suites.py`.
 - DVC-track `backend/benchmarks/_datasets/<suite_id>/`, `backend/benchmarks/_manifests/<suite_id>.json`, and `backend/benchmarks/_conversions/<suite_id>/`.
   - Status on 2026-03-13: not yet true in this salvage worktree. The benchmark directories exist and Benchmark Lab now reports their DVC status honestly as present/untracked because the root `.dvc` pointer files are not present here.
 - For `gsr.medium_v1`, create a fixed `gsr_medium_12clip_manifest.json`; for `gsr.long_v1`, use the full validation manifest.
-  - Status on 2026-03-13: still partially implemented. The suite manifests now carry concrete archive/blocker details, but the `gsr.medium_v1` item list is still placeholder data because the full `valid.zip` archive has not been staged locally and the 12-clip subset cannot be locked honestly yet.
+  - Status on 2026-03-13: materially implemented. The fixed medium subset is now locked to `SNGS-021` through `SNGS-032`, and both `gsr.medium_v1` and `gsr.long_v1` now point at the staged official `gamestate-2025/valid.zip` source archive instead of the old disk-space placeholder story.
 
 ### Team 2: Evaluator Stack
 - Write scope: `backend/requirements.txt`, new `backend/app/benchmark_eval/`, new `backend/third_party/soccernet/`, new `backend/third_party/LOCKS.md`.
@@ -74,17 +74,17 @@
   - `coco_detection.py`: convert YOLO labels/preds to COCO JSON once, score with `pycocotools.COCOeval`
     - Status on 2026-03-12: implemented as the real detection evaluator.
   - `synloc.py`: call `sskit` and persist `mAP-LocSim`
-    - Status on 2026-03-12: scaffolded only; still depends on missing vendored/runtime pieces.
+    - Status on 2026-03-13: no longer a scaffold. The adapter now uses a repo-owned JSON wrapper (`run_synloc_eval.py`) around the vendored SynLoc `LocSimCOCOeval` logic, and `prediction_exports.py` can emit `results.json`/`metadata.json` either from repo-owned localization detections or from direct recipe inference over the dataset images. A full synthetic benchmark-path smoke now completes with `map_locsim = 1.0`. Honest real-suite execution remains blocked by upstream Spiideo dataset credentials, not by missing evaluator/runtime wiring.
   - `team_spotting.py`: call `sn-teamspotting` and `sn-spotting`
-    - Status on 2026-03-12: scaffolded only; still depends on missing vendored/runtime pieces.
+    - Status on 2026-03-13: no longer a scaffold. The adapter uses a repo-owned JSON wrapper and a repo-owned prediction-tree export bridge, and the remaining blocker is recipe capability truth rather than missing vendored/runtime wiring.
   - `calibration.py`: call `sn-calibration`
-    - Status on 2026-03-12: scaffolded only; still depends on missing vendored/runtime pieces.
+    - Status on 2026-03-13: no longer a scaffold. The adapter uses a repo-owned JSON wrapper and a repo-owned camera export bridge, and a real full benchmark-path run has completed on the official validation tree.
   - `tracking.py`: call `sn-tracking` and `sn-trackeval`
-    - Status on 2026-03-12: no longer a generic scaffold. The adapter now points at the real vendored `sn-tracking` evaluator path and emits explicit blocker reasons, but honest execution is still blocked by missing `SoccerNetMOT` materialization and the absent recipe-to-`TRACKERS_FOLDER_ZIP` export bridge.
+    - Status on 2026-03-13: no longer a generic scaffold. The adapter now uses a repo-owned JSON wrapper (`run_tracking_eval.py`) around the real TrackEval/SoccerNet tracking evaluator family, and `prediction_exports.py` now emits the `TRACKERS_FOLDER_ZIP` bundle the vendored tooling expects from either staged raw tracking JSON or direct recipe inference over SoccerNetMOT image sequences. Honest real-suite execution is still blocked by missing `SoccerNetMOT` materialization, but the bridge gap itself is closed.
   - `pcbas.py`: call `FOOTPASS`
-    - Status on 2026-03-12: scaffolded only; still depends on missing vendored/runtime pieces.
+    - Status on 2026-03-13: no longer a scaffold. The adapter uses the real vendored evaluator path through a repo-owned JSON wrapper and a repo-owned play-by-play export bridge. Honest suite execution is still blocked by gated validation archives and the absence of a compatible shipped recipe.
   - `gamestate.py`: call `TrackLab` + `sn-gamestate` + `sn-trackeval`
-    - Status on 2026-03-12: no longer a generic scaffold. The adapter now emits explicit blocker reasons tied to the vendored TrackLab/sn-gamestate stack, but honest execution is still blocked by missing `SoccerNetGS` materialization, placeholder medium-manifest clip ids, Python/NumPy incompatibility (`sn-gamestate` wants `<3.10` / `numpy<2`), missing installed `tracklab`/`sn_gamestate` packages, and the absent recipe-to-Hydra bridge.
+    - Status on 2026-03-13: no longer a generic scaffold. The adapter now emits explicit blocker reasons tied to the resolved baseline command shape and live runtime evidence. `SoccerNetGS` is now materialized for both the medium subset and the long validation tree, the isolated `py39 + numpy<2` env is real, and after a `SoccerNetGS-valid` naming fix in the vendored TrackLab evaluator a manual one-sequence validation-state run completed with real GS-HOTA metrics. Honest benchmark execution is still blocked because Benchmark Lab does not yet have the repo-owned JSON wrapper/result-harvesting layer around that working command.
   - `operational.py`: wrap the current clip pipeline unchanged except for honest naming
     - Status on 2026-03-12: implemented.
 - Do not hand-roll any metric family above.
@@ -208,9 +208,9 @@
   - `det.roles_quick_v1` on `soccana` and one promoted custom detector
     - Status on 2026-03-12: completed via benchmark `20260312_175409_2a48ad`.
   - `track.sn_tracking_medium_v1` on `soccana+bytetrack+soccana_keypoint` and `soccana+hybrid_reid+soccana_keypoint`
-    - Status on 2026-03-12: not finished. Exact blocker: `backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT` is not materialized, and the backend still lacks the per-recipe export bridge required by `backend/third_party/soccernet/sn-tracking/tools/evaluate_soccernet_v3_tracking.py`.
+    - Status on 2026-03-13: not finished for the real suite. Exact blocker: `backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT` is still not materialized. The bridge gap is no longer the blocker: a synthetic full benchmark-path smoke now completes through the real export + wrapper stack, so the remaining work is official dataset materialization and then the required real recipe runs.
   - `gsr.medium_v1` on `pipeline:soccermaster` and `tracker:soccana+hybrid_reid+soccana_keypoint`
-    - Status on 2026-03-12: not finished. Exact blocker: `backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS` is not materialized for the fixed 12-clip subset, and the backend still lacks the TrackLab/sn-gamestate per-recipe execution bridge required by `backend/third_party/soccernet/sn-gamestate/sn_gamestate/configs/soccernet.yaml`.
+    - Status on 2026-03-13: still not finished for those two non-baseline rows, but the old blocker text is stale. `backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS` is now materialized and the baseline TrackLab/sn-gamestate bridge is real. The remaining blocker is recipe mapping truth: Benchmark Lab can execute the shipped baseline row `pipeline:sn-gamestate-tracklab`, but it still does not translate `pipeline:soccermaster` or `tracker:soccana+hybrid_reid+soccana_keypoint` into TrackLab tracker-state inputs or module overrides.
   - one `ops.clip_review_v1` run to confirm overlay/diagnostics survive intact
     - Status on 2026-03-12: completed via persisted v2 operational results under `backend/benchmarks/20260312_175156_134e9a/` and the completed multi-suite validation benchmark `backend/benchmarks/20260312_185244_273baa/`. A dedicated Soccermaster blocker verification artifact also exists at `backend/benchmarks/20260312_185955_b062b7/`.
 - Required checks:
@@ -344,18 +344,20 @@
     - `run_calibration_eval.py`
     - `run_team_spotting_eval.py`
     - `run_footpass_eval.py`
+    - `run_tracking_eval.py`
   - Status update on 2026-03-13:
     - `backend/app/benchmark_eval/prediction_exports.py` now lands the Stage 1 export-bridge slice:
       - calibration: generate `artifacts/predictions/valid/camera_<frame_id>.json`
       - team spotting: generate `artifacts/predictions/<game>/results_spotting.json` from repo-owned raw event JSON
       - FOOTPASS: generate `artifacts/predictions.json` from repo-owned raw play-by-play JSON
+      - tracking: generate top-level `SNMOT-*.txt` files plus `artifacts/tracker_submission.zip` from repo-owned raw tracking JSON or direct recipe inference over SoccerNetMOT image sequences
     - the benchmark runner now prepares those bridge artifacts before evaluator dispatch, and the protocol adapters also use the same bridge helpers when called directly
     - the broader FOOTPASS baseline-side `decord` limitation is now kept explicitly separate from the evaluator path; it still blocks baseline/helper provisioning, but not `evaluation.py`
   - remaining work in this stage:
     - keep Stage 1 focused on honest runtime + export-contract truth; do not let Stage 3 recipe or dataset gaps get relabeled as runtime gaps
 - Exit criteria:
   - every remaining adapter can be invoked against its real evaluator entrypoint in some honest runtime, even if the suite dataset is still missing
-  - Status on 2026-03-13: met for calibration, team-spotting, and FOOTPASS. Tracking and gamestate still need their separate Stage 3 recipe bridges.
+  - Status on 2026-03-13: met for calibration, team-spotting, FOOTPASS, and tracking. Gamestate still needs its separate Stage 3 recipe bridge, and SynLoc still lacks its vendored/runtime execution path.
 
 ### Stage 2: Materialize every suite dataset and manifest honestly
 
@@ -379,32 +381,51 @@
     - `loc.synloc_quick_v1`
     - `spot.team_bas_quick_v1`
     - `calib.sn_calib_medium_v1`
-    - `track.sn_tracking_medium_v1`
-    - `spot.pcbas_medium_v1`
-    - `gsr.medium_v1`
-    - `gsr.long_v1`
+  - `track.sn_tracking_medium_v1`
+  - `spot.pcbas_medium_v1`
+  - `gsr.medium_v1`
+  - `gsr.long_v1`
   - replace placeholder `gsr.medium_v1` clip ids with the real locked 12-clip validation subset
+    - Status on 2026-03-13: implemented. The fixed subset is now `SNGS-021` through `SNGS-032`.
   - ensure every dataset-state note in the API names the concrete root, split, and missing material when blocked
 - Current status on 2026-03-13:
   - `spot.pcbas_medium_v1` now has a real local GT file in the benchmark root and a manifest-backed blocker naming the gated missing `tactical_data_VAL.zip` / video archives instead of a generic missing root.
-  - `spot.team_bas_quick_v1` now has a real local archive download plus a manifest-backed blocker naming the unusable extracted validation members instead of a generic missing root.
-  - `calib.sn_calib_medium_v1`, `track.sn_tracking_medium_v1`, `gsr.medium_v1`, and `gsr.long_v1` now have manifest-backed dataset blockers that name the exact expected roots/materials instead of vague “not ready” prose.
-  - `gsr.medium_v1` is still not lockable because the manifest item ids remain placeholders and the only exposed validation archive is too large for the current free disk.
+  - `spot.team_bas_quick_v1` is now materially extracted from the official encrypted archive via `SOCCERNET_PASSWORD`; the suite is no longer dataset-blocked and now waits only on a real `event_spotting` recipe family.
+  - `calib.sn_calib_medium_v1` is now materialized from the official validation archive and has already produced a real benchmark-path result.
+  - `gsr.medium_v1` and `gsr.long_v1` are both now materialized from the official `gamestate-2025/valid.zip`, and the baseline TrackLab/sn-gamestate wrapper/result-harvesting layer is now real as well; remaining work is non-baseline recipe mapping and later matrix coverage, not disk, placeholder ids, or missing Stage 3 plumbing.
 - Per-suite Stage 2 status on 2026-03-13:
-  - `det.ball_quick_v1`: `blocked_with_exact_evidence`. Manifest now names the exact expected YOLO dataset contract and the absence of any locally staged `football-ball-detection` source tree.
-  - `loc.synloc_quick_v1`: `blocked_with_exact_evidence`. Manifest now names the exact expected suite root plus the missing vendored `sskit` checkout.
-  - `spot.team_bas_quick_v1`: `partially_materialized`. Official `valid.zip` is downloaded, but extracted validation members are unusable here, so the suite remains dataset-blocked with an exact source/failure record.
-  - `calib.sn_calib_medium_v1`: `blocked_with_exact_evidence`. Manifest now names the exact expected `calibration-2023/valid` layout and local absence.
+  - `det.ball_quick_v1`: `materialized`. The dataset is staged locally and the real benchmark path has already completed through the COCO evaluator.
+  - `loc.synloc_quick_v1`: `blocked_with_exact_evidence`. The vendored `sskit` checkout and repo-owned bridge now exist, but the official `SpiideoSynLoc` downloader halts for `research.spiideo.com` credentials before any local `valid.zip` / `annotations.zip` can be staged.
+  - `spot.team_bas_quick_v1`: `materialized`. The official encrypted `valid.zip` is now extracted with the NDA password and the staged `Labels-ball.json` is readable JSON beside the source video.
+  - `calib.sn_calib_medium_v1`: `materialized`. The official `calibration-2023/valid` layout is now staged locally and the full benchmark path runs.
   - `track.sn_tracking_medium_v1`: `blocked_with_exact_evidence`. Manifest now names the exact missing `SoccerNetMOT` tree plus `gt.zip` and `sample_submission.zip`.
   - `spot.pcbas_medium_v1`: `partially_materialized`. Local evaluator GT is staged; official validation tactical/video archives remain gated and missing.
-  - `gsr.medium_v1`: `blocked_with_exact_evidence`. Manifest now names the exact `valid.zip` source and the disk-space blocker; 12-clip ids are still placeholders.
-  - `gsr.long_v1`: `blocked_with_exact_evidence`. Manifest now names the exact `valid.zip` source and the disk-space blocker.
+  - `gsr.medium_v1`: `materialized`. The fixed 12-sequence subset `SNGS-021` through `SNGS-032` is now extracted under `SoccerNetGS/valid`.
+  - `gsr.long_v1`: `materialized`. The full validation tree is now extracted under `SoccerNetGS/valid`.
 - Exit criteria:
   - benchmark config can truthfully distinguish runnable suites from adapter/runtime blockers instead of lumping them into “dataset missing”
 
 ### Stage 3: Finish suite-specific execution bridges in order of original risk
 
 - Goal: make every shipped suite in the original v1 list honestly runnable.
+- Current status on 2026-03-13:
+  - `track.sn_tracking_medium_v1` has crossed the execution-bridge line:
+    - `prediction_exports.py` now converts repo-owned raw tracking predictions into `TRACKERS_FOLDER_ZIP` and falls back to direct recipe inference when no staged JSON exists
+    - `run_tracking_eval.py` now owns the JSON boundary around the real TrackEval family instead of pretending the vendored CLI prints JSON
+    - a synthetic one-sequence benchmark cell completes end-to-end through `backend/app/benchmark.py`
+    - remaining blocker for real suite work is the missing official `SoccerNetMOT` materialization
+  - `loc.synloc_quick_v1` has also crossed the execution-bridge line:
+    - `prediction_exports.py` now emits `results.json` / `metadata.json` from either repo-owned localization detections or direct recipe inference over the dataset images
+    - `run_synloc_eval.py` now owns the JSON boundary around the real SynLoc `LocSimCOCOeval` logic
+    - a synthetic benchmark cell completes end-to-end through `backend/app/benchmark.py`
+    - remaining blocker for real suite work is upstream Spiideo dataset access, not evaluator/runtime wiring
+  - `gsr.medium_v1` and `gsr.long_v1` have now crossed the execution-bridge line as well:
+    - `run_gamestate_eval.py` owns the JSON boundary around the resolved TrackLab/sn-gamestate baseline command
+    - `gamestate.py` can execute the shipped baseline row `pipeline:sn-gamestate-tracklab` through the official compressed validation tracker state
+    - real full benchmark-path runs now complete for both the 12-sequence medium subset and the full validation tree
+    - remaining work for GSR is no longer Stage 3 bridge wiring; it is non-baseline recipe mapping plus the original Stage 4 row coverage
+  - the next unfinished Stage 3 centers are now:
+    - recipe-capability truth for `spot.team_bas_quick_v1` and `spot.pcbas_medium_v1` until event-capable recipes actually exist
 - Priority order:
   - `det.ball_quick_v1`
     - lowest-risk completion because it reuses the real COCO evaluator path
@@ -413,11 +434,11 @@
   - `spot.team_bas_quick_v1`
   - `spot.pcbas_medium_v1`
   - `track.sn_tracking_medium_v1`
-    - implement the per-recipe `TRACKERS_FOLDER_ZIP` export bridge expected by `sn-tracking`
+    - Status on 2026-03-13: implemented. Keep remaining work scoped to dataset materialization plus the required real recipe runs, not to inventing another tracking bridge.
   - `gsr.medium_v1`
-    - implement the recipe-to-TrackLab / Hydra bridge for the fixed 12-clip subset
+    - Status on 2026-03-13: baseline bridge implemented and benchmark-path run completed. Keep remaining work scoped to non-baseline recipe mapping and the required Stage 4 recipe rows.
   - `gsr.long_v1`
-    - same bridge, full validation scale
+    - Status on 2026-03-13: baseline bridge implemented at full validation scale. Keep remaining work scoped to non-baseline recipe mapping and later comparison coverage.
 - Exit criteria:
   - each suite produces a real `suite_results/<suite_id>/<recipe_id>/result.json` backed by the intended evaluator family, not a scaffold or guessed metric path
 
@@ -438,11 +459,16 @@
   - one real `spot.team_bas_quick_v1` or explicit evaluator blocker artifact if that baseline still cannot execute
   - one real `spot.pcbas_medium_v1` or explicit evaluator blocker artifact if that baseline still cannot execute
   - Status update on 2026-03-13:
+    - `det.ball_quick_v1`: a real full benchmark-path run completed through `backend/app/benchmark.py`
     - `spot.pcbas_medium_v1`: evaluator path now has a real smoke artifact from the vendored sample validation files; keep the suite-level benchmark validation requirement open until a benchmark cell runs from a real compatible recipe
-    - `calib.sn_calib_medium_v1`: real adapter smoke completed using a one-frame dataset built from the local benchmark clip plus evaluator-valid line annotations derived from the predicted camera
+    - `calib.sn_calib_medium_v1`: a real full benchmark-path run completed on the official validation tree after the `match_info.json` export bug was fixed
+    - `loc.synloc_quick_v1`: a synthetic full benchmark-path run completed through the real SynLoc export + evaluator wrapper; keep the real-suite validation requirement open until official Spiideo data is staged
     - `spot.team_bas_quick_v1`: real adapter smoke completed using a minimal evaluator-valid two-game test split plus repo-owned raw event predictions
+    - `track.sn_tracking_medium_v1`: synthetic full benchmark-path smoke completed through the real `TRACKERS_FOLDER_ZIP` export plus TrackEval JSON wrapper on a one-sequence evaluator-valid SNMOT split; keep the official suite validation requirement open until the real `SoccerNetMOT` tree is materialized
+    - `gsr.medium_v1`: a real full benchmark-path baseline run completed through `pipeline:sn-gamestate-tracklab`, and the refreshed v2 probe now persists `summary_txt`, `predictions_zip`, `tracklab_main_log`, and `external_result_json` directly in the suite `result.json`
+    - `gsr.long_v1`: a real full benchmark-path baseline run completed through `pipeline:sn-gamestate-tracklab` on the full validation tree with the same persisted artifact contract
     - suite-level blocker verification now exists through the real benchmark runner for:
-      - `spot.team_bas_quick_v1`: blocked on the downloaded-but-unusable validation archive members instead of a generic missing root
+      - `spot.team_bas_quick_v1`: `N/A` at the shipped-catalog level because the dataset is now materialized but no `event_spotting`-capable recipe row exists
       - `spot.pcbas_medium_v1`: blocked on the local GT + gated upstream tactical/video archives instead of a generic missing root
 - Exit criteria:
   - every suite in the original shipped list has either:

@@ -6,12 +6,10 @@
   "selection": "full_validation",
   "task_coverage": ["game_state"],
   "materialization": {
-    "status": "blocked",
+    "status": "materialized",
     "source_archives": [
-      "backend/datasets/huggingface/soccernet_sn_gsr_2025_long/valid.zip"
+      "backend/datasets/soccernet_official_live/gamestate-2025/valid.zip"
     ],
-    "blockers": [
-      "No full SoccerNetGS validation archive is materialized locally for gsr.long_v1. The upstream validation artifact is SoccerNet/SN-GSR-2025 valid.zip (~11.17 GB), and this workspace does not currently have enough free disk to stage that archive and unpack the full valid/ tree."
-    ]
+    "blockers": []
   }
 }
