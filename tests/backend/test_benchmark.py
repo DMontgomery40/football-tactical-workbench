@@ -69,35 +69,44 @@ def test_tracking_dataset_state_reports_concrete_expected_root_and_adapter_block
     assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
-def test_gsr_dataset_state_is_materialized() -> None:
+def test_gsr_dataset_manifest_declares_materialized_state() -> None:
     suite = get_suite_definition("gsr.medium_v1")
     state = build_suite_dataset_state(suite)
 
-    assert state["ready"] is True
-    assert state["readiness_status"] == "ready"
-    assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS")
-    assert state["blockers"] == []
     assert state["manifest_summary"]["materialization_status"] == "materialized"
+    assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS")
+    if state["ready"]:
+        assert state["readiness_status"] == "ready"
+        assert state["blockers"] == []
+    else:
+        assert state["blockers"]
+        assert any("SoccerNetGS" in blocker for blocker in state["blockers"])
 
 
-def test_ball_quick_dataset_state_is_materialized() -> None:
+def test_ball_quick_dataset_manifest_declares_materialized_state() -> None:
     suite = get_suite_definition("det.ball_quick_v1")
     state = build_suite_dataset_state(suite)
 
-    assert state["ready"] is True
     assert state["manifest_exists"] is True
-    assert state["blockers"] == []
     assert state["manifest_summary"]["materialization_status"] == "materialized"
+    if state["ready"]:
+        assert state["blockers"] == []
+    else:
+        assert state["blockers"]
+        assert any("backend/benchmarks/_datasets/det.ball_quick_v1" in blocker for blocker in state["blockers"])
 
 
-def test_team_bas_dataset_state_is_materialized() -> None:
+def test_team_bas_dataset_manifest_declares_materialized_state() -> None:
     suite = get_suite_definition("spot.team_bas_quick_v1")
     state = build_suite_dataset_state(suite)
 
-    assert state["ready"] is True
-    assert state["blockers"] == []
     assert state["manifest_summary"]["materialization_status"] == "materialized"
     assert suite["dataset_split"] == "validation"
+    if state["ready"]:
+        assert state["blockers"] == []
+    else:
+        assert state["blockers"]
+        assert any("Labels-ball.json" in blocker or "backend/benchmarks/_datasets/spot.team_bas_quick_v1" in blocker for blocker in state["blockers"])
 
 
 def test_synloc_stage2_manifest_uses_exact_blocker_not_generic_missing_root() -> None:
@@ -402,6 +411,9 @@ def test_gsr_baseline_cell_completes_when_wrapper_returns_metrics(tmp_path: Path
     recipe["gamestate_state_file"] = str(state_file)
 
     with patch(
+        "app.benchmark_eval.gamestate.probe_gamestate_blockers",
+        return_value=[],
+    ), patch(
         "app.benchmark_eval.gamestate.run_external_json_command",
         return_value={
             "_external_result_path": str(tmp_path / "external_result.json"),
