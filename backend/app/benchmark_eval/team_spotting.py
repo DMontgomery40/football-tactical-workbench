@@ -10,6 +10,13 @@ from .prediction_exports import ensure_team_spotting_prediction_export
 TEAM_SPOTTING_WRAPPER_PATH = Path(__file__).resolve().with_name("run_team_spotting_eval.py")
 
 
+def _normalized_team_spotting_split(suite: dict[str, Any]) -> str:
+    raw_split = str(suite.get("dataset_split") or "test").strip().lower()
+    if raw_split in {"validation", "valid"}:
+        return "val"
+    return raw_split or "test"
+
+
 def evaluate_team_spotting(*, suite: dict[str, Any], recipe: dict[str, Any], dataset_root: str, artifacts_dir: str | Path, benchmark_id: str) -> dict[str, Any]:
     repo_dir = Path(__file__).resolve().parents[2] / "third_party" / "soccernet" / "sn-teamspotting"
     if not repo_dir.exists():
@@ -28,7 +35,7 @@ def evaluate_team_spotting(*, suite: dict[str, Any], recipe: dict[str, Any], dat
             "--predictions-root",
             str(predictions_root),
             "--split",
-            "test",
+            _normalized_team_spotting_split(suite),
             "--metric",
             "at1",
             "--prediction-file",

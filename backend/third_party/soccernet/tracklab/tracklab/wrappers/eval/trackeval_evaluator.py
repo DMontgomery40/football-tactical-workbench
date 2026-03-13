@@ -30,9 +30,12 @@ class TrackEvalEvaluator(EvaluatorBase):
 
         tracker_name = 'tracklab'
         save_classes = self.trackeval_dataset_class.__name__ != 'MotChallenge2DBox'
+        benchmark_name = self.trackeval_dataset_name
+        if self.trackeval_dataset_class.__name__ == "SoccerNetGS":
+            benchmark_name = "SoccerNetGS"
 
         # Save predictions
-        pred_save_path = Path(self.cfg.dataset.TRACKERS_FOLDER) / f"{self.trackeval_dataset_name}-{self.eval_set}" / tracker_name
+        pred_save_path = Path(self.cfg.dataset.TRACKERS_FOLDER) / f"{benchmark_name}-{self.eval_set}" / tracker_name
         self.tracking_dataset.save_for_eval(
             tracker_state.detections_pred,
             tracker_state.image_metadatas,
@@ -52,7 +55,7 @@ class TrackEvalEvaluator(EvaluatorBase):
             return
 
         # Save ground truth
-        gt_save_path = Path(self.cfg.dataset.GT_FOLDER) / f"{self.trackeval_dataset_name}-{self.eval_set}"
+        gt_save_path = Path(self.cfg.dataset.GT_FOLDER) / f"{benchmark_name}-{self.eval_set}"
         if self.cfg.save_gt:
             self.tracking_dataset.save_for_eval(
                 tracker_state.detections_gt,
@@ -149,4 +152,3 @@ def format_metric(metric_name, metric_value, scale_factor):
         return int(metric_value)
     else:
         return np.around(metric_value * scale_factor, 3)
-

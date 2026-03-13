@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,10 +14,30 @@ BACKEND_DIR = ROOT_DIR / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.benchmark_eval import calibration, pcbas, prediction_exports, team_spotting
+from app.benchmark_eval import calibration, gamestate, pcbas, prediction_exports, synloc, team_spotting, tracking
 
 
 def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> None:
+    synloc_dataset_root = tmp_path / "synloc_dataset"
+    (synloc_dataset_root / "annotations").mkdir(parents=True)
+    (synloc_dataset_root / "annotations" / "val.json").write_text(
+        json.dumps(
+            {
+                "images": [{"id": 1, "file_name": "000001.jpg", "width": 960, "height": 540}],
+                "annotations": [],
+                "categories": [{"id": 1, "name": "person"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    synloc_artifacts = tmp_path / "synloc"
+    synloc_artifacts.mkdir(parents=True)
+    (synloc_artifacts / "results.json").write_text("[]", encoding="utf-8")
+    (synloc_artifacts / "metadata.json").write_text(
+        json.dumps({"score_threshold": None, "position_from_keypoint_index": None}),
+        encoding="utf-8",
+    )
+
     calibration_dataset = tmp_path / "calibration_dataset" / "valid"
     calibration_dataset.mkdir(parents=True)
     image = np.zeros((540, 960, 3), dtype=np.uint8)
@@ -64,6 +85,49 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
         encoding="utf-8",
     )
 
+    tracking_dataset_root = tmp_path / "tracking_dataset"
+    (tracking_dataset_root / "train").mkdir(parents=True)
+    (tracking_dataset_root / "test").mkdir(parents=True)
+    with zipfile.ZipFile(tracking_dataset_root / "sample_submission.zip", "w") as archive:
+        archive.writestr("SNMOT-001.txt", "")
+    with zipfile.ZipFile(tracking_dataset_root / "gt.zip", "w") as archive:
+        archive.writestr("test/SNMOT-001/seqinfo.ini", "[Sequence]\nseqLength=1\n")
+        archive.writestr("test/SNMOT-001/gt/gt.txt", "1,1,10,20,30,40,1,-1,-1,-1\n")
+    (tracking_dataset_root / "seqmap.txt").write_text("name\nSNMOT-001\n", encoding="utf-8")
+    tracking_artifacts = tmp_path / "tracking"
+    tracking_artifacts.mkdir(parents=True)
+    (tracking_artifacts / prediction_exports.TRACKING_SOURCE_FILENAME).write_text(
+        json.dumps(
+            {
+                "sequences": [
+                    {
+                        "sequence": "SNMOT-001",
+                        "detections": [
+                            {
+                                "frame": 1,
+                                "track_id": 1,
+                                "bbox_ltwh": [10, 20, 30, 40],
+                                "confidence": 0.9,
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    gamestate_dataset_root = tmp_path / "gamestate_dataset" / "valid" / "SNGS-021"
+    gamestate_dataset_root.mkdir(parents=True)
+    (gamestate_dataset_root / "Labels-GameState.json").write_text(
+        json.dumps({"info": {"version": "1.3"}, "images": [], "annotations": [], "categories": []}),
+        encoding="utf-8",
+    )
+    gamestate_artifacts = tmp_path / "gamestate"
+    gamestate_artifacts.mkdir(parents=True)
+    gamestate_state_file = tmp_path / "gamestate_state.pklz"
+    gamestate_state_file.write_bytes(b"stub-state")
+
     captured: list[dict[str, object]] = []
 
     def fake_run_external_json_command(**kwargs: object) -> dict[str, object]:
@@ -73,11 +137,16 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
             "completeness_x_jac_5": 0.5,
             "completeness": 0.6,
             "jac_5": 0.7,
+            "map_locsim": 0.65,
             "team_map_at_1": 0.8,
             "map_at_1": 0.75,
             "f1_at_15": 0.9,
             "precision_at_15": 0.85,
             "recall_at_15": 0.8,
+            "hota": 0.77,
+            "deta": 0.74,
+            "assa": 0.8,
+            "frames_per_second": 12.3,
         }
 
     prediction_exports.ensure_team_spotting_prediction_export(
@@ -91,7 +160,32 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
     with patch("app.benchmark_eval.calibration.run_external_json_command", side_effect=fake_run_external_json_command), patch(
         "app.benchmark_eval.team_spotting.run_external_json_command",
         side_effect=fake_run_external_json_command,
-    ), patch("app.benchmark_eval.pcbas.run_external_json_command", side_effect=fake_run_external_json_command):
+    ), patch("app.benchmark_eval.pcbas.run_external_json_command", side_effect=fake_run_external_json_command), patch(
+        "app.benchmark_eval.tracking.run_external_json_command",
+        side_effect=fake_run_external_json_command,
+    ), patch(
+        "app.benchmark_eval.synloc.run_external_json_command",
+        side_effect=fake_run_external_json_command,
+    ), patch(
+        "app.benchmark_eval.gamestate.run_external_json_command",
+        side_effect=fake_run_external_json_command,
+    ), patch(
+        "app.benchmark_eval.synloc.ensure_synloc_prediction_export",
+        return_value={
+            "predictions_json": str(synloc_artifacts / "results.json"),
+            "metadata_json": str(synloc_artifacts / "metadata.json"),
+            "ground_truth_json": str(synloc_dataset_root / "annotations" / "val.json"),
+            "export_summary_json": str(synloc_artifacts / "prediction_export.json"),
+            "source_prediction_artifact": str(synloc_artifacts / prediction_exports.SYNLOC_SOURCE_FILENAME),
+        },
+    ):
+        synloc.evaluate_synloc(
+            suite={"id": "loc.synloc_quick_v1"},
+            recipe={"id": "tracker:soccana+hybrid_reid+soccana_keypoint"},
+            dataset_root=str(synloc_dataset_root),
+            artifacts_dir=synloc_artifacts,
+            benchmark_id="bench_synloc",
+        )
         calibration.evaluate_calibration(
             suite={"id": "calib.sn_calib_medium_v1"},
             recipe={"id": "detector:soccana"},
@@ -100,7 +194,7 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
             benchmark_id="bench_calibration",
         )
         team_spotting.evaluate_team_spotting(
-            suite={"id": "spot.team_bas_quick_v1"},
+            suite={"id": "spot.team_bas_quick_v1", "dataset_split": "validation"},
             recipe={"id": "detector:soccana"},
             dataset_root=str(team_dataset_root),
             artifacts_dir=team_artifacts,
@@ -113,16 +207,41 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
             artifacts_dir=pcbas_artifacts,
             benchmark_id="bench_pcbas",
         )
+        tracking.evaluate_tracking(
+            suite={"id": "track.sn_tracking_medium_v1"},
+            recipe={"id": "tracker:soccana+hybrid_reid+soccana_keypoint"},
+            dataset_root=str(tracking_dataset_root),
+            artifacts_dir=tracking_artifacts,
+            benchmark_id="bench_tracking",
+        )
+        gamestate.evaluate_gamestate(
+            suite={"id": "gsr.medium_v1"},
+            recipe={
+                "id": "pipeline:sn-gamestate-tracklab",
+                "gamestate_state_file": str(gamestate_state_file),
+            },
+            dataset_root=str(tmp_path / "gamestate_dataset"),
+            artifacts_dir=gamestate_artifacts,
+            benchmark_id="bench_gamestate",
+        )
 
-    assert len(captured) == 3
+    assert len(captured) == 6
     command_labels = [str(call["command"][1]) for call in captured]
+    assert any(label.endswith("run_synloc_eval.py") for label in command_labels)
     assert any(label.endswith("run_calibration_eval.py") for label in command_labels)
     assert any(label.endswith("run_team_spotting_eval.py") for label in command_labels)
     assert any(label.endswith("run_footpass_eval.py") for label in command_labels)
+    assert any(label.endswith("run_tracking_eval.py") for label in command_labels)
+    assert any(label.endswith("run_gamestate_eval.py") for label in command_labels)
+    team_call = next(call for call in captured if str(call["command"][1]).endswith("run_team_spotting_eval.py"))
+    split_index = team_call["command"].index("--split")
+    assert team_call["command"][split_index + 1] == "val"
     assert {str(call["runtime_key"]) for call in captured} == {
         "sn_calibration_legacy",
         "modern_action_spotting",
         "footpass_eval",
+        "backend_default",
+        "tracklab_gamestate_py39_np1",
     }
 
 

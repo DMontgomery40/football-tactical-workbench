@@ -9,13 +9,11 @@
   ],
   "task_coverage": ["team_spotting"],
   "materialization": {
-    "status": "blocked",
+    "status": "materialized",
     "source_archives": [
-      "backend/datasets/huggingface/soccernet_sn_bas_2025/valid.zip",
+      "backend/datasets/soccernet_official_live/spotting-ball-2025/valid.zip",
       "backend/datasets/huggingface/soccernet_sn_bas_2025/ExtraLabelsActionSpotting500games/valid_labels.zip"
     ],
-    "blockers": [
-      "The official Team BAS validation archive is present at backend/datasets/huggingface/soccernet_sn_bas_2025/valid.zip, but the extracted Labels-ball.json under backend/benchmarks/_datasets/spot.team_bas_quick_v1 is still unusable zero-filled data instead of readable JSON, so the validation members remain effectively password-protected on this machine."
-    ]
+    "blockers": []
   }
 }

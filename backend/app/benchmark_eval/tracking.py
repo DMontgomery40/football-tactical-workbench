@@ -5,10 +5,12 @@ from typing import Any
 
 from .common import BenchmarkEvaluationUnavailable, metric_value
 from .external_cli import run_external_json_command
+from .prediction_exports import ensure_tracking_prediction_export
 
 TRACKING_REPO_DIR = Path(__file__).resolve().parents[2] / "third_party" / "soccernet" / "sn-tracking"
 TRACKING_EVALUATOR_PATH = TRACKING_REPO_DIR / "tools" / "evaluate_soccernet_v3_tracking.py"
 TRACKING_SEQMAP_PATH = TRACKING_REPO_DIR / "tools" / "SNMOT-test.txt"
+TRACKING_WRAPPER_PATH = Path(__file__).resolve().with_name("run_tracking_eval.py")
 TRACKING_RUNTIME_KEY = "backend_default"
 
 
@@ -65,12 +67,24 @@ def probe_tracking_blockers(
                 f"{sample_submission_path} so the conversion path can target the actual sn-tracking input contract."
             )
 
-    blockers.append(
-        "Benchmark Lab does not yet convert benchmark recipe outputs into the TRACKERS_FOLDER_ZIP bundle that "
-        "tools/evaluate_soccernet_v3_tracking.py expects. The vendored evaluator is present, but the recipe-to-"
-        "submission bridge is still missing."
-    )
     return blockers
+
+
+def _resolve_tracking_seqmap_path(*, dataset_root: str, recipe: dict[str, Any]) -> Path:
+    candidate_keys = ("tracking_seqmap_file", "seqmap_file")
+    for key in candidate_keys:
+        raw_value = str(recipe.get(key) or "").strip()
+        if raw_value:
+            candidate = Path(raw_value).expanduser().resolve()
+            if candidate.exists():
+                return candidate
+    dataset_path = Path(dataset_root).expanduser().resolve() if dataset_root else None
+    if dataset_path is not None:
+        for relative_name in ("seqmap.txt", "SNMOT-test.txt"):
+            candidate = dataset_path / relative_name
+            if candidate.exists():
+                return candidate
+    return TRACKING_SEQMAP_PATH
 
 
 def evaluate_tracking(
@@ -81,17 +95,29 @@ def evaluate_tracking(
     artifacts_dir: str | Path,
     benchmark_id: str,
 ) -> dict[str, Any]:
-    blockers = probe_tracking_blockers(
-        suite=suite,
+    export_info = ensure_tracking_prediction_export(
+        recipe=recipe,
         dataset_root=dataset_root,
-        manifest_payload={},
+        artifacts_dir=artifacts_dir,
     )
-    tracker_submission_zip = Path(artifacts_dir).expanduser().resolve() / "tracker_submission.zip"
+    tracker_submission_zip = Path(str(export_info["tracker_submission_zip"])).expanduser().resolve()
     gt_zip_path = Path(dataset_root).expanduser().resolve() / "gt.zip"
+    seqmap_path = _resolve_tracking_seqmap_path(dataset_root=dataset_root, recipe=recipe)
+    blockers: list[str] = []
+    if not gt_zip_path.exists():
+        blockers.append(
+            "Tracking ground-truth ZIP is missing. Expected "
+            f"{gt_zip_path}."
+        )
     if not tracker_submission_zip.exists():
         blockers.append(
-            "No tracker submission ZIP was emitted for this benchmark cell. Expected "
-            f"{tracker_submission_zip}."
+            "Tracking prediction export did not emit the TRACKERS_FOLDER_ZIP bundle expected by the evaluator. "
+            f"Expected {tracker_submission_zip}."
+        )
+    if not seqmap_path.exists():
+        blockers.append(
+            "Tracking evaluation requires a seqmap file. Expected either a dataset-local seqmap under "
+            f"{Path(dataset_root).expanduser().resolve() / 'seqmap.txt'} or the vendored default at {TRACKING_SEQMAP_PATH}."
         )
     if blockers:
         raise BenchmarkEvaluationUnavailable(" ".join(dict.fromkeys(blockers)))
@@ -99,23 +125,17 @@ def evaluate_tracking(
     payload = run_external_json_command(
         command=[
             "python",
-            str(TRACKING_EVALUATOR_PATH.relative_to(TRACKING_REPO_DIR)),
-            "--BENCHMARK",
-            "SNMOT",
-            "--DO_PREPROC",
-            "False",
-            "--SEQMAP_FILE",
-            str(TRACKING_SEQMAP_PATH.relative_to(TRACKING_REPO_DIR)),
-            "--TRACKERS_TO_EVAL",
-            recipe.get("id") or "recipe",
-            "--SPLIT_TO_EVAL",
-            "test",
-            "--OUTPUT_SUB_FOLDER",
-            "eval_results",
-            "--TRACKERS_FOLDER_ZIP",
+            str(TRACKING_WRAPPER_PATH),
+            "--tracker-submission-zip",
             str(tracker_submission_zip),
-            "--GT_FOLDER_ZIP",
+            "--ground-truth-zip",
             str(gt_zip_path),
+            "--seqmap-file",
+            str(seqmap_path),
+            "--artifacts-dir",
+            str(Path(artifacts_dir).expanduser().resolve()),
+            "--tracker-name",
+            "benchmark",
         ],
         cwd=TRACKING_REPO_DIR,
         artifacts_dir=artifacts_dir,
@@ -130,6 +150,10 @@ def evaluate_tracking(
             "frames_per_second": metric_value(payload.get("frames_per_second"), label="Frames/s", precision=2),
         },
         "artifacts": {
+            "tracker_submission_zip": str(tracker_submission_zip),
+            "prediction_export_summary_json": export_info.get("export_summary_json"),
+            "source_prediction_artifact": export_info.get("source_prediction_artifact"),
+            "seqmap_file": str(seqmap_path),
             **({"external_result_json": external_result_path} if external_result_path else {}),
         },
         "raw_result": payload,

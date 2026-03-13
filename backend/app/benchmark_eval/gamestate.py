@@ -14,6 +14,10 @@ SN_GAMESTATE_REPO_DIR = Path(__file__).resolve().parents[2] / "third_party" / "s
 SN_GAMESTATE_PYPROJECT_PATH = SN_GAMESTATE_REPO_DIR / "pyproject.toml"
 TRACKLAB_PYPROJECT_PATH = TRACKLAB_REPO_DIR / "pyproject.toml"
 GAMESTATE_RUNTIME_KEY = "tracklab_gamestate_py39_np1"
+GAMESTATE_WRAPPER_PATH = Path(__file__).resolve().with_name("run_gamestate_eval.py")
+DEFAULT_GAMESTATE_VALIDATION_STATE_PATH = (
+    SN_GAMESTATE_REPO_DIR / "pretrained_states" / "gamestate-prtreid-strongsort-valid-compressed.pklz"
+)
 
 
 def _load_pyproject_dependencies(path: Path) -> list[str]:
@@ -83,11 +87,24 @@ def probe_gamestate_blockers(
             "is not durably pinned yet."
         )
 
-    blockers.append(
-        "Benchmark Lab does not yet translate recipe rows into the TrackLab/sn-gamestate Hydra configuration and "
-        "tracker-state inputs required to run GS-HOTA evaluation from the vendored baseline."
-    )
     return blockers
+
+
+def _resolved_gamestate_state_file(recipe: dict[str, Any]) -> Path | None:
+    candidate_keys = (
+        "gamestate_state_file",
+        "state_load_file",
+        "tracking_state_file",
+    )
+    for key in candidate_keys:
+        raw_value = str(recipe.get(key) or "").strip()
+        if raw_value:
+            return Path(raw_value).expanduser().resolve()
+
+    recipe_id = str(recipe.get("id") or "").strip()
+    if recipe_id == "pipeline:sn-gamestate-tracklab":
+        return DEFAULT_GAMESTATE_VALIDATION_STATE_PATH.resolve()
+    return None
 
 
 def evaluate_gamestate(
@@ -106,16 +123,34 @@ def evaluate_gamestate(
     if blockers:
         raise BenchmarkEvaluationUnavailable(" ".join(dict.fromkeys(blockers)))
 
+    state_file = _resolved_gamestate_state_file(recipe)
+    recipe_id = str(recipe.get("id") or "").strip()
+    if recipe_id != "pipeline:sn-gamestate-tracklab":
+        raise BenchmarkEvaluationUnavailable(
+            "Benchmark Lab can now execute the vendored sn-gamestate baseline row through the official validation "
+            "tracker state, but it still does not translate non-baseline recipe rows into TrackLab tracker-state "
+            "inputs or module overrides. The remaining unsupported recipe is "
+            f"{recipe_id or '<unknown recipe>'}."
+        )
+    if state_file is None or not state_file.exists():
+        raise BenchmarkEvaluationUnavailable(
+            "Game-state baseline execution needs the official compressed validation tracker state at "
+            f"{state_file or DEFAULT_GAMESTATE_VALIDATION_STATE_PATH.resolve()} so Benchmark Lab can run the "
+            "vendored baseline command without recomputing the full pipeline."
+        )
+
     payload = run_external_json_command(
         command=[
             "python",
-            "-m",
-            "tracklab.main",
-            "dataset=soccernet_gs",
-            f"dataset.dataset_path={dataset_root}",
-            f"tracking.name={recipe.get('id') or 'recipe'}",
+            str(GAMESTATE_WRAPPER_PATH),
+            "--dataset-root",
+            str(Path(dataset_root).expanduser().resolve()),
+            "--artifacts-dir",
+            str(Path(artifacts_dir).expanduser().resolve()),
+            "--state-load-file",
+            str(state_file),
         ],
-        cwd=TRACKLAB_REPO_DIR,
+        cwd=SN_GAMESTATE_REPO_DIR,
         artifacts_dir=artifacts_dir,
         runtime_key=GAMESTATE_RUNTIME_KEY,
     )
@@ -129,6 +164,9 @@ def evaluate_gamestate(
             "frames_per_second": metric_value(payload.get("frames_per_second"), label="Frames/s", precision=2),
         },
         "artifacts": {
+            **({"summary_txt": str(payload.get("summary_path"))} if payload.get("summary_path") else {}),
+            **({"predictions_zip": str(payload.get("predictions_zip"))} if payload.get("predictions_zip") else {}),
+            **({"tracklab_main_log": str(payload.get("main_log"))} if payload.get("main_log") else {}),
             **({"external_result_json": external_result_path} if external_result_path else {}),
         },
         "raw_result": payload,
