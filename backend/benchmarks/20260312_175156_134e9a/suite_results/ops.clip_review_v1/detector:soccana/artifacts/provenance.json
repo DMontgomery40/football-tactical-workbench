@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-03-12T17:51:57.419370Z",
+  "benchmark_id": "20260312_175156_134e9a",
+  "suite_id": "ops.clip_review_v1",
+  "recipe_id": "detector:soccana",
+  "benchmark_dir": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175156_134e9a",
+  "artifacts_dir": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts",
+  "dvc_runtime": {
+    "status": "ready",
+    "cli_available": true,
+    "cli_path": "/Users/davidmontgomery/football_pose_workbench/backend/.venv/bin/dvc",
+    "version": "DVC version: 3.66.1 (pip)",
+    "repo_enabled": true,
+    "repo_root": "/Users/davidmontgomery/football_pose_workbench",
+    "config_path": "/Users/davidmontgomery/football_pose_workbench/.dvc/config",
+    "ignore_path": "/Users/davidmontgomery/football_pose_workbench/.dvcignore",
+    "checkout_hook_path": "/Users/davidmontgomery/football_pose_workbench/.githooks/post-checkout",
+    "probe_error": null
+  },
+  "suite": {
+    "dataset_root": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+    "dataset_dvc": {
+      "path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+      "repo_relative_path": "backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+      "exists": true,
+      "tracked": false,
+      "state": "present",
+      "pointer_path": null,
+      "pointer_relative_path": null,
+      "tracked_root_path": null,
+      "tracked_root_relative_path": null,
+      "tracking_scope": null
+    },
+    "manifest_path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_manifests/ops.clip_review_v1.json",
+    "manifest_dvc": {
+      "path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_manifests/ops.clip_review_v1.json",
+      "repo_relative_path": "backend/benchmarks/_manifests/ops.clip_review_v1.json",
+      "exists": true,
+      "tracked": true,
+      "state": "tracked",
+      "pointer_path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_manifests.dvc",
+      "pointer_relative_path": "backend/benchmarks/_manifests.dvc",
+      "tracked_root_path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_manifests",
+      "tracked_root_relative_path": "backend/benchmarks/_manifests",
+      "tracking_scope": "ancestor"
+    }
+  },
+  "recipe": {
+    "asset_id": "detector.soccana",
+    "source_asset_ids": [
+      "detector.soccana"
+    ]
+  },
+  "artifacts_dvc": {
+    "path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts",
+    "repo_relative_path": "backend/benchmarks/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts",
+    "exists": true,
+    "tracked": false,
+    "state": "present",
+    "pointer_path": null,
+    "pointer_relative_path": null,
+    "tracked_root_path": null,
+    "tracked_root_relative_path": null,
+    "tracking_scope": null
+  }
+}

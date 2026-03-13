@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "asset_id": "detector.soccana",
+      "kind": "detector",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "soccana",
+      "version": "pretrained",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "backend/models/soccana/Model/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component"
+    },
+    {
+      "asset_id": "pipeline.soccermaster",
+      "kind": "pipeline",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "SoccerMaster",
+      "version": "pretrained",
+      "architecture": "soccermaster_unified",
+      "artifact_path": "backend/models/soccermaster",
+      "bundle_mode": "bundled",
+      "runtime_binding": "full_pipeline"
+    },
+    {
+      "asset_id": "pipeline.tracklab_sn_gamestate",
+      "kind": "pipeline",
+      "provider": "local",
+      "source": "vendored",
+      "label": "sn-gamestate / TrackLab baseline",
+      "version": "vendored",
+      "architecture": "tracklab_sn_gamestate",
+      "artifact_path": "backend/third_party/soccernet/sn-gamestate",
+      "bundle_mode": "bundled",
+      "runtime_binding": "external_pipeline"
+    },
+    {
+      "asset_id": "tracker.bytetrack",
+      "kind": "tracker",
+      "provider": "local",
+      "source": "builtin",
+      "label": "ByteTrack",
+      "version": "builtin",
+      "architecture": "bytetrack",
+      "artifact_path": "bytetrack",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component"
+    },
+    {
+      "asset_id": "tracker.hybrid_reid",
+      "kind": "tracker",
+      "provider": "local",
+      "source": "builtin",
+      "label": "Hybrid ReID",
+      "version": "builtin",
+      "architecture": "hybrid_reid",
+      "artifact_path": "hybrid_reid",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component"
+    },
+    {
+      "asset_id": "keypoint.soccana_keypoint",
+      "kind": "keypoint_model",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "soccana_keypoint",
+      "version": "pretrained",
+      "architecture": "yolo_keypoint",
+      "artifact_path": "backend/models/soccana_keypoint/Model/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component"
+    }
+  ]
+}

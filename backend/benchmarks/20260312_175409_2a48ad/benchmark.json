@@ -1,0 +1,941 @@
+{
+  "benchmark_id": "20260312_175409_2a48ad",
+  "schema_version": 2,
+  "legacy_record": false,
+  "label": "det_roles_quick_smoke",
+  "status": "completed",
+  "created_at": "2026-03-12T17:54:09.827250Z",
+  "primary_suite_id": "det.roles_quick_v1",
+  "suite_ids": [
+    "det.roles_quick_v1"
+  ],
+  "recipe_ids": [
+    "detector:custom_20260310_222947_7f7d6a",
+    "detector:soccana"
+  ],
+  "assets": [
+    {
+      "asset_id": "detector.soccana",
+      "kind": "detector",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "soccana",
+      "version": "pretrained",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0
+        ],
+        "ball_class_ids": [
+          1
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "Player",
+          "1": "Ball",
+          "2": "Referee"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+        "repo_relative_path": "backend/models/soccana/Model/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      }
+    },
+    {
+      "asset_id": "pipeline.soccermaster",
+      "kind": "pipeline",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "SoccerMaster",
+      "version": "pretrained",
+      "architecture": "soccermaster_unified",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccermaster",
+      "bundle_mode": "bundled",
+      "runtime_binding": "full_pipeline",
+      "available": true,
+      "capabilities": {
+        "detection": true,
+        "tracking": true,
+        "reid": false,
+        "calibration": true,
+        "team_id": true,
+        "role_id": false,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccermaster",
+        "repo_relative_path": "backend/models/soccermaster",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      }
+    },
+    {
+      "asset_id": "tracker.bytetrack",
+      "kind": "tracker",
+      "provider": "local",
+      "source": "builtin",
+      "label": "ByteTrack",
+      "version": "builtin",
+      "architecture": "bytetrack",
+      "artifact_path": "bytetrack",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "capabilities": {
+        "detection": false,
+        "tracking": true,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": false,
+        "jersey_ocr": false,
+        "event_spotting": false
+      }
+    },
+    {
+      "asset_id": "tracker.hybrid_reid",
+      "kind": "tracker",
+      "provider": "local",
+      "source": "builtin",
+      "label": "Hybrid ReID",
+      "version": "builtin",
+      "architecture": "hybrid_reid",
+      "artifact_path": "hybrid_reid",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "capabilities": {
+        "detection": false,
+        "tracking": true,
+        "reid": true,
+        "calibration": false,
+        "team_id": false,
+        "role_id": false,
+        "jersey_ocr": false,
+        "event_spotting": false
+      }
+    },
+    {
+      "asset_id": "keypoint.soccana_keypoint",
+      "kind": "keypoint_model",
+      "provider": "local",
+      "source": "pretrained",
+      "label": "soccana_keypoint",
+      "version": "pretrained",
+      "architecture": "yolo_keypoint",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana_keypoint/Model/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "capabilities": {
+        "detection": false,
+        "tracking": false,
+        "reid": false,
+        "calibration": true,
+        "team_id": false,
+        "role_id": false,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana_keypoint/Model/weights/best.pt",
+        "repo_relative_path": "backend/models/soccana_keypoint/Model/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260308_232225_e8d67f",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "smoke-train",
+      "version": "20260308_232225_e8d67f",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260308_232225_e8d67f/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260308_232225_e8d67f",
+      "metrics": {
+        "mAP50": 0.0,
+        "mAP50_95": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260309_072150_393217",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "studio-v1-smoke-2",
+      "version": "20260309_072150_393217",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_072150_393217/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260309_072150_393217/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260309_072150_393217",
+      "metrics": {
+        "mAP50": 0.0,
+        "mAP50_95": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260309_161815_c37d73",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "new-dataset-test",
+      "version": "20260309_161815_c37d73",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          1,
+          2
+        ],
+        "ball_class_ids": [
+          0
+        ],
+        "referee_class_ids": [
+          3
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "ball",
+          "1": "goalkeeper",
+          "2": "player",
+          "3": "referee"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_161815_c37d73/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260309_161815_c37d73/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260309_161815_c37d73",
+      "metrics": {
+        "mAP50": 0.20576,
+        "mAP50_95": 0.11388,
+        "precision": 0.93424,
+        "recall": 0.1832
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260309_165701_1d7167",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "curve-visual-check",
+      "version": "20260309_165701_1d7167",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260309_165701_1d7167/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260309_165701_1d7167/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260309_165701_1d7167",
+      "metrics": {
+        "mAP50": 0.0,
+        "mAP50_95": 0.0,
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260310_222947_7f7d6a",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "20260310_222947_7f7d6a",
+      "version": "20260310_222947_7f7d6a",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260310_222947_7f7d6a",
+      "metrics": {
+        "mAP50": 0.995,
+        "mAP50_95": 0.7001,
+        "precision": 0.87679,
+        "recall": 1.0
+      }
+    },
+    {
+      "asset_id": "detector.custom_20260311_174103_96127b",
+      "kind": "detector",
+      "provider": "local",
+      "source": "registry",
+      "label": "20260311_174103_96127b",
+      "version": "20260311_174103_96127b",
+      "architecture": "ultralytics_yolo",
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260311_174103_96127b/weights/best.pt",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "artifact_dvc": {
+        "path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260311_174103_96127b/weights/best.pt",
+        "repo_relative_path": "backend/training_runs/20260311_174103_96127b/weights/best.pt",
+        "exists": true,
+        "tracked": false,
+        "state": "present",
+        "pointer_path": null,
+        "pointer_relative_path": null,
+        "tracked_root_path": null,
+        "tracked_root_relative_path": null,
+        "tracking_scope": null
+      },
+      "training_run_id": "20260311_174103_96127b",
+      "metrics": {
+        "mAP50": 0.995,
+        "mAP50_95": 0.7001,
+        "precision": 0.87679,
+        "recall": 1.0
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "detector:custom_20260310_222947_7f7d6a",
+      "label": "20260310_222947_7f7d6a",
+      "kind": "detector_recipe",
+      "asset_id": "detector.custom_20260310_222947_7f7d6a",
+      "source_asset_ids": [
+        "detector.custom_20260310_222947_7f7d6a"
+      ],
+      "pipeline": "classic",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/training_runs/20260310_222947_7f7d6a/weights/best.pt",
+      "class_mapping": {
+        "player_class_ids": [
+          0,
+          1
+        ],
+        "ball_class_ids": [
+          3
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "player",
+          "1": "goalkeeper",
+          "2": "referee",
+          "3": "ball"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "compatible_suite_ids": [
+        "det.roles_quick_v1",
+        "det.ball_quick_v1",
+        "ops.clip_review_v1"
+      ]
+    },
+    {
+      "id": "detector:soccana",
+      "label": "soccana",
+      "kind": "detector_recipe",
+      "asset_id": "detector.soccana",
+      "source_asset_ids": [
+        "detector.soccana"
+      ],
+      "pipeline": "classic",
+      "bundle_mode": "separable",
+      "runtime_binding": "replace_component",
+      "available": true,
+      "artifact_path": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+      "class_mapping": {
+        "player_class_ids": [
+          0
+        ],
+        "ball_class_ids": [
+          1
+        ],
+        "referee_class_ids": [
+          2
+        ],
+        "class_names_source": "checkpoint metadata",
+        "class_names": {
+          "0": "Player",
+          "1": "Ball",
+          "2": "Referee"
+        }
+      },
+      "capabilities": {
+        "detection": true,
+        "tracking": false,
+        "reid": false,
+        "calibration": false,
+        "team_id": false,
+        "role_id": true,
+        "jersey_ocr": false,
+        "event_spotting": false
+      },
+      "compatible_suite_ids": [
+        "det.roles_quick_v1",
+        "det.ball_quick_v1",
+        "ops.clip_review_v1"
+      ]
+    }
+  ],
+  "suite_results": {
+    "det.roles_quick_v1": {
+      "detector:custom_20260310_222947_7f7d6a": {
+        "suite_id": "det.roles_quick_v1",
+        "recipe_id": "detector:custom_20260310_222947_7f7d6a",
+        "status": "completed",
+        "error": null,
+        "metrics": {
+          "ap_50_95": {
+            "label": "AP@[.50:.95]",
+            "value": 0.0011952483016659003,
+            "display_value": "0.0012",
+            "unit": "",
+            "sort_value": 0.0011952483016659003,
+            "is_na": false
+          },
+          "ap_50": {
+            "label": "AP50",
+            "value": 0.00415049923365025,
+            "display_value": "0.0042",
+            "unit": "",
+            "sort_value": 0.00415049923365025,
+            "is_na": false
+          },
+          "ap_75": {
+            "label": "AP75",
+            "value": 0.00029431296788215406,
+            "display_value": "0.0003",
+            "unit": "",
+            "sort_value": 0.00029431296788215406,
+            "is_na": false
+          },
+          "precision": {
+            "label": "Precision",
+            "value": 0.0011952483016659003,
+            "display_value": "0.0012",
+            "unit": "",
+            "sort_value": 0.0011952483016659003,
+            "is_na": false
+          },
+          "recall": {
+            "label": "Recall",
+            "value": 0.01496785714285714,
+            "display_value": "0.0150",
+            "unit": "",
+            "sort_value": 0.01496785714285714,
+            "is_na": false
+          },
+          "images_per_second": {
+            "label": "Images/s",
+            "value": 8.834085364761197,
+            "display_value": "8.83",
+            "unit": "",
+            "sort_value": 8.834085364761197,
+            "is_na": false
+          },
+          "avg_image_latency_ms": {
+            "label": "Latency",
+            "value": 113.19790999405086,
+            "display_value": "113.20 ms",
+            "unit": " ms",
+            "sort_value": 113.19790999405086,
+            "is_na": false
+          },
+          "ap_ball_50_95": {
+            "label": "AP ball",
+            "value": 0.0,
+            "display_value": "0.0000",
+            "unit": "",
+            "sort_value": 0.0,
+            "is_na": false
+          },
+          "ap_goalkeeper_50_95": {
+            "label": "AP goalkeeper",
+            "value": 0.0,
+            "display_value": "0.0000",
+            "unit": "",
+            "sort_value": 0.0,
+            "is_na": false
+          },
+          "ap_player_50_95": {
+            "label": "AP player",
+            "value": 0.00467940342217729,
+            "display_value": "0.0047",
+            "unit": "",
+            "sort_value": 0.00467940342217729,
+            "is_na": false
+          },
+          "ap_referee_50_95": {
+            "label": "AP referee",
+            "value": 0.00010158978448631183,
+            "display_value": "0.0001",
+            "unit": "",
+            "sort_value": 0.00010158978448631183,
+            "is_na": false
+          }
+        },
+        "flattened_metrics": {
+          "ap_50_95": 0.0011952483016659003,
+          "ap_50": 0.00415049923365025,
+          "ap_75": 0.00029431296788215406,
+          "precision": 0.0011952483016659003,
+          "recall": 0.01496785714285714,
+          "images_per_second": 8.834085364761197,
+          "avg_image_latency_ms": 113.19790999405086,
+          "ap_ball_50_95": 0.0,
+          "ap_goalkeeper_50_95": 0.0,
+          "ap_player_50_95": 0.00467940342217729,
+          "ap_referee_50_95": 0.00010158978448631183
+        },
+        "primary_metric": "ap_50_95",
+        "artifacts": {
+          "ground_truth_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/ground_truth.json",
+          "predictions_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/predictions.json",
+          "provenance_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/provenance.json"
+        },
+        "raw_result": {
+          "total_images": 25,
+          "total_annotations": 599,
+          "device": "mps",
+          "prediction_class_map": {
+            "0": 3,
+            "1": 2,
+            "2": 4,
+            "3": 1
+          }
+        }
+      },
+      "detector:soccana": {
+        "suite_id": "det.roles_quick_v1",
+        "recipe_id": "detector:soccana",
+        "status": "completed",
+        "error": null,
+        "metrics": {
+          "ap_50_95": {
+            "label": "AP@[.50:.95]",
+            "value": 0.27308596254206635,
+            "display_value": "0.2731",
+            "unit": "",
+            "sort_value": 0.27308596254206635,
+            "is_na": false
+          },
+          "ap_50": {
+            "label": "AP50",
+            "value": 0.5979055955761825,
+            "display_value": "0.5979",
+            "unit": "",
+            "sort_value": 0.5979055955761825,
+            "is_na": false
+          },
+          "ap_75": {
+            "label": "AP75",
+            "value": 0.16752502636019553,
+            "display_value": "0.1675",
+            "unit": "",
+            "sort_value": 0.16752502636019553,
+            "is_na": false
+          },
+          "precision": {
+            "label": "Precision",
+            "value": 0.27308596254206635,
+            "display_value": "0.2731",
+            "unit": "",
+            "sort_value": 0.27308596254206635,
+            "is_na": false
+          },
+          "recall": {
+            "label": "Recall",
+            "value": 0.3256892857142857,
+            "display_value": "0.3257",
+            "unit": "",
+            "sort_value": 0.3256892857142857,
+            "is_na": false
+          },
+          "images_per_second": {
+            "label": "Images/s",
+            "value": 11.600612500841363,
+            "display_value": "11.60",
+            "unit": "",
+            "sort_value": 11.600612500841363,
+            "is_na": false
+          },
+          "avg_image_latency_ms": {
+            "label": "Latency",
+            "value": 86.20234491303563,
+            "display_value": "86.20 ms",
+            "unit": " ms",
+            "sort_value": 86.20234491303563,
+            "is_na": false
+          },
+          "ap_ball_50_95": {
+            "label": "AP ball",
+            "value": 0.16726411311081846,
+            "display_value": "0.1673",
+            "unit": "",
+            "sort_value": 0.16726411311081846,
+            "is_na": false
+          },
+          "ap_goalkeeper_50_95": {
+            "label": "AP goalkeeper",
+            "value": 0.0,
+            "display_value": "0.0000",
+            "unit": "",
+            "sort_value": 0.0,
+            "is_na": false
+          },
+          "ap_player_50_95": {
+            "label": "AP player",
+            "value": 0.46263123346376256,
+            "display_value": "0.4626",
+            "unit": "",
+            "sort_value": 0.46263123346376256,
+            "is_na": false
+          },
+          "ap_referee_50_95": {
+            "label": "AP referee",
+            "value": 0.4624485035936843,
+            "display_value": "0.4624",
+            "unit": "",
+            "sort_value": 0.4624485035936843,
+            "is_na": false
+          }
+        },
+        "flattened_metrics": {
+          "ap_50_95": 0.27308596254206635,
+          "ap_50": 0.5979055955761825,
+          "ap_75": 0.16752502636019553,
+          "precision": 0.27308596254206635,
+          "recall": 0.3256892857142857,
+          "images_per_second": 11.600612500841363,
+          "avg_image_latency_ms": 86.20234491303563,
+          "ap_ball_50_95": 0.16726411311081846,
+          "ap_goalkeeper_50_95": 0.0,
+          "ap_player_50_95": 0.46263123346376256,
+          "ap_referee_50_95": 0.4624485035936843
+        },
+        "primary_metric": "ap_50_95",
+        "artifacts": {
+          "ground_truth_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/ground_truth.json",
+          "predictions_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/predictions.json",
+          "provenance_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/provenance.json"
+        },
+        "raw_result": {
+          "total_images": 25,
+          "total_annotations": 599,
+          "device": "mps",
+          "prediction_class_map": {
+            "0": 3,
+            "1": 1,
+            "2": 4
+          }
+        }
+      }
+    }
+  },
+  "progress": 100.0,
+  "logs": [
+    "[17:54:10] Running suite det.roles_quick_v1"
+  ],
+  "error": null,
+  "dvc_runtime": {
+    "status": "ready",
+    "cli_available": true,
+    "cli_path": "/Users/davidmontgomery/football_pose_workbench/backend/.venv/bin/dvc",
+    "version": "DVC version: 3.66.1 (pip)",
+    "repo_enabled": true,
+    "repo_root": "/Users/davidmontgomery/football_pose_workbench",
+    "config_path": "/Users/davidmontgomery/football_pose_workbench/.dvc/config",
+    "ignore_path": "/Users/davidmontgomery/football_pose_workbench/.dvcignore",
+    "checkout_hook_path": "/Users/davidmontgomery/football_pose_workbench/.githooks/post-checkout",
+    "probe_error": null
+  },
+  "legacy_clip_status": {
+    "ready": true,
+    "path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+    "size_mb": 19.8,
+    "cache_dir": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache",
+    "expected_filename": "benchmark_clip.mp4",
+    "dvc": {
+      "path": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+      "repo_relative_path": "backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+      "exists": true,
+      "tracked": false,
+      "state": "present",
+      "pointer_path": null,
+      "pointer_relative_path": null,
+      "tracked_root_path": null,
+      "tracked_root_relative_path": null,
+      "tracking_scope": null
+    },
+    "suite_id": "ops.clip_review_v1",
+    "note": null
+  }
+}

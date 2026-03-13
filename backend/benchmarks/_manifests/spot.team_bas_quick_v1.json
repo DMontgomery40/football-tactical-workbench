@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "suite_id": "spot.team_bas_quick_v1",
+  "kind": "dataset_manifest",
+  "split": "validation",
+  "selection": "official_valid_split_v1",
+  "items": [
+    "england_efl/2019-2020/2019-10-01 - Middlesbrough - Preston North End"
+  ],
+  "task_coverage": ["team_spotting"],
+  "materialization": {
+    "status": "blocked",
+    "source_archives": [
+      "backend/datasets/huggingface/soccernet_sn_bas_2025/valid.zip",
+      "backend/datasets/huggingface/soccernet_sn_bas_2025/ExtraLabelsActionSpotting500games/valid_labels.zip"
+    ],
+    "blockers": [
+      "The official Team BAS validation archive is present at backend/datasets/huggingface/soccernet_sn_bas_2025/valid.zip, but the extracted Labels-ball.json under backend/benchmarks/_datasets/spot.team_bas_quick_v1 is still unusable zero-filled data instead of readable JSON, so the validation members remain effectively password-protected on this machine."
+    ]
+  }
+}

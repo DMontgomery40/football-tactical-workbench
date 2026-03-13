@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "suites": [
+    {
+      "id": "det.roles_quick_v1",
+      "label": "Detection Roles Quick",
+      "tier": "quick",
+      "family": "detection",
+      "source_url": "https://huggingface.co/datasets/martinjolif/football-player-detection",
+      "license": "CC BY 4.0",
+      "protocol": "coco_detection",
+      "primary_metric": "ap_50_95",
+      "metric_columns": [
+        "ap_50_95",
+        "ap_50",
+        "ap_75",
+        "precision",
+        "recall",
+        "images_per_second",
+        "avg_image_latency_ms"
+      ],
+      "required_capabilities": ["detection"],
+      "dataset_root": "backend/benchmarks/_datasets/det.roles_quick_v1",
+      "fallback_dataset_roots": [
+        "backend/datasets/huggingface/martinjolif_football_player_detection/data"
+      ],
+      "manifest_path": "backend/benchmarks/_manifests/det.roles_quick_v1.json",
+      "dvc_required": true,
+      "dataset_split": "test",
+      "notes": "Fast four-class detection benchmark with player, goalkeeper, ball, and referee labels."
+    },
+    {
+      "id": "det.ball_quick_v1",
+      "label": "Ball Detection Quick",
+      "tier": "quick",
+      "family": "detection",
+      "source_url": "https://huggingface.co/datasets/martinjolif/football-ball-detection",
+      "license": "CC BY 4.0",
+      "protocol": "coco_detection",
+      "primary_metric": "ap_ball_50_95",
+      "metric_columns": [
+        "ap_ball_50_95",
+        "ap_50",
+        "ap_75",
+        "precision",
+        "recall",
+        "images_per_second",
+        "avg_image_latency_ms"
+      ],
+      "required_capabilities": ["detection"],
+      "dataset_root": "backend/benchmarks/_datasets/det.ball_quick_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/det.ball_quick_v1.json",
+      "dvc_required": true,
+      "dataset_split": "test",
+      "notes": "Ball-only quick benchmark for small-object detection."
+    },
+    {
+      "id": "loc.synloc_quick_v1",
+      "label": "SynLoc Quick",
+      "tier": "quick",
+      "family": "localization",
+      "source_url": "https://github.com/Spiideo/sskit",
+      "license": "See upstream challenge terms",
+      "protocol": "synloc",
+      "primary_metric": "map_locsim",
+      "metric_columns": [
+        "map_locsim",
+        "frames_per_second",
+        "avg_frame_latency_ms"
+      ],
+      "required_capabilities": ["detection", "calibration"],
+      "dataset_root": "backend/benchmarks/_datasets/loc.synloc_quick_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/loc.synloc_quick_v1.json",
+      "dvc_required": true,
+      "notes": "Single-frame world-coordinate localization scored with Spiideo SynLoc."
+    },
+    {
+      "id": "spot.team_bas_quick_v1",
+      "label": "Team BAS Quick",
+      "tier": "quick",
+      "family": "spotting",
+      "source_url": "https://huggingface.co/datasets/SoccerNet/SN-BAS-2025",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "team_spotting",
+      "primary_metric": "team_map_at_1",
+      "metric_columns": [
+        "team_map_at_1",
+        "map_at_1",
+        "clips_per_second"
+      ],
+      "required_capabilities": ["event_spotting", "team_id"],
+      "dataset_root": "backend/benchmarks/_datasets/spot.team_bas_quick_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/spot.team_bas_quick_v1.json",
+      "dvc_required": true,
+      "notes": "Ball action spotting with team-side labels."
+    },
+    {
+      "id": "calib.sn_calib_medium_v1",
+      "label": "Calibration Medium",
+      "tier": "medium",
+      "family": "calibration",
+      "source_url": "https://github.com/SoccerNet/sn-calibration",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "calibration",
+      "primary_metric": "completeness_x_jac_5",
+      "metric_columns": [
+        "completeness_x_jac_5",
+        "completeness",
+        "jac_5",
+        "frames_per_second"
+      ],
+      "required_capabilities": ["calibration"],
+      "dataset_root": "backend/benchmarks/_datasets/calib.sn_calib_medium_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/calib.sn_calib_medium_v1.json",
+      "dvc_required": true,
+      "notes": "Official SoccerNet camera calibration benchmark."
+    },
+    {
+      "id": "track.sn_tracking_medium_v1",
+      "label": "Tracking Medium",
+      "tier": "medium",
+      "family": "tracking",
+      "source_url": "https://github.com/SoccerNet/sn-tracking",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "tracking",
+      "primary_metric": "hota",
+      "metric_columns": [
+        "hota",
+        "deta",
+        "assa",
+        "frames_per_second"
+      ],
+      "required_capabilities": ["detection", "tracking"],
+      "dataset_root": "backend/benchmarks/_datasets/track.sn_tracking_medium_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/track.sn_tracking_medium_v1.json",
+      "dvc_required": true,
+      "notes": "Official SoccerNet tracking benchmark with HOTA-family metrics."
+    },
+    {
+      "id": "spot.pcbas_medium_v1",
+      "label": "PCBAS Medium",
+      "tier": "medium",
+      "family": "spotting",
+      "source_url": "https://huggingface.co/datasets/SoccerNet/SN-PCBAS-2026",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "pcbas",
+      "primary_metric": "f1_at_15",
+      "metric_columns": [
+        "f1_at_15",
+        "precision_at_15",
+        "recall_at_15",
+        "clips_per_second"
+      ],
+      "required_capabilities": ["event_spotting", "team_id", "role_id", "jersey_ocr"],
+      "dataset_root": "backend/benchmarks/_datasets/spot.pcbas_medium_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/spot.pcbas_medium_v1.json",
+      "dvc_required": true,
+      "notes": "Person-centric ball action spotting with team, role, and jersey identity labels."
+    },
+    {
+      "id": "gsr.medium_v1",
+      "label": "Game State Medium",
+      "tier": "medium",
+      "family": "game_state",
+      "source_url": "https://huggingface.co/datasets/SoccerNet/SN-GSR-2025",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "gamestate",
+      "primary_metric": "gs_hota",
+      "metric_columns": [
+        "gs_hota",
+        "hota",
+        "deta",
+        "assa",
+        "frames_per_second"
+      ],
+      "required_capabilities": ["detection", "tracking", "calibration"],
+      "dataset_root": "backend/benchmarks/_datasets/gsr.medium_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/gsr.medium_v1.json",
+      "dvc_required": true,
+      "notes": "DVC-pinned 12-clip validation subset of SoccerNet GSR."
+    },
+    {
+      "id": "gsr.long_v1",
+      "label": "Game State Long",
+      "tier": "long",
+      "family": "game_state",
+      "source_url": "https://huggingface.co/datasets/SoccerNet/SN-GSR-2025",
+      "license": "See SoccerNet dataset terms",
+      "protocol": "gamestate",
+      "primary_metric": "gs_hota",
+      "metric_columns": [
+        "gs_hota",
+        "hota",
+        "deta",
+        "assa",
+        "frames_per_second"
+      ],
+      "required_capabilities": ["detection", "tracking", "calibration"],
+      "dataset_root": "backend/benchmarks/_datasets/gsr.long_v1",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/gsr.long_v1.json",
+      "dvc_required": true,
+      "notes": "Full validation benchmark for SoccerNet GSR."
+    },
+    {
+      "id": "ops.clip_review_v1",
+      "label": "Operational Clip Review",
+      "tier": "operational",
+      "family": "operational",
+      "source_url": "local benchmark clip cache",
+      "license": "local media",
+      "protocol": "operational",
+      "primary_metric": "fps",
+      "metric_columns": [
+        "fps",
+        "track_stability",
+        "calibration",
+        "coverage"
+      ],
+      "required_capabilities": ["detection"],
+      "dataset_root": "",
+      "fallback_dataset_roots": [],
+      "manifest_path": "backend/benchmarks/_manifests/ops.clip_review_v1.json",
+      "dvc_required": false,
+      "requires_clip": true,
+      "notes": "Preserved non-ground-truth pipeline review using a cached clip and full overlay output."
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import {
   fetchSoccerNetConfig,
   refreshRunDiagnostics as refreshRunDiagnosticsContract,
 } from './lib/api/contracts';
-import BenchmarkLab from './BenchmarkLab';
+import BenchmarkLab from './BenchmarkLab.tsx';
 import TrainingStudio from './TrainingStudio';
 import {
   APP_STORAGE_KEYS,
@@ -60,7 +60,7 @@ const defaultForm = {
   labelPath: '',
   folderPath: '',
   detectorModel: 'soccana',
-  keypointModel: 'soccana_keypoint',
+  keypointModel: 'soccermaster',
   trackerMode: 'hybrid_reid',
   includeBall: true,
   playerConf: '0.25',
@@ -71,7 +71,6 @@ const defaultForm = {
 const PIPELINE_LABELS = {
   classic: 'Classic (soccana)',
   soccermaster: 'SoccerMaster (unified)',
-  sn_gamestate: 'sn-gamestate (external)',
 };
 
 const DEFAULT_SOCCERNET_FILES = ['1_720p.mkv', '2_720p.mkv', 'Labels-v2.json'];
@@ -1030,7 +1029,6 @@ export default function App() {
   const activeDetectorLabel = config.active_detector_label || config.active_detector || 'soccana';
   const activeDetectorIsCustom = Boolean(config.active_detector_is_custom && config.active_detector !== 'soccana');
   const appShellErrors = resolveAppShellErrors({ workspaceError, jobError });
-  const snGamestateStatus = config.sn_gamestate || null;
   const helpIndex = useMemo(
     () => buildHelpIndex(config.help_catalog),
     [config.help_catalog],
@@ -1483,10 +1481,6 @@ export default function App() {
       setSourceError('Load an input clip before starting live preview.');
       return;
     }
-    if (form.pipeline === 'sn_gamestate') {
-      setSourceError('Live preview is not available for sn-gamestate. Use Analyze loaded clip instead.');
-      return;
-    }
     const params = new URLSearchParams({
       source_id: source.source_id,
       pipeline: form.pipeline || 'classic',
@@ -1796,7 +1790,7 @@ export default function App() {
           onClick={() => setAppSpace('training')}
         >
           Training Studio
-          {activeDetectorIsCustom && form.pipeline === 'classic' ? <span className="switcher-status-badge">custom detector active</span> : null}
+          {activeDetectorIsCustom && form.pipeline !== 'soccermaster' ? <span className="switcher-status-badge">custom detector active</span> : null}
         </button>
         <button
           type="button"
@@ -1882,7 +1876,7 @@ export default function App() {
                 ))}
               </select>
             </label>
-            {form.pipeline === 'classic' && (
+            {form.pipeline !== 'soccermaster' && (
               <>
                 <label>
                   <FieldLabel label="Detector weights" entry={helpIndex.get('analysis.detector_weights')} />
@@ -1907,68 +1901,46 @@ export default function App() {
                 ) : null}
               </>
             )}
-            {form.pipeline === 'sn_gamestate' ? (
-              <div className="active-detector-banner">
-                <div className="micro-label">External pipeline</div>
-                <div className="active-detector-name">sn-gamestate / TrackLab baseline</div>
-                <div className="field-note">
-                  This option runs the external SoccerNet Game State Reconstruction baseline. Detector weights, tracker mode,
-                  and threshold controls from this form do not drive the external pipeline.
-                </div>
-                <div className="field-note">
-                  {snGamestateStatus?.available
-                    ? `Available at ${snGamestateStatus.repo_path}. Analyze is supported; live preview is not.`
-                    : snGamestateStatus?.note || 'sn-gamestate is not configured on this machine yet.'}
-                </div>
-                <div className="field-note">
-                  The official baseline auto-downloads SoccerNetGS data and weights on first run. GS-HOTA evaluation is only available on labeled SoccerNetGS clips, not arbitrary external videos.
-                </div>
-              </div>
-            ) : null}
 
-            {form.pipeline !== 'sn_gamestate' ? (
-              <>
-                <label>
-                  <FieldLabel label="Player tracker" entry={helpIndex.get('analysis.player_tracker')} />
-                  <select value={form.trackerMode} onChange={(event) => updateForm('trackerMode', event.target.value)}>
-                    {playerTrackerModes.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <label>
+              <FieldLabel label="Player tracker" entry={helpIndex.get('analysis.player_tracker')} />
+              <select value={form.trackerMode} onChange={(event) => updateForm('trackerMode', event.target.value)}>
+                {playerTrackerModes.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-                <div className="checkbox-row">
-                  <label className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={form.includeBall}
-                      onChange={(event) => updateForm('includeBall', event.target.checked)}
-                    />
-                    <span className="checkbox-label-row">
-                      <span>Include ball tracking</span>
-                      <HelpPopover entry={helpIndex.get('analysis.include_ball')} />
-                    </span>
-                  </label>
-                </div>
+            <div className="checkbox-row">
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={form.includeBall}
+                  onChange={(event) => updateForm('includeBall', event.target.checked)}
+                />
+                <span className="checkbox-label-row">
+                  <span>Include ball tracking</span>
+                  <HelpPopover entry={helpIndex.get('analysis.include_ball')} />
+                </span>
+              </label>
+            </div>
 
-                <div className="three-col">
-                  <label>
-                    <FieldLabel label="Player confidence" entry={helpIndex.get('analysis.player_conf')} />
-                    <input type="number" step="0.01" value={form.playerConf} onChange={(event) => updateForm('playerConf', event.target.value)} />
-                  </label>
-                  <label>
-                    <FieldLabel label="Ball confidence" entry={helpIndex.get('analysis.ball_conf')} />
-                    <input type="number" step="0.01" value={form.ballConf} onChange={(event) => updateForm('ballConf', event.target.value)} />
-                  </label>
-                  <label>
-                    <FieldLabel label="IOU" entry={helpIndex.get('analysis.iou')} />
-                    <input type="number" step="0.01" value={form.iou} onChange={(event) => updateForm('iou', event.target.value)} />
-                  </label>
-                </div>
-              </>
-            ) : null}
+            <div className="three-col">
+              <label>
+                <FieldLabel label="Player confidence" entry={helpIndex.get('analysis.player_conf')} />
+                <input type="number" step="0.01" value={form.playerConf} onChange={(event) => updateForm('playerConf', event.target.value)} />
+              </label>
+              <label>
+                <FieldLabel label="Ball confidence" entry={helpIndex.get('analysis.ball_conf')} />
+                <input type="number" step="0.01" value={form.ballConf} onChange={(event) => updateForm('ballConf', event.target.value)} />
+              </label>
+              <label>
+                <FieldLabel label="IOU" entry={helpIndex.get('analysis.iou')} />
+                <input type="number" step="0.01" value={form.iou} onChange={(event) => updateForm('iou', event.target.value)} />
+              </label>
+            </div>
 
             <div className="inline-help-row">
               <span className="micro-label">Automatic field calibration</span>

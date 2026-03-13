@@ -1,0 +1,126 @@
+{
+  "suite_id": "det.roles_quick_v1",
+  "recipe_id": "detector:custom_20260310_222947_7f7d6a",
+  "status": "completed",
+  "error": null,
+  "metrics": {
+    "ap_50_95": {
+      "label": "AP@[.50:.95]",
+      "value": 0.0011952483016659003,
+      "display_value": "0.0012",
+      "unit": "",
+      "sort_value": 0.0011952483016659003,
+      "is_na": false
+    },
+    "ap_50": {
+      "label": "AP50",
+      "value": 0.00415049923365025,
+      "display_value": "0.0042",
+      "unit": "",
+      "sort_value": 0.00415049923365025,
+      "is_na": false
+    },
+    "ap_75": {
+      "label": "AP75",
+      "value": 0.00029431296788215406,
+      "display_value": "0.0003",
+      "unit": "",
+      "sort_value": 0.00029431296788215406,
+      "is_na": false
+    },
+    "precision": {
+      "label": "Precision",
+      "value": 0.0011952483016659003,
+      "display_value": "0.0012",
+      "unit": "",
+      "sort_value": 0.0011952483016659003,
+      "is_na": false
+    },
+    "recall": {
+      "label": "Recall",
+      "value": 0.01496785714285714,
+      "display_value": "0.0150",
+      "unit": "",
+      "sort_value": 0.01496785714285714,
+      "is_na": false
+    },
+    "images_per_second": {
+      "label": "Images/s",
+      "value": 8.834085364761197,
+      "display_value": "8.83",
+      "unit": "",
+      "sort_value": 8.834085364761197,
+      "is_na": false
+    },
+    "avg_image_latency_ms": {
+      "label": "Latency",
+      "value": 113.19790999405086,
+      "display_value": "113.20 ms",
+      "unit": " ms",
+      "sort_value": 113.19790999405086,
+      "is_na": false
+    },
+    "ap_ball_50_95": {
+      "label": "AP ball",
+      "value": 0.0,
+      "display_value": "0.0000",
+      "unit": "",
+      "sort_value": 0.0,
+      "is_na": false
+    },
+    "ap_goalkeeper_50_95": {
+      "label": "AP goalkeeper",
+      "value": 0.0,
+      "display_value": "0.0000",
+      "unit": "",
+      "sort_value": 0.0,
+      "is_na": false
+    },
+    "ap_player_50_95": {
+      "label": "AP player",
+      "value": 0.00467940342217729,
+      "display_value": "0.0047",
+      "unit": "",
+      "sort_value": 0.00467940342217729,
+      "is_na": false
+    },
+    "ap_referee_50_95": {
+      "label": "AP referee",
+      "value": 0.00010158978448631183,
+      "display_value": "0.0001",
+      "unit": "",
+      "sort_value": 0.00010158978448631183,
+      "is_na": false
+    }
+  },
+  "flattened_metrics": {
+    "ap_50_95": 0.0011952483016659003,
+    "ap_50": 0.00415049923365025,
+    "ap_75": 0.00029431296788215406,
+    "precision": 0.0011952483016659003,
+    "recall": 0.01496785714285714,
+    "images_per_second": 8.834085364761197,
+    "avg_image_latency_ms": 113.19790999405086,
+    "ap_ball_50_95": 0.0,
+    "ap_goalkeeper_50_95": 0.0,
+    "ap_player_50_95": 0.00467940342217729,
+    "ap_referee_50_95": 0.00010158978448631183
+  },
+  "primary_metric": "ap_50_95",
+  "artifacts": {
+    "ground_truth_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/ground_truth.json",
+    "predictions_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/predictions.json",
+    "provenance_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/provenance.json"
+  },
+  "raw_result": {
+    "total_images": 25,
+    "total_annotations": 599,
+    "device": "mps",
+    "prediction_class_map": {
+      "0": 3,
+      "1": 2,
+      "2": 4,
+      "3": 1
+    }
+  }
+}

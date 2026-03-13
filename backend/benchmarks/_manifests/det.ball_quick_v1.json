@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "suite_id": "det.ball_quick_v1",
+  "kind": "dataset_manifest",
+  "split": "test",
+  "classes": ["ball"],
+  "task_coverage": ["detection"],
+  "materialization": {
+    "status": "blocked",
+    "expected_files": [
+      "backend/benchmarks/_datasets/det.ball_quick_v1/data.yaml or dataset.yaml",
+      "backend/benchmarks/_datasets/det.ball_quick_v1/test/** or backend/benchmarks/_datasets/det.ball_quick_v1/images/test/**",
+      "backend/benchmarks/_datasets/det.ball_quick_v1/labels/test/**"
+    ],
+    "source_artifacts": [
+      "https://huggingface.co/datasets/martinjolif/football-ball-detection"
+    ],
+    "blockers": [
+      "No local `football-ball-detection` benchmark dataset has been staged under backend/benchmarks/_datasets/det.ball_quick_v1, and this salvage worktree does not yet contain a downloaded Hugging Face source tree for martinjolif/football-ball-detection to convert or copy from."
+    ]
+  }
+}

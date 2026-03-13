@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "suite_id": "track.sn_tracking_medium_v1",
+  "kind": "dataset_manifest",
+  "split": "test",
+  "selection": "official_test_split_v1",
+  "task_coverage": ["tracking"],
+  "materialization": {
+    "status": "blocked",
+    "expected_files": [
+      "backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT/train/",
+      "backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT/test/",
+      "backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT/gt.zip",
+      "backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT/sample_submission.zip"
+    ],
+    "blockers": [
+      "No SoccerNetMOT benchmark tree is materialized locally. The vendored sn-tracking README points at SoccerNetDownloader.downloadDataTask(task='tracking', split=['train','test','challenge']) and task='tracking-2023', but this workspace still lacks backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT plus the required gt.zip and sample_submission.zip."
+    ]
+  }
+}

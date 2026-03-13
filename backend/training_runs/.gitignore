@@ -1,0 +1,28 @@
+# Generated training runs are local artifacts by default.
+# Keep one curated metadata example so the repo still shows the on-disk shape.
+/*
+!/.gitignore
+
+# Curated sample run used by benchmark examples and registry review.
+!/20260310_222947_7f7d6a/
+!/20260310_222947_7f7d6a/config.json
+!/20260310_222947_7f7d6a/dataset_runtime.yaml
+!/20260310_222947_7f7d6a/dataset_scan.json
+!/20260310_222947_7f7d6a/job_state.json
+!/20260310_222947_7f7d6a/progress.json
+!/20260310_222947_7f7d6a/summary.json
+!/20260310_222947_7f7d6a/training_provenance.json
+!/20260310_222947_7f7d6a/splits/
+!/20260310_222947_7f7d6a/splits/train.txt
+!/20260310_222947_7f7d6a/splits/val.txt
+!/20260310_222947_7f7d6a/yolo_output/
+!/20260310_222947_7f7d6a/yolo_output/train/
+!/20260310_222947_7f7d6a/yolo_output/train/args.yaml
+!/20260310_222947_7f7d6a/yolo_output/train/results.csv
+
+# Heavy or noisy training byproducts never need to be committed.
+**/train.log
+**/weights/
+**/*.pt
+**/yolo_output/train/*.png
+**/yolo_output/train/*.jpg

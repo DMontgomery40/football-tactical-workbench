@@ -1,0 +1,58 @@
+{
+  "suite_id": "ops.clip_review_v1",
+  "recipe_id": "detector:soccana",
+  "status": "completed",
+  "error": null,
+  "metrics": {
+    "fps": {
+      "label": "FPS",
+      "value": 25.0,
+      "display_value": "25.00",
+      "unit": "",
+      "sort_value": 25.0,
+      "is_na": false
+    },
+    "track_stability": {
+      "label": "Track stability",
+      "value": 48.99632836333334,
+      "display_value": "49.00",
+      "unit": "",
+      "sort_value": 48.99632836333334,
+      "is_na": false
+    },
+    "calibration": {
+      "label": "Calibration",
+      "value": 12.049999999999999,
+      "display_value": "12.05",
+      "unit": "",
+      "sort_value": 12.049999999999999,
+      "is_na": false
+    },
+    "coverage": {
+      "label": "Coverage",
+      "value": 94.10318181818181,
+      "display_value": "94.10",
+      "unit": "",
+      "sort_value": 94.10318181818181,
+      "is_na": false
+    }
+  },
+  "flattened_metrics": {
+    "fps": 25.0,
+    "track_stability": 48.99632836333334,
+    "calibration": 12.049999999999999,
+    "coverage": 94.10318181818181
+  },
+  "primary_metric": "fps",
+  "artifacts": {
+    "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/runs/bench_20260312_175156_134e9a_detector_soccana_e166",
+    "summary_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts/summary_excerpt.json",
+    "overlay_video": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/overlay.mp4",
+    "provenance_json": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts/provenance.json"
+  },
+  "raw_result": {
+    "run_id": "bench_20260312_175156_134e9a_detector_soccana_e166",
+    "frames_processed": 750,
+    "fps": 25.0
+  }
+}

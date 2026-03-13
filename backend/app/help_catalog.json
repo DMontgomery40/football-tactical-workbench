@@ -18,8 +18,7 @@
     "summary": "Selects the detection and field-registration architecture that drives the entire analysis run.",
     "body": [
       "Classic uses the soccana detector for player/ball detection plus soccana_keypoint for field registration. These are separate models with independent weights and confidence thresholds.",
-      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both.",
-      "sn-gamestate is different again: it is an external TrackLab-based Game State Reconstruction baseline from SoccerNet. In this app it behaves as an external pipeline option rather than a local detector checkpoint, so live preview is unavailable and the native detector/tracker sliders do not control it."
+      "SoccerMaster is a unified architecture that handles detection and field-line regression in a single forward pass. When selected, the separate detector-weights and keypoint-model controls are hidden because the unified model replaces both."
     ],
     "targets": [
       "analysis.pipeline"
@@ -1735,24 +1734,39 @@
   },
   {
     "id": "benchmark.clip",
-    "title": "Benchmark clip",
-    "summary": "Every candidate runs the exact same clip so the leaderboard compares models instead of footage differences.",
+    "title": "Canonical benchmark clip",
+    "summary": "The canonical benchmark clip is the fixed video used only by the operational review lane, not by every labeled suite.",
     "body": [
-      "A benchmark only means anything when the input stays fixed. Change the clip and you change the camera angle, crowding, pitch visibility, and ball behavior all at once.",
-      "This surface locks one clip for the whole run. Every baseline or detector candidate sees the same frames, which is what makes the side-by-side review readable."
+      "The operational lane still needs one fixed clip so overlay review remains apples-to-apples across recipes.",
+      "Labeled suites such as detection, tracking, calibration, or game-state use their own datasets and manifests instead of this clip cache. That is why the workbench now separates operational review from benchmark truth.",
+      "Pick a clip that exercises the failure modes you actually care about: far-side players, tight crowds, fast ball transitions, or wide-angle distortion. Treat it as supporting evidence, not as the paper-style benchmark authority."
     ],
     "targets": [
       "benchmark.clip"
     ],
-    "links": []
+    "links": [
+      {
+        "label": "SoccerNet Game State Reconstruction DevKit",
+        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "kind": "repo",
+        "published_at": "2025-05"
+      },
+      {
+        "label": "SoccerNet challenges 2026",
+        "url": "https://www.soccer-net.org/challenges/2026",
+        "kind": "benchmark",
+        "published_at": "2026"
+      }
+    ]
   },
   {
     "id": "benchmark.runtime_profile",
-    "title": "Shared runtime defaults",
-    "summary": "The benchmark clip stays fixed, and native tracker / threshold defaults stay fixed where those controls apply.",
+    "title": "Locked runtime profile",
+    "summary": "Benchmark runs still record runtime context, but v2 compares suite-and-recipe pairs instead of only swapping one detector under one frozen clip setup.",
     "body": [
-      "Classic detector checkpoints are compared under one shared native runtime profile so tracker mode, threshold tuning, and ball settings do not drift between runs.",
-      "Some baseline candidates override the pipeline internally. SoccerMaster uses its unified detection-plus-calibration stack, and sn-gamestate runs its external TrackLab pipeline, while still sharing the same cached clip for side-by-side review."
+      "The benchmark still captures runtime context such as device choice, evaluator versions, and the operational clip state when that lane is active.",
+      "What changed in v2 is that the benchmark surface is no longer pretending the only variable is a detector checkpoint. Recipes can encode detector, tracker, keypoint, and bundled-pipeline composition, while each suite defines its own metric contract.",
+      "The point is still to avoid ambiguous comparisons. Runtime context should explain the run, not collapse unlike task families into one scoreboard."
     ],
     "targets": [
       "benchmark.runtime_profile"
@@ -1762,13 +1776,185 @@
   {
     "id": "benchmark.candidate",
     "title": "Benchmark candidate",
-    "summary": "A candidate can be a core pipeline baseline or a detector checkpoint evaluated against the same cached clip.",
+    "summary": "Legacy benchmark candidate language now maps to assets and recipes in Benchmark Lab v2.",
     "body": [
-      "The core comparison set is classic / soccana, SoccerMaster, and sn-gamestate. You can also add local registry detectors or imported checkpoints to compare them against that baseline trio.",
-      "A candidate is not automatically promoted into analysis. Benchmark Lab runs it in isolation first so you can inspect overlay, diagnostics, logs, and setup readiness before changing defaults."
+      "An asset is a concrete model or pipeline artifact. A recipe is the runnable benchmark row that binds assets together into one executable comparison unit.",
+      "Local and Hugging Face imports still matter, but they now enter the system as assets first so compatibility and recipe generation stay honest.",
+      "If you still see the word candidate in an older artifact or legacy record, read it as pre-v2 language rather than the current product model."
     ],
     "targets": [
       "benchmark.candidate"
+    ],
+    "links": [
+      {
+        "label": "Adit-jain/soccana",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Multi-class detection and tracking in soccer broadcast footage",
+        "url": "https://arxiv.org/abs/2602.18504",
+        "kind": "paper",
+        "published_at": "2026-02"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.composite_score",
+    "title": "Composite benchmark score",
+    "summary": "Composite benchmark score is legacy operational language and is no longer the truth for Benchmark Lab v2.",
+    "body": [
+      "V2 does not use one house score across detection, tracking, calibration, spotting, and game-state tasks.",
+      "If you are reading a legacy operational record, the old heuristic sub-metrics may still appear as supporting evidence for clip review.",
+      "For current benchmark truth, read the suite-specific metrics directly and keep each metric family in its own task lane."
+    ],
+    "targets": [
+      "benchmark.composite_score"
+    ],
+    "links": [
+      {
+        "label": "Performance Metrics Deep Dive",
+        "url": "https://docs.ultralytics.com/guides/yolo-performance-metrics/",
+        "kind": "docs",
+        "published_at": "2026-01-14"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.leaderboard",
+    "title": "Benchmark leaderboard",
+    "summary": "Benchmark Lab v2 replaces the old leaderboard with a sortable, filterable results matrix focused on one suite at a time.",
+    "body": [
+      "Use the active suite, presets, and filters to keep one honest task family in view. Rows are recipes and unsupported combinations stay visible as N/A.",
+      "This is intentionally not a global cross-task leaderboard. Detection AP, tracking HOTA, calibration JaC@5, spotting F1, and game-state GS-HOTA should not compete inside one synthetic super-score.",
+      "If you are reopening a legacy operational record, the old leaderboard language may appear only as historical context. The current product surface should be read as a matrix, not a detector-only ranking board."
+    ],
+    "targets": [
+      "benchmark.leaderboard"
+    ],
+    "links": [
+      {
+        "label": "SoccerNet challenges 2026",
+        "url": "https://www.soccer-net.org/challenges/2026",
+        "kind": "benchmark",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.import.local",
+    "title": "Import a local checkpoint",
+    "summary": "Use a `.pt` file from anywhere on disk as a benchmark candidate without promoting or registering it first.",
+    "body": [
+      "This is the fastest way to benchmark a checkpoint that exists on your machine but has not been through the Training Studio promotion flow. Point at the file, give it a label, and the benchmark runner handles the rest.",
+      "The benchmark does not copy or move the file. It reads the checkpoint in place. If the file disappears or changes between candidate creation and benchmark execution, the run will fail for that candidate.",
+      "Use this when you have a checkpoint from an external training pipeline, a colleague, or an earlier experiment and want to see how it compares against the current active detector on the same clip."
+    ],
+    "targets": [
+      "benchmark.import.local"
+    ],
+    "links": [
+      {
+        "label": "Model Training with Ultralytics YOLO",
+        "url": "https://docs.ultralytics.com/modes/train/",
+        "kind": "docs",
+        "published_at": "2026-03-05"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.import.huggingface",
+    "title": "Import from Hugging Face",
+    "summary": "Pull a detector checkpoint from a Hugging Face model repository and add it as a benchmark candidate.",
+    "body": [
+      "This source downloads the model weights by Hugging Face repo ID and caches them locally before running the benchmark. It is useful for comparing community-published football detectors, team-shared checkpoints, or upstream model revisions without manual file management.",
+      "The download happens once per unique model ID. Subsequent benchmark runs that reference the same ID reuse the cached weights.",
+      "Not every Hugging Face model will work. The checkpoint must be compatible with the Ultralytics YOLO loader that this workbench uses for inference. If the format is wrong, the candidate run will fail with a loader error rather than producing misleading scores."
+    ],
+    "targets": [
+      "benchmark.import.huggingface"
+    ],
+    "links": [
+      {
+        "label": "Adit-jain/soccana",
+        "url": "https://huggingface.co/Adit-jain/soccana",
+        "kind": "model",
+        "published_at": "2025-08"
+      },
+      {
+        "label": "Soccana Collection",
+        "url": "https://huggingface.co/collections/Adit-jain/soccana",
+        "kind": "collection",
+        "published_at": "2025-08-29"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.metric.track_stability",
+    "title": "Track stability",
+    "summary": "Track stability measures how consistently the detector feeds the tracker with usable identities across the benchmark clip.",
+    "body": [
+      "A detector that produces many detections per frame but causes frequent ID switches, short-lived tracks, or excessive tracklet merges will score low here. Stability reflects the downstream tracker experience, not just raw box count.",
+      "The metric combines average track length, stitched-to-raw ID reduction ratio, and tracklet merge density into a single normalized score. Longer tracks with fewer forced merges score higher.",
+      "This is the metric that most directly predicts whether the overlay will look coherent. A detector with high mAP but low track stability is producing boxes that the tracker cannot maintain as consistent identities."
+    ],
+    "targets": [
+      "benchmark.metric.track_stability"
+    ],
+    "links": [
+      {
+        "label": "Long-term player tracking with graph hierarchies",
+        "url": "https://arxiv.org/abs/2502.21242",
+        "kind": "paper",
+        "published_at": "2025-02"
+      },
+      {
+        "label": "Team-Aware Football Player Tracking with SAM",
+        "url": "https://arxiv.org/abs/2512.08467",
+        "kind": "paper",
+        "published_at": "2025-12"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.metric.calibration_health",
+    "title": "Calibration health",
+    "summary": "Calibration health measures how reliably the field registration pipeline produces fresh, valid homographies during the benchmark clip.",
+    "body": [
+      "Field calibration depends on visible pitch keypoints, which in turn depend on the detector not flooding the frame with noise that confuses the keypoint model. A detector that hallucinates crowd boxes or misses the pitch area can indirectly degrade calibration even though the field model itself is unchanged.",
+      "The metric uses the ratio of successful calibration refreshes to total refresh attempts, combined with the average visible pitch keypoints per frame. Higher success rates and more keypoints mean healthier calibration.",
+      "If a candidate scores well on coverage but poorly on calibration health, the detector may be finding players but degrading the minimap and projection layers. That trade-off matters for any downstream analysis that depends on field coordinates."
+    ],
+    "targets": [
+      "benchmark.metric.calibration_health"
+    ],
+    "links": [
+      {
+        "label": "Soccana Keypoint model card",
+        "url": "https://huggingface.co/Adit-jain/Soccana_Keypoint",
+        "kind": "model",
+        "published_at": "2025-09"
+      },
+      {
+        "label": "SoccerSynth Field",
+        "url": "https://arxiv.org/abs/2503.13969",
+        "kind": "paper",
+        "published_at": "2025-03"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.metric.coverage",
+    "title": "Detection coverage",
+    "summary": "Coverage measures how many players and ball instances the detector finds per frame on average across the benchmark clip.",
+    "body": [
+      "In football broadcast footage, a good detector should find most visible players on both teams, the referee crew, and the ball when it is in frame. Coverage counts how many of those the detector actually produces.",
+      "The metric normalizes average player detections per frame and average ball detections per frame against expected ranges for broadcast football. A detector that consistently finds 18-22 players per frame in a wide shot scores higher than one that finds 8.",
+      "Coverage alone does not prove quality. A detector that hallucinates boxes also produces high raw counts. Use coverage together with track stability to distinguish real recall from noisy over-detection."
+    ],
+    "targets": [
+      "benchmark.metric.coverage"
     ],
     "links": [
       {
@@ -1776,67 +1962,776 @@
         "url": "https://huggingface.co/Adit-jain/soccana",
         "kind": "model",
         "published_at": "2025-08"
+      },
+      {
+        "label": "SoccerSynth-Detection",
+        "url": "https://arxiv.org/abs/2501.09281",
+        "kind": "paper",
+        "published_at": "2025-01"
       }
     ]
   },
   {
-    "id": "benchmark.composite_score",
-    "title": "Proxy comparison score",
-    "summary": "This is a transparent weighted proxy across stability, calibration, coverage, and throughput, not a labeled accuracy metric.",
+    "id": "benchmark.suites",
+    "title": "Benchmark suites",
+    "summary": "Suites define the task, dataset, metrics, and capability contract for a benchmark comparison.",
     "body": [
-      "The score is meant to shortlist candidates, not replace judgment. Two close scores should send you to the overlay and diagnostics rather than straight to promotion.",
-      "This surface does not yet compare predictions against a labeled benchmark clip. It ranks runtime evidence from this app itself, which is why the score is helpful for review but not the same thing as model accuracy.",
-      "External baselines can still appear in the same benchmark run even when they do not emit the native metrics required for the 0-100 proxy score. In those cases, review the overlay, logs, and diagnostics directly instead of reading a missing score as failure."
+      "A suite is the benchmark protocol itself, not just a dataset name. It declares which metrics matter, which capabilities are required, and what evidence counts as a valid result.",
+      "Selecting multiple suites means the same recipe set is judged across more than one benchmark family. Unsupported combinations stay visible instead of being silently dropped.",
+      "Use the suite selector to choose what evidence you actually want, then use the matrix to inspect one suite family at a time."
+    ],
+    "targets": ["benchmark.suites"],
+    "links": []
+  },
+  {
+    "id": "benchmark.run_controls",
+    "title": "Benchmark run controls",
+    "summary": "Run controls describe the selected matrix, start benchmark jobs, and let you reopen prior benchmark records.",
+    "body": [
+      "The run controls area tells you how many selected suite-by-recipe cells are runnable now and how many are blocked by compatibility, missing datasets, or unavailable assets.",
+      "Starting a benchmark records the selected suites and recipes as a persisted run. Reopening an earlier run lets you inspect historical results through the same matrix and detail surfaces.",
+      "Treat this area as the execution desk for the matrix, not as the explanation of the metrics themselves."
+    ],
+    "targets": ["benchmark.run_controls"],
+    "links": []
+  },
+  {
+    "id": "benchmark.recipe_browser",
+    "title": "Recipe browser",
+    "summary": "The recipe browser is where you choose runnable benchmark recipes rather than loose model files.",
+    "body": [
+      "A recipe already encodes how detector, tracker, keypoint, and bundled pipeline pieces fit together for benchmarking. That is why the matrix compares recipes, not arbitrary asset fragments.",
+      "Imported checkpoints become assets first, then recipes. This keeps the benchmark contract consistent even when models come from different sources.",
+      "Recipe compatibility is honest: if the active suite requires capabilities a recipe does not expose, the matrix will show N/A instead of inventing a fallback."
+    ],
+    "targets": ["benchmark.recipe_browser"],
+    "links": []
+  },
+  {
+    "id": "benchmark.results_matrix",
+    "title": "Results matrix",
+    "summary": "The results matrix focuses one suite at a time so recipes can be sorted and filtered on that suite's own metric family.",
+    "body": [
+      "Pick an active suite, then compare recipes by the metrics that suite actually declares. This keeps tracking, calibration, detection, and spotting evidence from collapsing into one fake ranking.",
+      "Use presets and filters to slice the recipe set honestly. Unsupported rows remain visible as N/A so capability gaps are obvious.",
+      "The matrix is the main evidence surface for paper-style benchmark numbers, while operational overlay review stays available as a separate supporting lane."
+    ],
+    "targets": ["benchmark.results_matrix"],
+    "links": []
+  },
+  {
+    "id": "benchmark.matrix_filters",
+    "title": "Matrix filters and presets",
+    "summary": "Filters and presets narrow the matrix to comparable rows without deleting incompatible recipes from the benchmark record.",
+    "body": [
+      "Presets shift the view toward one suite family such as Detection, Tracking, or Game State. Filters narrow the active recipe set by provider, architecture, bundle mode, status, capability, or N/A behavior.",
+      "This is better than hiding incompatible recipes entirely because the operator can still see why a row does not belong in the current comparison slice.",
+      "Use these controls to compare like with like, not to manufacture a prettier table."
+    ],
+    "targets": ["benchmark.matrix_filters"],
+    "links": []
+  },
+  {
+    "id": "benchmark.detail_panel",
+    "title": "Benchmark detail panel",
+    "summary": "The detail panel expands one suite-and-recipe selection into metrics, artifacts, composition, and compatibility evidence.",
+    "body": [
+      "Use the detail panel when a matrix row looks interesting and you need to see the full metric breakdown, artifact paths, or which assets make up the recipe.",
+      "The panel is intentionally compatible with the matrix rather than replacing it. The matrix helps you compare; the detail panel helps you inspect one row honestly.",
+      "Operational overlay review remains complementary and can still be inspected beside the detail panel when the active suite is the operational lane."
+    ],
+    "targets": ["benchmark.detail_panel"],
+    "links": []
+  },
+  {
+    "id": "benchmark.operational_review",
+    "title": "Operational review lane",
+    "summary": "Operational review keeps the overlay-first clip lane visible without pretending it is a labeled benchmark.",
+    "body": [
+      "This lane is still useful because it shows how a recipe behaves inside the real workbench pipeline on a fixed clip: overlay quality, tracker stability, calibration health, and throughput.",
+      "It is supporting evidence, not the benchmark authority. The official suite metrics should decide the paper-style comparisons.",
+      "Keeping the operational lane separate prevents the workbench from mixing heuristic pipeline health with labeled benchmark truth."
+    ],
+    "targets": ["benchmark.operational_review"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.throughput",
+    "title": "Processing throughput",
+    "summary": "Throughput measures how fast the detector drives the full pipeline in frames per second on the benchmark clip.",
+    "body": [
+      "Speed matters because this workbench processes real video. A detector that is accurate but processes 2 FPS on your machine may be impractical for iterative work or longer clips.",
+      "The metric is the raw FPS reported by the analysis pipeline on this host with the locked runtime profile. It is hardware-dependent, so throughput comparisons are valid only between candidates run on the same machine.",
+      "Treat throughput as host-specific context and operational evidence, not as a replacement for the suite's declared primary metric. A fast bad detector is still bad."
     ],
     "targets": [
-      "benchmark.composite_score"
+      "benchmark.metric.throughput"
     ],
     "links": []
   },
   {
-    "id": "benchmark.leaderboard",
-    "title": "Benchmark leaderboard",
-    "summary": "The leaderboard ranks candidates for one benchmark run and should be read together with overlay and diagnostics evidence.",
+    "id": "benchmark.matrix",
+    "title": "Benchmark matrix view",
+    "summary": "The Benchmark Lab matrix is a suite-focused comparison table that lets you sort and filter recipes within one honest task family at a time.",
     "body": [
-      "A candidate can score well overall but still have suspicious overlay behavior on hard moments. That is why this surface keeps the selected candidate detail beside the ranking.",
-      "Use the raw sub-metrics and the overlay video to understand why a model ranked where it did. If you need official accuracy, use a labeled SoccerNetGS evaluation path such as GS-HOTA instead of this proxy leaderboard.",
-      "Some rows can be side-by-side review entries rather than ranked proxy-score entries. That happens when an external baseline completes but does not emit the native runtime metrics this workbench uses for ranking."
+      "The matrix is intentionally suite-first. Pick an active suite, then compare recipes using that suite's own metric columns instead of inventing a cross-task score.",
+      "Use view presets and filters to keep unlike things apart. Detection AP, tracking HOTA, calibration JaC@5, and game-state GS-HOTA should not compete inside one synthetic super-score.",
+      "Unsupported combinations stay visible as N/A so the operator can see capability gaps without pretending those rows are directly comparable."
     ],
-    "targets": [
-      "benchmark.leaderboard"
-    ],
+    "targets": ["benchmark.matrix"],
     "links": []
   },
   {
-    "id": "benchmark.sn_gamestate",
-    "title": "sn-gamestate baseline",
-    "summary": "The official SoccerNet Game State Reconstruction devkit is an external TrackLab-based baseline and evaluation reference.",
+    "id": "benchmark.suite.det_roles_quick",
+    "title": "Detection Roles Quick",
+    "summary": "This quick suite measures four-class football detection with COCO-style AP metrics on a small real-image dataset.",
     "body": [
-      "sn-gamestate is the official SoccerNet baseline and evaluator stack for Game State Reconstruction. Its dataset and model weights are downloaded automatically on first run.",
-      "Its published accuracy contract is GS-HOTA on labeled SoccerNetGS clips. That is different from this workbench's current proxy clip-comparison score, which does not yet run the official labeled evaluator inline."
+      "Use this as the fast sanity check for detector regressions on player, goalkeeper, ball, and referee boxes. It is intentionally small and cheap, so it is useful for iteration, not for declaring a final winner.",
+      "The scores are standard COCO-style detection metrics, with AP@[.50:.95] as the primary sort metric. Runtime columns are secondary host-specific context, not the main benchmark truth.",
+      "Because this dataset is small, treat it as the first gate in the ladder. Strong performance here should send a recipe to the larger SoccerNet suites, not end the comparison."
     ],
-    "targets": [
-      "benchmark.sn_gamestate"
-    ],
+    "targets": ["benchmark.suite.det_roles_quick"],
     "links": [
       {
-        "label": "sn-gamestate repository",
-        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "label": "martinjolif/football-player-detection",
+        "url": "https://huggingface.co/datasets/martinjolif/football-player-detection",
+        "kind": "dataset",
+        "published_at": "2026-03"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.det_ball_quick",
+    "title": "Detection Ball Quick",
+    "summary": "This quick suite isolates football ball detection with COCO-style AP metrics so small-object regression is visible on its own.",
+    "body": [
+      "Use this when a detector claims better ball behavior and you need to separate that from player or referee box quality.",
+      "Ball AP is harder and more volatile than player AP because the object is tiny, fast, and often motion-blurred or partially occluded.",
+      "This suite belongs in the quick gate. A promising result here should send the recipe to the heavier ladders, not finish the evaluation story."
+    ],
+    "targets": ["benchmark.suite.det_ball_quick"],
+    "links": [
+      {
+        "label": "martinjolif/football-ball-detection",
+        "url": "https://huggingface.co/datasets/martinjolif/football-ball-detection",
+        "kind": "dataset",
+        "published_at": "2026-03"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.synloc_quick",
+    "title": "SynLoc Quick",
+    "summary": "This quick suite scores world-coordinate localization quality with mAP-LocSim rather than image-space box overlap.",
+    "body": [
+      "Use this when you care about whether the recipe preserves useful pitch-space location after projection, not only whether it draws plausible boxes.",
+      "mAP-LocSim belongs to a localization task family. Keep it separate from AP, HOTA, and spotting metrics.",
+      "A strong result here is evidence that a recipe can support downstream tactical location work rather than just visual overlays."
+    ],
+    "targets": ["benchmark.suite.synloc_quick"],
+    "links": [
+      {
+        "label": "Spiideo SynLoc",
+        "url": "https://github.com/Spiideo/sskit",
         "kind": "repo",
-        "published_at": "2025-05"
-      },
-      {
-        "label": "GSR paper",
-        "url": "https://arxiv.org/abs/2404.11335",
-        "kind": "paper",
-        "published_at": "2024-04"
-      },
-      {
-        "label": "SoccerNet GSR task page",
-        "url": "https://www.soccer-net.org/tasks/new-game-state-reconstruction",
-        "kind": "docs",
         "published_at": "2026"
       }
     ]
+  },
+  {
+    "id": "benchmark.suite.team_bas_quick",
+    "title": "Team BAS Quick",
+    "summary": "This quick suite measures team-aware ball action spotting with Team-mAP@1.",
+    "body": [
+      "Use this suite only for recipes that genuinely expose spotting outputs. If a recipe is detector-only or tracking-only, it should stay N/A here.",
+      "Team-mAP@1 answers a semantic timing-and-team assignment question, not a detection or tracking question.",
+      "This is a useful readiness gate for future event-capable recipes, even if today's catalog has few or no compatible rows."
+    ],
+    "targets": ["benchmark.suite.team_bas_quick"],
+    "links": [
+      {
+        "label": "SoccerNet/SN-BAS-2025",
+        "url": "https://huggingface.co/datasets/SoccerNet/SN-BAS-2025/tree/main",
+        "kind": "dataset",
+        "published_at": "2025"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.sn_calib_medium",
+    "title": "Calibration Medium",
+    "summary": "This medium suite measures camera calibration quality with the official Completeness x JaC@5 score.",
+    "body": [
+      "Use this suite when geometric correctness matters for the downstream tactical output. It is the right benchmark for line/field registration quality, not detector AP.",
+      "A calibration metric should stay in its own family. Do not average it into tracking or detection leaderboards.",
+      "This is a medium-cost gate because calibration evaluation usually matters after the recipe already looks plausible on quick detection checks."
+    ],
+    "targets": ["benchmark.suite.sn_calib_medium"],
+    "links": [
+      {
+        "label": "sn-calibration",
+        "url": "https://github.com/SoccerNet/sn-calibration",
+        "kind": "repo",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.sn_tracking_medium",
+    "title": "Tracking Medium",
+    "summary": "This medium suite measures temporal tracking quality with HOTA-family metrics.",
+    "body": [
+      "Use this suite to compare trackers and tracking-capable pipelines on identity continuity over time, not just per-frame detection quality.",
+      "HOTA, DetA, and AssA stay visible together because they explain whether a change helped detection coverage, association quality, or both.",
+      "This suite becomes meaningful only when the recipe really outputs tracking-capable results.",
+      "In the current repo state, this lane is still explicitly blocked until a real `SoccerNetMOT` tree is materialized and the workbench exports per-recipe prediction archives for the vendored `sn-tracking` evaluator instead of assuming a generic `evaluate.py` flow."
+    ],
+    "targets": ["benchmark.suite.sn_tracking_medium"],
+    "links": [
+      {
+        "label": "sn-tracking",
+        "url": "https://github.com/SoccerNet/sn-tracking",
+        "kind": "repo",
+        "published_at": "2026"
+      },
+      {
+        "label": "sn-trackeval",
+        "url": "https://github.com/SoccerNet/sn-trackeval",
+        "kind": "repo",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.pcbas_medium",
+    "title": "PCBAS Medium",
+    "summary": "This medium suite measures person-centric ball action spotting with F1@15%.",
+    "body": [
+      "Use this suite for person-centric spotting recipes, not for plain detectors or trackers that do not produce the required semantic outputs.",
+      "F1@15% belongs to the spotting family and should stay beside other spotting metrics instead of being blended into AP or HOTA.",
+      "This suite is part of the benchmark ladder even when today's catalog has honest N/A rows."
+    ],
+    "targets": ["benchmark.suite.pcbas_medium"],
+    "links": [
+      {
+        "label": "SoccerNet/SN-PCBAS-2026",
+        "url": "https://huggingface.co/datasets/SoccerNet/SN-PCBAS-2026/tree/main",
+        "kind": "dataset",
+        "published_at": "2026"
+      },
+      {
+        "label": "FOOTPASS",
+        "url": "https://github.com/JeremieOchin/FOOTPASS",
+        "kind": "repo",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.gsr_medium",
+    "title": "Game State Medium",
+    "summary": "This medium suite is a fixed 12-clip SoccerNet GSR validation subset scored with GS-HOTA.",
+    "body": [
+      "Use this suite when you want a serious benchmark that still finishes in a practical local time window. It is the main bridge between detector-centric experimentation and full tactical reconstruction.",
+      "GS-HOTA is the primary metric because it reflects end-to-end game-state quality over time rather than raw box overlap alone. HOTA, DetA, and AssA stay visible as supporting breakdowns.",
+      "This suite is DVC-managed through its manifest and dataset state so the medium benchmark stays reproducible instead of drifting with ad hoc clip choices.",
+      "In the current repo state, this lane is still explicitly blocked until the fixed 12-clip `SoccerNetGS` subset is materialized and the workbench runs the vendored TrackLab/sn-gamestate pipeline per recipe instead of assuming a generic `evaluate.py` entrypoint."
+    ],
+    "targets": ["benchmark.suite.gsr_medium"],
+    "links": [
+      {
+        "label": "SoccerNet/SN-GSR-2025",
+        "url": "https://huggingface.co/datasets/SoccerNet/SN-GSR-2025",
+        "kind": "dataset",
+        "published_at": "2025"
+      },
+      {
+        "label": "sn-gamestate",
+        "url": "https://github.com/SoccerNet/sn-gamestate",
+        "kind": "repo",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.gsr_long",
+    "title": "Game State Long",
+    "summary": "This is the long full-validation SoccerNet GSR run. Use it for serious final comparisons, not for quick iteration.",
+    "body": [
+      "The long suite exists so the workbench can produce a paper-style final comparison on a larger official benchmark instead of overfitting to a tiny smoke set or one favorite clip.",
+      "Because this run is much heavier, it should usually come after a recipe already looks promising on the quick and medium ladders.",
+      "The result still shows separate GS-HOTA, HOTA, DetA, and AssA columns. The long run is more evidence, not a license to collapse task boundaries into one house score."
+    ],
+    "targets": ["benchmark.suite.gsr_long"],
+    "links": [
+      {
+        "label": "TrackLab",
+        "url": "https://github.com/TrackingLaboratory/tracklab",
+        "kind": "repo",
+        "published_at": "2026"
+      },
+      {
+        "label": "sn-trackeval",
+        "url": "https://github.com/SoccerNet/sn-trackeval",
+        "kind": "repo",
+        "published_at": "2026"
+      }
+    ]
+  },
+  {
+    "id": "benchmark.suite.operational_review",
+    "title": "Operational Review",
+    "summary": "Operational Review keeps the old clip-based benchmark lane alive, but it is explicitly not a ground-truth benchmark.",
+    "body": [
+      "This lane is still useful because it shows how a recipe behaves inside the actual workbench pipeline: tracker stability, calibration health, coverage, saved overlay output, and clip-speed behavior.",
+      "It is not a substitute for labeled evaluation. Use it to inspect overlays, failure modes, and operator-facing behavior after a recipe already looks credible on a real suite.",
+      "Keeping this lane separate prevents the product from mixing operational heuristics with official benchmark metrics."
+    ],
+    "targets": ["benchmark.suite.operational_review"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.map50_95",
+    "title": "AP@[.50:.95]",
+    "summary": "AP@[.50:.95] is the standard COCO-style average precision across IoU thresholds from 0.50 to 0.95.",
+    "body": [
+      "This is a stricter and more informative detector metric than AP50 alone because it rewards both finding objects and localizing them tightly.",
+      "In the Benchmark Lab v2 detection suites, this is the main benchmark sort key unless the active suite declares a different primary metric.",
+      "If AP50 looks great but AP@[.50:.95] drops sharply, the detector is probably finding objects but placing boxes too loosely for serious downstream use."
+    ],
+    "targets": ["benchmark.metric.map50_95"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.map_locsim",
+    "title": "mAP-LocSim",
+    "summary": "mAP-LocSim scores world-coordinate localization quality in the SynLoc task.",
+    "body": [
+      "This is not an image-space detector metric. It measures how well a method localizes football actors on the pitch in world coordinates.",
+      "Use it to judge localization-ready recipes, not to compare directly against spotting or tracking metrics.",
+      "A strong mAP-LocSim score means the recipe is preserving useful spatial accuracy after projection, not just drawing believable boxes."
+    ],
+    "targets": ["benchmark.metric.map_locsim"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.team_map_at_1",
+    "title": "Team-mAP@1",
+    "summary": "Team-mAP@1 is the main metric for team-aware ball action spotting.",
+    "body": [
+      "This metric evaluates whether the action was spotted at the correct time and assigned to the correct team side. It belongs to spotting semantics, not tracking or calibration.",
+      "Do not compare Team-mAP@1 directly against AP or HOTA. They answer different benchmark questions.",
+      "If a recipe has no event-spotting capability, the matrix should show N/A rather than inventing a cross-task score."
+    ],
+    "targets": ["benchmark.metric.team_map_at_1"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.jac5",
+    "title": "Completeness x JaC@5",
+    "summary": "Completeness x JaC@5 is the official calibration benchmark score for camera geometry quality.",
+    "body": [
+      "This metric rewards calibration solutions that are both usable and geometrically accurate, rather than accepting a solution that only solves a few easy lines.",
+      "It is a calibration-specific metric and should stay in the calibration view or suite, not be averaged together with detection or spotting scores.",
+      "If calibration is important to the tactical workbench outcome, this is the benchmark signal to watch instead of image-space AP."
+    ],
+    "targets": ["benchmark.metric.jac5"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.hota",
+    "title": "HOTA",
+    "summary": "HOTA is a tracking metric that balances detection quality and association quality over time.",
+    "body": [
+      "HOTA is useful because it does not let a tracker win purely by producing lots of detections or purely by associating a handful of obvious tracks well.",
+      "DetA and AssA remain visible beside it so you can see whether a change helped detection quality, association quality, or both.",
+      "Use HOTA-family metrics for temporal identity tasks. Do not treat them as substitutes for spotting or calibration metrics."
+    ],
+    "targets": ["benchmark.metric.hota"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.gs_hota",
+    "title": "GS-HOTA",
+    "summary": "GS-HOTA is the game-state reconstruction metric for SoccerNet GSR.",
+    "body": [
+      "GS-HOTA is the most aligned official metric for this workbench’s tactical destination because it evaluates reconstruction quality over time rather than only image-space boxes.",
+      "Use it as the primary sort key for the GSR suites. Supporting columns such as HOTA, DetA, and AssA help explain why a recipe landed where it did.",
+      "This is the benchmark that should decide the serious long-form ranking once a recipe has already passed the quick and medium gates."
+    ],
+    "targets": ["benchmark.metric.gs_hota"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.f1_at_15",
+    "title": "F1@15%",
+    "summary": "F1@15% is the main FOOTPASS-style person-centric spotting metric.",
+    "body": [
+      "This metric belongs to the person-centric spotting family. It checks whether the action was assigned correctly within the allowed temporal tolerance.",
+      "Because it answers a semantic action question, it should be read beside spotting-specific supporting metrics, not averaged with AP or HOTA.",
+      "If the active recipe does not produce person-centric spotting outputs, Benchmark Lab should display N/A here."
+    ],
+    "targets": ["benchmark.metric.f1_at_15"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.na",
+    "title": "Not Applicable",
+    "summary": "N/A means the selected recipe and suite do not form an honest benchmark pair.",
+    "body": [
+      "The matrix intentionally uses N/A when a recipe lacks the required capability for a suite, or when the task boundary does not match the recipe’s outputs.",
+      "This is better than inventing fallback numbers or silently substituting another metric family.",
+      "Use filters and presets to compare like with like. The point of the matrix is to keep incompatible rows visible without pretending they are directly comparable."
+    ],
+    "targets": ["benchmark.metric.na"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suites",
+    "title": "Benchmark suites",
+    "summary": "Suites define the task family, protocol, dataset expectations, and primary metric for a benchmark run.",
+    "body": [
+      "A suite is not just a label. It fixes what is being measured, which metrics matter, and what capability contract a recipe must satisfy before the result is honest.",
+      "Selecting multiple suites means the same recipes can be run through multiple benchmark shapes, but the visible matrix still focuses on one suite at a time so the metric columns stay meaningful.",
+      "If a suite is missing its dataset or its operational clip, the workbench should say so explicitly instead of pretending the row is comparable."
+    ],
+    "targets": ["benchmark.suites"],
+    "links": []
+  },
+  {
+    "id": "benchmark.recipe_browser",
+    "title": "Benchmark recipe browser",
+    "summary": "Recipes are runnable benchmark bindings, not loose assets.",
+    "body": [
+      "A recipe already encodes the detector, tracker, keypoint model, and pipeline binding that Benchmark Lab will execute for a suite.",
+      "This matters because the benchmark truth is about runnable systems, not a disconnected pile of checkpoints. Two recipes may share one detector but differ meaningfully in tracking or calibration behavior.",
+      "Importing a detector adds new assets and recipe rows, but a row only becomes benchmark-valid for a suite when its capability contract actually matches."
+    ],
+    "targets": ["benchmark.recipe_browser"],
+    "links": []
+  },
+  {
+    "id": "benchmark.run_controls",
+    "title": "Benchmark run controls",
+    "summary": "Run Controls launch the selected suite-by-recipe matrix and keep blocked cells visible before execution.",
+    "body": [
+      "The counts here are the preflight truth: how many selected cells are runnable now, how many are blocked by missing datasets, and how many are incompatible by capability.",
+      "This prevents the operator from confusing 'not executed' with 'not supported'. Both states matter, but they mean different things for model comparison.",
+      "The selected benchmark history also rehydrates previous suite results so the matrix and detail panel can be reviewed without re-running everything."
+    ],
+    "targets": ["benchmark.run_controls"],
+    "links": []
+  },
+  {
+    "id": "benchmark.matrix_filters",
+    "title": "Matrix filters and presets",
+    "summary": "Presets narrow the task family, and filters narrow the recipe rows shown in the matrix.",
+    "body": [
+      "Use presets to move between detection, spotting, localization, calibration, tracking, game state, and operational review contexts without pretending those tasks share one score.",
+      "Use filters to keep like with like: same provider, same architecture family, same bundle mode, same capability, or only rows that support the active suite.",
+      "The point of this toolbar is not cosmetic. It is how the product avoids turning a heterogeneous benchmark catalog into an unreadable table."
+    ],
+    "targets": ["benchmark.matrix_filters"],
+    "links": []
+  },
+  {
+    "id": "benchmark.results_matrix",
+    "title": "Results matrix",
+    "summary": "The results matrix shows recipe rows against metric columns for the active suite.",
+    "body": [
+      "This is intentionally not a global cross-task leaderboard. The columns change with the active suite so the visible numbers stay within one real evaluation protocol at a time.",
+      "Clicking a metric header changes the sort column. That makes it possible to compare the same recipe pool under different benchmark truths without inventing a house composite.",
+      "When a recipe does not support the active suite, the row should still remain visible if your filters allow it, but the metric cells should say N/A honestly."
+    ],
+    "targets": ["benchmark.results_matrix"],
+    "links": []
+  },
+  {
+    "id": "benchmark.detail_panel",
+    "title": "Benchmark detail panel",
+    "summary": "The detail panel is the drilldown for one recipe under one active suite.",
+    "body": [
+      "Use this panel to inspect the selected row's metrics, artifact paths, composition, and benchmark logs without losing the matrix context.",
+      "The panel matters because a single scalar is never enough. A recipe can look good on the primary metric while still exposing weak artifacts, poor compatibility, or suspicious runtime evidence.",
+      "If a row is operational rather than ground-truth, the detail panel should make that distinction visible instead of letting the operator assume the evidence is label-backed."
+    ],
+    "targets": ["benchmark.detail_panel"],
+    "links": []
+  },
+  {
+    "id": "benchmark.operational_review",
+    "title": "Operational review",
+    "summary": "Operational review is the overlay-first lane for comparing how recipes behave inside the real workbench pipeline.",
+    "body": [
+      "This lane is deliberately preserved because overlays, calibration stability, and operator-visible behavior still matter even when they are not official benchmark numbers.",
+      "It must remain visually separate from label-backed suites so the operator does not confuse pipeline review with benchmark truth.",
+      "Use operational review after a recipe already looks credible on a real suite, or when you need to understand why a benchmarked recipe still feels bad in product use."
+    ],
+    "targets": ["benchmark.operational_review"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.det_ball_quick",
+    "title": "Detection Ball Quick",
+    "summary": "This quick suite isolates football ball detection with COCO-style AP metrics.",
+    "body": [
+      "Use this suite when ball visibility is the change you care about and player-role metrics would hide the regression.",
+      "The suite keeps ball detection inside a real AP family rather than collapsing it into one generic pipeline score.",
+      "Because the task is narrower than full player detection, treat it as a specialized quick gate, not the whole benchmark story."
+    ],
+    "targets": ["benchmark.suite.det_ball_quick"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.synloc_quick",
+    "title": "Localization Quick",
+    "summary": "This quick suite checks world-coordinate localization quality with mAP-LocSim.",
+    "body": [
+      "Use it to judge whether a recipe preserves spatial accuracy after projection, not whether it merely draws plausible image-space boxes.",
+      "Localization metrics answer a different question from AP, HOTA, or spotting scores, so the matrix must keep this suite separate.",
+      "If a recipe cannot produce the required localization outputs, the row should stay visible as N/A rather than being forced into an image-space comparison."
+    ],
+    "targets": ["benchmark.suite.synloc_quick"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.team_bas_quick",
+    "title": "Team Action Spotting Quick",
+    "summary": "This quick suite measures team-aware ball action spotting with Team-mAP@1.",
+    "body": [
+      "This is a spotting suite, not a detector suite. It belongs to event semantics and team attribution rather than box overlap alone.",
+      "Keep this lane visible even when no current recipe supports it, because the honest N/A is part of the capability story.",
+      "If a future recipe does support it, compare it inside this suite rather than pretending the score is interchangeable with AP or HOTA."
+    ],
+    "targets": ["benchmark.suite.team_bas_quick"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.sn_calib_medium",
+    "title": "Calibration Medium",
+    "summary": "This medium suite measures camera-geometry quality with Completeness x JaC@5.",
+    "body": [
+      "Use this suite when projection and field registration quality are the real product bottlenecks, not raw detection.",
+      "A strong calibration score means the recipe is producing usable field geometry, not just surviving visually on one clip.",
+      "Because calibration answers a geometry question, do not blend it into detection or tracking scores."
+    ],
+    "targets": ["benchmark.suite.sn_calib_medium"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.sn_tracking_medium",
+    "title": "Tracking Medium",
+    "summary": "This medium suite measures temporal association quality with HOTA-family tracking metrics.",
+    "body": [
+      "Use this suite when the difference between recipes is less about single-frame detection and more about identity continuity over time.",
+      "HOTA, DetA, and AssA stay together because they explain whether a change helped detection quality, association quality, or both.",
+      "Tracking suites are where tracker and ReID choices become benchmark-visible rather than only operationally visible."
+    ],
+    "targets": ["benchmark.suite.sn_tracking_medium"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite.pcbas_medium",
+    "title": "Person-Centric Ball Action Spotting Medium",
+    "summary": "This medium suite measures person-centric spotting quality with FOOTPASS-style F1@15%.",
+    "body": [
+      "This suite is about semantic action timing and assignment, not image-space localization.",
+      "Keep it in the benchmark catalog even if current recipes cannot satisfy it yet. Honest N/A rows are better than silently erasing the task family.",
+      "When event-capable recipes arrive, this lane should remain its own spotting benchmark instead of being collapsed into a general detector score."
+    ],
+    "targets": ["benchmark.suite.pcbas_medium"],
+    "links": []
+  },
+  {
+    "id": "benchmark.charts",
+    "title": "Benchmark Charts",
+    "summary": "Benchmark Charts visualize the active suite with the same recipe pool, filters, and selection state as the matrix.",
+    "body": [
+      "This section is where the matrix becomes interactive evidence instead of just a table. The charts stay locked to the active suite and visible recipe subset, so clicks and legend toggles never leave the benchmark context.",
+      "Use the line or bar mode to change presentation, not semantics. The underlying comparison still comes from the active suite's declared metric family and the same filtered recipe pool feeding the matrix.",
+      "The point of this block is to make differences legible: who leads on the current metric, who is expensive at runtime, and whether a recipe's shape stays strong across the suite's metric family."
+    ],
+    "targets": ["benchmark.charts"],
+    "links": []
+  },
+  {
+    "id": "benchmark.recipe_subset",
+    "title": "Recipe Subset Spotlight",
+    "summary": "The recipe subset controls hide or restore visible series without changing the persisted benchmark record.",
+    "body": [
+      "The legend pills are a visual spotlight, not a data rewrite. They let the operator narrow the visible comparison pool so charts and the matrix can focus on a smaller set of recipes while leaving the underlying benchmark run intact.",
+      "Use this when the full recipe pool becomes noisy or when you want to compare a promoted custom detector against a few baselines without rerunning the benchmark.",
+      "Because the spotlight feeds both the charts and the matrix, it becomes a fast way to keep detail drilldowns synchronized while still preserving blocked or unsupported rows in the benchmark record."
+    ],
+    "targets": ["benchmark.recipe_subset"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.primary_comparison",
+    "title": "Primary Metric Comparison",
+    "summary": "This chart compares the active suite's declared primary metric across the visible recipe pool.",
+    "body": [
+      "The active suite decides what the primary metric means. In detection that may be AP, in tracking it is HOTA, and in game state it is GS-HOTA. The chart deliberately does not invent a cross-task score.",
+      "Use this as the fastest visual ranking surface for the current suite, then confirm the same story in the matrix and detail panel before making a promotion decision.",
+      "Clicking a point or bar should move the detail panel to the same recipe so the chart remains part of the core benchmark workflow instead of becoming a detached report."
+    ],
+    "targets": ["benchmark.metric.primary_comparison"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.runtime_burden",
+    "title": "Runtime Burden",
+    "summary": "Runtime burden shows how expensive the visible recipes are on the active suite's runtime-oriented metric.",
+    "body": [
+      "Accuracy without runtime context can hide impractical wins. This chart keeps throughput or latency beside the primary metric so the operator can see whether a result is expensive, cheap, or surprisingly efficient.",
+      "Read runtime only within one machine context. It is valuable for local product decisions, but it is not a substitute for the suite's declared benchmark truth.",
+      "When a suite exposes no runtime metric, the chart should say so plainly instead of fabricating one from unrelated signals."
+    ],
+    "targets": ["benchmark.metric.runtime_burden"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric_explorer",
+    "title": "Metric Explorer",
+    "summary": "The Metric Explorer changes which active-suite metric is spotlighted in the interactive comparison chart.",
+    "body": [
+      "Use the dropdown when the primary metric alone is not enough and you want to inspect a supporting column such as latency, AssA, DetA, or another declared suite metric.",
+      "This keeps exploration honest because you are still choosing from the active suite's own metric family rather than switching to unrelated benchmark tasks.",
+      "Metric exploration is most useful after the suite and recipe subset are already narrowed, so the chart shows a meaningful comparison rather than a wall of barely related lines."
+    ],
+    "targets": ["benchmark.metric_explorer"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric_profile",
+    "title": "Metric Profile",
+    "summary": "The metric profile normalizes each visible metric column so recipe shape is easy to compare across the active suite.",
+    "body": [
+      "This chart is about relative shape, not raw magnitude. Each metric column is normalized within the current visible recipe pool so you can see whether one recipe is consistently strong or only winning on one metric.",
+      "It is useful when raw values live on very different scales, such as throughput versus HOTA breakdowns, and you still want a fast visual read on which recipe has the broadest strength.",
+      "Treat this as an explanatory companion to the raw table. Normalization improves comparability but should never replace the actual benchmark numbers in the matrix and detail panel."
+    ],
+    "targets": ["benchmark.metric_profile"],
+    "links": []
+  },
+  {
+    "id": "benchmark.suite_evaluation",
+    "title": "Suite Evaluation Charts",
+    "summary": "Suite Evaluation Charts compare the benchmark suites themselves across the current shared recipe pool.",
+    "body": [
+      "This section asks which suites are informative, discriminatory, expensive, blocked, or only partially materialized. It is how Benchmark Lab V2 evaluates the benchmark datasets and protocols themselves, not only the models.",
+      "Use it to see whether a suite has enough comparable recipes, whether its primary metric meaningfully spreads the visible pool, and whether it agrees or disagrees with another suite's ranking.",
+      "A suite with high blocked rate or thin materialization coverage may still be important, but the product should surface that operational reality directly instead of pretending every suite is equally ready."
+    ],
+    "targets": ["benchmark.suite_evaluation"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.discriminative_power",
+    "title": "Discriminative Power",
+    "summary": "Discriminative power summarizes how strongly a suite separates the visible recipe pool on its primary metric.",
+    "body": [
+      "A suite with strong spread or dispersion is drawing clearer distinctions between recipes. That can make it a better benchmark for choosing among contenders, provided the comparable recipe pool is large enough to trust the signal.",
+      "This does not automatically mean the suite is better overall. A stable low-spread suite may still be valuable as a sanity check or contract gate.",
+      "Read discriminative power together with comparable recipe count and blocked rate so you do not mistake a dramatic result from a tiny or heavily blocked pool for a durable benchmark conclusion."
+    ],
+    "targets": ["benchmark.metric.discriminative_power"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.rank_correlation",
+    "title": "Rank Correlation",
+    "summary": "Rank correlation measures how similarly two suites order the same shared recipe pool.",
+    "body": [
+      "High rank correlation means two suites broadly agree on which visible recipes are stronger or weaker. Low correlation means the suites are rewarding different behaviour, which is often a useful finding rather than a defect.",
+      "This is one of the clearest ways to judge whether an operational lane and a label-backed suite are telling the same story or pulling in different directions.",
+      "Correlation is only meaningful when the suites share enough comparable recipes. If the shared pool is too small, the chart should surface N/A rather than pretending the agreement score is stable."
+    ],
+    "targets": ["benchmark.metric.rank_correlation"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.suite_average",
+    "title": "Suite Average",
+    "summary": "Suite average is the mean primary-metric score across the visible comparable recipes for one suite.",
+    "body": [
+      "This is a convenience summary of how the currently visible recipe pool performs on one suite's declared primary metric.",
+      "Use it with spread and dispersion. A strong average with no spread may mean the suite is easy for every visible recipe, while a lower average with strong spread may be more useful for separating contenders.",
+      "The average only includes comparable recipes with real metric values. Blocked or unavailable rows should stay visible elsewhere in the product instead of contaminating the mean."
+    ],
+    "targets": ["benchmark.metric.suite_average"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.blocked_rate",
+    "title": "Blocked Rate",
+    "summary": "Blocked rate shows how much of the visible recipe pool cannot run honestly on a suite because of dataset, runtime, or evaluator blockers.",
+    "body": [
+      "A high blocked rate does not make a suite worthless, but it does mean the operator should treat its current evidence as operationally thin.",
+      "This metric helps distinguish a genuinely ready benchmark from one that is still waiting on materialization, environment work, or a missing recipe-to-evaluator bridge.",
+      "Blocked rate belongs beside comparable recipe count and materialization coverage so readiness problems are visible before anyone overinterprets the remaining successful cells."
+    ],
+    "targets": ["benchmark.metric.blocked_rate"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.unavailable_rate",
+    "title": "Unavailable Rate",
+    "summary": "Unavailable rate shows how much of the visible recipe pool is missing assets or otherwise cannot even enter honest evaluation for a suite.",
+    "body": [
+      "Use this to separate suite-level blockers from recipe-level availability problems. A recipe may be conceptually compatible with a suite but still unavailable because its assets are missing or broken.",
+      "This is especially helpful when comparing built-in assets, promoted checkpoints, and imported models in the same benchmark surface.",
+      "Unavailable rows should remain visible in the matrix and charts so the operator can see what is absent instead of assuming silence means support."
+    ],
+    "targets": ["benchmark.metric.unavailable_rate"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.failed_rate",
+    "title": "Failure Rate",
+    "summary": "Failure rate captures cells that started evaluation but still ended in an execution failure rather than a clean blocker or completion.",
+    "body": [
+      "A failed cell is different from a blocked or unavailable cell. Failure means the benchmark path tried to run and still broke, which is often the highest-priority operational problem in the surface.",
+      "Keep failure rate near blocked and unavailable rates so execution health is separated into honest categories instead of one vague red bucket.",
+      "When failure rate rises, inspect the detail panel and raw payload for the specific recipe and suite intersection before trusting any benchmark summary."
+    ],
+    "targets": ["benchmark.metric.failed_rate"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.materialization_coverage",
+    "title": "Materialization Coverage",
+    "summary": "Materialization coverage is a readiness-oriented percentage that summarizes whether the suite's dataset and manifest are actually present for the current workspace.",
+    "body": [
+      "This is not a benchmark accuracy score. It is a product-surface readiness signal that keeps data reality visible while the suite system spans quick, medium, and operational lanes.",
+      "A suite may be conceptually first-class while still having low materialization coverage on one machine. The product should show that directly rather than hiding the missing state behind empty charts.",
+      "Read this together with blocked rate and sample size so you can tell whether a suite is weak because the benchmark is uninformative or simply because the current workspace is not fully prepared."
+    ],
+    "targets": ["benchmark.metric.materialization_coverage"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.sample_size",
+    "title": "Sample Size",
+    "summary": "Sample size reports the manifest-sized item count currently declared for a suite when that information is available.",
+    "body": [
+      "Sample size helps the operator judge whether a suite is a quick spot-check, a medium validation subset, or a deeper benchmark lane.",
+      "This should come from the suite's own manifest or materialization contract rather than an invented cross-task proxy.",
+      "When sample size is unavailable, the UI should say so plainly instead of fabricating a comparable number."
+    ],
+    "targets": ["benchmark.metric.sample_size"],
+    "links": []
+  },
+  {
+    "id": "benchmark.metric.comparable_recipes",
+    "title": "Comparable Recipes",
+    "summary": "Comparable recipes counts how many visible recipes currently have a real primary-metric result for the suite.",
+    "body": [
+      "This is one of the most important context metrics in suite evaluation. Many benchmark summaries become misleading when only one or two recipes are actually comparable.",
+      "Comparable count is the guardrail for reading spread, dispersion, and rank correlation honestly. Thin pools should be treated as provisional evidence.",
+      "Blocked, unavailable, or failed rows still matter operationally, but they should not be smuggled into the comparable pool."
+    ],
+    "targets": ["benchmark.metric.comparable_recipes"],
+    "links": []
   }
 ]

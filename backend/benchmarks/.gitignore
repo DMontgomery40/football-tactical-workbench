@@ -1,0 +1,47 @@
+/_manifests
+/_datasets
+/_conversions
+/_clip_cache/
+
+# Generated benchmark runs are local artifacts by default.
+/*
+!/.gitignore
+!/*.dvc
+
+# Keep one legacy summary example for the migration path.
+!/20260312_010133_eb6592/
+!/20260312_010133_eb6592/benchmark_summary.json
+
+# Keep one v2 operational example.
+!/20260312_175156_134e9a/
+!/20260312_175156_134e9a/benchmark.json
+!/20260312_175156_134e9a/environment.json
+!/20260312_175156_134e9a/suite_results/
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/result.json
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts/
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts/provenance.json
+!/20260312_175156_134e9a/suite_results/ops.clip_review_v1/detector:soccana/artifacts/summary_excerpt.json
+
+# Keep one v2 detection example with builtin and custom-detector rows.
+!/20260312_175409_2a48ad/
+!/20260312_175409_2a48ad/benchmark.json
+!/20260312_175409_2a48ad/environment.json
+!/20260312_175409_2a48ad/suite_results/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/result.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/ground_truth.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/predictions.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:soccana/artifacts/provenance.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/result.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/ground_truth.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/predictions.json
+!/20260312_175409_2a48ad/suite_results/det.roles_quick_v1/detector:custom_20260310_222947_7f7d6a/artifacts/provenance.json
+
+# Benchmark logs are always local noise.
+**/benchmark.log

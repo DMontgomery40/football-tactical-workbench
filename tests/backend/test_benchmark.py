@@ -1,249 +1,397 @@
 from __future__ import annotations
 
+import json
 import sys
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
+from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT_DIR / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.benchmark import (
-    BenchmarkOrchestrator,
-    SCORE_WEIGHT_CALIBRATION,
-    SCORE_WEIGHT_COVERAGE,
-    SCORE_WEIGHT_THROUGHPUT,
-    SCORE_WEIGHT_TRACK_STABILITY,
-    compute_benchmark_score,
-    compute_composite_score,
-    list_candidates,
-)
+from app import main
+from app.benchmark import benchmark_config_snapshot, hydrate_legacy_benchmark
+from app.benchmark import benchmark_orchestrator
+from app.benchmark_eval.external_cli import run_external_json_command
+from app.benchmark_eval.gamestate import probe_gamestate_blockers
+from app.benchmark_eval.runtime_profiles import probe_runtime_profile
+from app.benchmark_catalog import list_assets, list_recipes
+from app.benchmark_suites import build_suite_dataset_state, get_suite_definition
 
 
-# ---------------------------------------------------------------------------
-# Composite scoring
-# ---------------------------------------------------------------------------
+def test_benchmark_config_snapshot_exposes_suite_asset_and_recipe_catalogs() -> None:
+    snapshot = benchmark_config_snapshot()
 
-def test_composite_score_weights_sum_to_one() -> None:
-    total = (
-        SCORE_WEIGHT_TRACK_STABILITY
-        + SCORE_WEIGHT_CALIBRATION
-        + SCORE_WEIGHT_COVERAGE
-        + SCORE_WEIGHT_THROUGHPUT
-    )
-    assert abs(total - 1.0) < 1e-9
+    assert snapshot["schema_version"] == 2
+    assert len(snapshot["suites"]) >= 10
+    assert any(suite["id"] == "det.roles_quick_v1" for suite in snapshot["suites"])
+    assert any(asset["asset_id"] == "detector.soccana" for asset in snapshot["assets"])
+    assert any(recipe["id"] == "detector:soccana" for recipe in snapshot["recipes"])
+    assert any(state["suite_id"] == "ops.clip_review_v1" for state in snapshot["dataset_states"])
 
 
-def test_composite_score_from_perfect_summary() -> None:
-    summary = {
-        "frames_processed": 100,
-        "fps": 30,
-        "average_track_length": 100,
-        "player_track_churn_ratio": 0.0,
-        "field_registered_ratio": 1.0,
-        "average_player_detections_per_frame": 22,
-    }
-    result = compute_composite_score(summary)
+def test_recipe_catalog_contains_tracker_variants_for_soccana() -> None:
+    recipes = list_recipes()
+    recipe_ids = {recipe["id"] for recipe in recipes}
 
-    assert result["track_stability"] == 100.0
-    assert result["calibration"] == 100.0
-    assert result["coverage"] == 100.0
-    assert result["throughput"] == 100.0
-    assert result["composite"] == 100.0
+    assert "detector:soccana" in recipe_ids
+    assert "pipeline:sn-gamestate-tracklab" in recipe_ids
+    assert "tracker:soccana+bytetrack+soccana_keypoint" in recipe_ids
+    assert "tracker:soccana+hybrid_reid+soccana_keypoint" in recipe_ids
 
 
-def test_composite_score_from_empty_summary() -> None:
-    result = compute_composite_score({})
+def test_asset_catalog_contains_expected_builtin_assets() -> None:
+    assets = list_assets()
+    asset_ids = {asset["asset_id"] for asset in assets}
 
-    assert result["track_stability"] == 0.0
-    assert result["calibration"] == 0.0
-    assert result["coverage"] == 0.0
-    assert result["throughput"] == 0.0
-    assert result["composite"] == 0.0
-
-
-def test_composite_score_partial_summary() -> None:
-    summary = {
-        "frames_processed": 200,
-        "fps": 15,
-        "average_track_length": 100,
-        "player_track_churn_ratio": 0.5,
-        "field_registered_ratio": 0.8,
-        "average_player_detections_per_frame": 11,
-    }
-    result = compute_composite_score(summary)
-
-    # track_stability: (100/200)=0.5 * (1-0.5)=0.5 => 0.25 => 25.0
-    assert result["track_stability"] == 25.0
-    # calibration: 0.8 => 80.0
-    assert result["calibration"] == 80.0
-    # coverage: 11/22 => 50.0
-    assert result["coverage"] == 50.0
-    # throughput: 15/30 => 50.0
-    assert result["throughput"] == 50.0
-
-    expected_composite = round(
-        25.0 * SCORE_WEIGHT_TRACK_STABILITY
-        + 80.0 * SCORE_WEIGHT_CALIBRATION
-        + 50.0 * SCORE_WEIGHT_COVERAGE
-        + 50.0 * SCORE_WEIGHT_THROUGHPUT,
-        2,
-    )
-    assert result["composite"] == expected_composite
+    assert "detector.soccana" in asset_ids
+    assert "tracker.bytetrack" in asset_ids
+    assert "tracker.hybrid_reid" in asset_ids
+    assert "pipeline.soccermaster" in asset_ids
+    assert "pipeline.tracklab_sn_gamestate" in asset_ids
 
 
-def test_composite_score_returns_expected_weights() -> None:
-    result = compute_composite_score({"frames_processed": 1})
-    weights = result["weights"]
-    assert weights["track_stability"] == SCORE_WEIGHT_TRACK_STABILITY
-    assert weights["calibration"] == SCORE_WEIGHT_CALIBRATION
-    assert weights["coverage"] == SCORE_WEIGHT_COVERAGE
-    assert weights["throughput"] == SCORE_WEIGHT_THROUGHPUT
+def test_tracking_dataset_state_reports_concrete_expected_root_and_adapter_blocker() -> None:
+    suite = get_suite_definition("track.sn_tracking_medium_v1")
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is False
+    assert state["readiness_status"] == "blocked"
+    assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/track.sn_tracking_medium_v1/SoccerNetMOT")
+    assert any("SoccerNetMOT" in blocker for blocker in state["blockers"])
+    assert any("evaluate_soccernet_v3_tracking.py" in blocker for blocker in state["blockers"])
+    assert any("recipe-to-submission bridge is still missing" in blocker for blocker in state["blockers"])
+    assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
-def test_composite_score_caps_throughput_and_coverage_at_100() -> None:
-    summary = {
-        "frames_processed": 50,
-        "fps": 120,
-        "average_track_length": 500,
-        "player_track_churn_ratio": 0.1,
-        "field_registered_ratio": 1.0,
-        "average_player_detections_per_frame": 44,
-    }
-    result = compute_composite_score(summary)
+def test_gsr_dataset_state_reports_concrete_expected_root_and_adapter_blocker() -> None:
+    suite = get_suite_definition("gsr.medium_v1")
+    state = build_suite_dataset_state(suite)
 
-    assert result["throughput"] == 100.0
-    assert result["coverage"] == 100.0
-    # calibration is ratio * 100 without extra clamping; 1.0 => 100
-    assert result["calibration"] == 100.0
+    assert state["ready"] is False
+    assert state["readiness_status"] == "blocked"
+    assert str(state["dataset_root"]).endswith("backend/benchmarks/_datasets/gsr.medium_v1/SoccerNetGS")
+    assert any("SoccerNetGS" in blocker for blocker in state["blockers"])
+    assert any("TrackLab/sn-gamestate" in blocker for blocker in state["blockers"])
+    assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
-# ---------------------------------------------------------------------------
-# Candidate validation
-# ---------------------------------------------------------------------------
+def test_quick_stage2_target_suites_use_exact_manifest_blockers_not_generic_missing_root() -> None:
+    for suite_id in ("det.ball_quick_v1", "loc.synloc_quick_v1"):
+        suite = get_suite_definition(suite_id)
+        state = build_suite_dataset_state(suite)
 
-def test_list_candidates_always_includes_pretrained(tmp_path: Path) -> None:
-    fake_soccana = tmp_path / "soccana.pt"
-    fake_soccana.write_bytes(b"fake")
-    fake_soccermaster = {"id": "soccermaster", "label": "SoccerMaster", "available": False}
-    fake_sn = {"id": "sn_gamestate", "label": "sn-gamestate", "available": False}
-
-    with patch("app.benchmark.resolve_model_path", return_value=str(fake_soccana)):
-        with patch("app.benchmark._soccermaster_candidate", return_value=fake_soccermaster):
-            with patch("app.benchmark._sn_gamestate_candidate", return_value=fake_sn):
-                with patch("app.benchmark._registry_candidates", return_value=[]):
-                    with patch("app.benchmark._import_candidates", return_value=[]):
-                        candidates = list_candidates()
-
-    assert [candidate["id"] for candidate in candidates] == ["soccana", "soccermaster", "sn_gamestate"]
-    assert candidates[0]["id"] == "soccana"
-    assert candidates[0]["is_pretrained"] is True
+        assert state["ready"] is False
+        assert state["manifest_exists"] is True
+        assert state["blockers"]
+        assert not any(blocker.startswith("Dataset root is missing.") for blocker in state["blockers"])
 
 
-def test_list_candidates_deduplicates_by_id(tmp_path: Path) -> None:
-    fake_soccana = tmp_path / "soccana.pt"
-    fake_soccana.write_bytes(b"fake")
-    fake_custom = tmp_path / "custom.pt"
-    fake_custom.write_bytes(b"fake")
+def test_backend_default_runtime_profile_matches_current_process() -> None:
+    probe = probe_runtime_profile("backend_default")
 
-    registry_dup = {
-        "id": "soccana",
-        "label": "soccana (dup)",
-        "source": "registry",
-        "path": str(fake_soccana),
-        "is_pretrained": False,
-        "available": True,
-        "comparison_group": "detector",
-    }
-    registry_custom = {
-        "id": "custom_run",
-        "label": "Custom run",
-        "source": "registry",
-        "path": str(fake_custom),
-        "is_pretrained": False,
-        "available": True,
-        "comparison_group": "detector",
-    }
-    fake_soccermaster = {"id": "soccermaster", "label": "SoccerMaster", "available": True}
-    fake_sn = {"id": "sn_gamestate", "label": "sn-gamestate", "available": True}
-
-    with patch("app.benchmark.resolve_model_path", return_value=str(fake_soccana)):
-        with patch("app.benchmark._soccermaster_candidate", return_value=fake_soccermaster):
-            with patch("app.benchmark._sn_gamestate_candidate", return_value=fake_sn):
-                with patch("app.benchmark._registry_candidates", return_value=[registry_dup, registry_custom]):
-                    with patch("app.benchmark._import_candidates", return_value=[]):
-                        candidates = list_candidates()
-
-    ids = [c["id"] for c in candidates]
-    assert ids == ["soccana", "soccermaster", "sn_gamestate", "custom_run"]
-    # soccana should be the pretrained version, not the registry duplicate
-    assert candidates[0]["is_pretrained"] is True
+    assert probe["available"] is True
+    assert probe["python_executable"] == sys.executable
+    assert str(probe["python_version"]).startswith(str(sys.version_info.major))
 
 
-def test_compute_benchmark_score_returns_partial_proxy_for_sn_gamestate() -> None:
-    score = compute_benchmark_score(
-        {"fps": 15.0},
-        {"pipeline_override": "sn_gamestate"},
+def test_external_cli_records_runtime_metadata_for_backend_default(tmp_path: Path) -> None:
+    payload = run_external_json_command(
+        command=["python", "-c", "import json; print(json.dumps({'ok': True}))"],
+        cwd=tmp_path,
+        artifacts_dir=tmp_path,
+        runtime_key="backend_default",
     )
 
-    assert score["composite"] is None
-    assert score["throughput"] == 50.0
-    assert score["score_kind"] == "partial_proxy"
-    assert "sn-gamestate" in score["score_note"]
+    external_result_path = Path(str(payload["_external_result_path"]))
+    persisted = json.loads(external_result_path.read_text(encoding="utf-8"))
+
+    assert payload["ok"] is True
+    assert payload["_runner"]["profile_id"] == "backend_default"
+    assert persisted["runtime_profile"]["profile_id"] == "backend_default"
+    assert persisted["command"][0] == sys.executable
 
 
-def test_compute_benchmark_score_returns_full_proxy_for_native_summary() -> None:
-    score = compute_benchmark_score(
-        {
-            "frames_processed": 100,
-            "fps": 30.0,
-            "average_track_length": 100,
-            "player_track_churn_ratio": 0.0,
-            "field_registered_ratio": 1.0,
-            "average_player_detections_per_frame": 22.0,
+def test_gamestate_probe_surfaces_target_runtime_unavailability() -> None:
+    suite = get_suite_definition("gsr.medium_v1")
+
+    with patch(
+        "app.benchmark_eval.gamestate.probe_runtime_profile",
+        return_value={
+            "profile_id": "tracklab_gamestate_py39_np1",
+            "label": "TrackLab + sn-gamestate (Python 3.9 / NumPy <2)",
+            "available": False,
+            "missing_reasons": ["requires Python 3.9.x but the target runtime reports Python 3.12.7."],
         },
-        {"pipeline_override": "classic"},
+    ), patch(
+        "app.benchmark_eval.gamestate.runtime_unavailable_message",
+        return_value=(
+            "Runtime profile 'tracklab_gamestate_py39_np1' (TrackLab + sn-gamestate (Python 3.9 / NumPy <2)) "
+            "is unavailable. requires Python 3.9.x but the target runtime reports Python 3.12.7."
+        ),
+    ):
+        blockers = probe_gamestate_blockers(
+            suite=suite,
+            dataset_root="",
+            manifest_payload={},
+        )
+
+    assert any("tracklab_gamestate_py39_np1" in blocker for blocker in blockers)
+    assert any("Python 3.9" in blocker for blocker in blockers)
+
+
+def test_blocked_tracking_cells_surface_truthful_reason_in_run_results(tmp_path: Path) -> None:
+    suite = get_suite_definition("track.sn_tracking_medium_v1")
+    suite_state = build_suite_dataset_state(suite)
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "tracker:soccana+bytetrack+soccana_keypoint")
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_tracking_blocked",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state=suite_state,
+        recipe=recipe,
+        dataset_root=str(suite_state.get("dataset_root") or ""),
     )
 
-    assert score["composite"] == 100.0
-    assert score["score_kind"] == "full_proxy"
-    assert score["score_note"] == ""
+    assert result["status"] == "blocked"
+    assert "SoccerNetMOT" in str(result["error"])
+    assert "evaluate_soccernet_v3_tracking.py" in str(result["error"])
+    assert result["blockers"]
+    assert result["runtime_context"] == {}
 
 
-def test_create_benchmark_rejects_unavailable_selected_candidate(tmp_path: Path) -> None:
-    with patch.object(BenchmarkOrchestrator, "_restore_completed", lambda self: None):
-        orchestrator = BenchmarkOrchestrator()
+def test_blocked_gsr_cells_surface_truthful_reason_in_run_results(tmp_path: Path) -> None:
+    suite = get_suite_definition("gsr.medium_v1")
+    suite_state = build_suite_dataset_state(suite)
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "pipeline:sn-gamestate-tracklab")
 
-    with patch("app.benchmark.clip_status", return_value={"ready": True, "path": str(tmp_path / "clip.mp4")}):
-        with patch(
-            "app.benchmark.list_candidates",
-            return_value=[
-                {"id": "soccana", "label": "Classic / soccana", "available": True},
-                {"id": "sn_gamestate", "label": "sn-gamestate", "available": False, "availability_note": "Clone repo first"},
-            ],
-        ):
-            with pytest.raises(RuntimeError, match="not runnable yet"):
-                orchestrator.create_benchmark(candidate_ids=["sn_gamestate"])
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_gsr_blocked",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state=suite_state,
+        recipe=recipe,
+        dataset_root=str(suite_state.get("dataset_root") or ""),
+    )
+
+    assert result["status"] == "blocked"
+    assert "SoccerNetGS" in str(result["error"])
+    assert "TrackLab/sn-gamestate" in str(result["error"])
+    assert result["blockers"]
+    assert result["runtime_context"] == {}
 
 
-# ---------------------------------------------------------------------------
-# Endpoint contract checks
-# ---------------------------------------------------------------------------
+def test_team_spotting_cells_surface_precise_missing_raw_prediction_artifact(tmp_path: Path) -> None:
+    suite = get_suite_definition("spot.team_bas_quick_v1")
+    dataset_root = tmp_path / "team_dataset"
+    game_path = dataset_root / "england_efl" / "2019-2020" / "2019-10-01 - Stoke City - Huddersfield Town"
+    game_path.mkdir(parents=True)
+    (game_path / "Labels-ball.json").write_text("{}", encoding="utf-8")
+    recipe = {
+        "id": "pipeline:event-capable",
+        "label": "Event-capable recipe",
+        "available": True,
+        "capabilities": {
+            "event_spotting": True,
+            "team_id": True,
+        },
+        "compatible_suite_ids": [suite["id"]],
+    }
 
-def test_benchmark_config_endpoint_returns_expected_keys() -> None:
-    from app import main
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_team_spotting_export_blocker",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state={"ready": True, "blockers": []},
+        recipe=recipe,
+        dataset_root=str(dataset_root),
+    )
 
-    fake_clip = {"ready": False, "path": None}
-    fake_candidates: list = []
+    assert result["status"] == "blocked"
+    assert "recipe_event_spotting_predictions.json" in str(result["error"])
+    assert result["blockers"]
 
-    with patch("app.main.benchmark_clip_status", return_value=fake_clip):
-        with patch("app.main.benchmark_list_candidates", return_value=fake_candidates):
-            result = main.benchmark_config()
 
-    assert "clip_status" in result
-    assert "candidates" in result
-    assert "runtime_profile" in result
-    assert "benchmarks_dir" in result
+def test_pcbas_cells_surface_precise_missing_raw_prediction_artifact(tmp_path: Path) -> None:
+    suite = get_suite_definition("spot.pcbas_medium_v1")
+    dataset_root = tmp_path / "pcbas_dataset"
+    (dataset_root / "playbyplay_GT").mkdir(parents=True)
+    (dataset_root / "playbyplay_GT" / "playbyplay_val.json").write_text("{}", encoding="utf-8")
+    recipe = {
+        "id": "pipeline:pcbas-capable",
+        "label": "PCBAS-capable recipe",
+        "available": True,
+        "capabilities": {
+            "event_spotting": True,
+            "team_id": True,
+            "role_id": True,
+            "jersey_ocr": True,
+        },
+        "compatible_suite_ids": [suite["id"]],
+    }
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_pcbas_export_blocker",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state={"ready": True, "blockers": []},
+        recipe=recipe,
+        dataset_root=str(dataset_root),
+    )
+
+    assert result["status"] == "blocked"
+    assert "recipe_playbyplay_predictions.json" in str(result["error"])
+    assert result["blockers"]
+
+
+def test_team_spotting_dataset_state_requires_labels_and_source_video(tmp_path: Path) -> None:
+    suite = dict(get_suite_definition("spot.team_bas_quick_v1"))
+    dataset_root = tmp_path / "team_dataset"
+    game_path = dataset_root / "england_efl" / "2019-2020" / "2019-10-01 - Middlesbrough - Preston North End"
+    game_path.mkdir(parents=True)
+    (game_path / "Labels-ball.json").write_text("{}", encoding="utf-8")
+    manifest_path = tmp_path / "spot.team_bas_quick_v1.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "suite_id": "spot.team_bas_quick_v1",
+                "kind": "dataset_manifest",
+                "materialization": {"status": "blocked"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    suite["dataset_root"] = str(dataset_root)
+    suite["manifest_path"] = str(manifest_path)
+
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is False
+    assert any("224p.mp4" in blocker or "720p.mp4" in blocker for blocker in state["blockers"])
+
+
+def test_team_spotting_dataset_state_is_ready_with_labels_and_video(tmp_path: Path) -> None:
+    suite = dict(get_suite_definition("spot.team_bas_quick_v1"))
+    dataset_root = tmp_path / "team_dataset"
+    game_path = dataset_root / "england_efl" / "2019-2020" / "2019-10-01 - Middlesbrough - Preston North End"
+    game_path.mkdir(parents=True)
+    (game_path / "Labels-ball.json").write_text("{}", encoding="utf-8")
+    (game_path / "224p.mp4").write_bytes(b"not-a-real-video-but-present")
+    manifest_path = tmp_path / "spot.team_bas_quick_v1.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "suite_id": "spot.team_bas_quick_v1",
+                "kind": "dataset_manifest",
+                "items": ["england_efl/2019-2020/2019-10-01 - Middlesbrough - Preston North End"],
+                "task_coverage": ["team_spotting"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    suite["dataset_root"] = str(dataset_root)
+    suite["manifest_path"] = str(manifest_path)
+
+    state = build_suite_dataset_state(suite)
+
+    assert state["ready"] is True
+    assert state["manifest_summary"]["materialization_status"] is None
+
+
+def test_manifest_materialization_blocker_keeps_partial_pcbas_dataset_blocked(tmp_path: Path) -> None:
+    suite = dict(get_suite_definition("spot.pcbas_medium_v1"))
+    dataset_root = tmp_path / "pcbas_dataset"
+    (dataset_root / "playbyplay_GT").mkdir(parents=True)
+    (dataset_root / "playbyplay_GT" / "playbyplay_val.json").write_text("{}", encoding="utf-8")
+    manifest_path = tmp_path / "spot.pcbas_medium_v1.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "suite_id": "spot.pcbas_medium_v1",
+                "kind": "dataset_manifest",
+                "materialization": {
+                    "status": "partial",
+                    "blockers": [
+                        "Validation ground-truth is materialized locally, but tactical_data_VAL.zip is still gated."
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    suite["dataset_root"] = str(dataset_root)
+    suite["manifest_path"] = str(manifest_path)
+
+    state = build_suite_dataset_state(suite)
+
+    assert state["dataset_exists"] is True
+    assert state["manifest_exists"] is True
+    assert state["ready"] is False
+    assert any("tactical_data_VAL.zip" in blocker for blocker in state["blockers"])
+    assert state["manifest_summary"]["materialization_status"] == "partial"
+
+
+def test_backend_executor_respects_recipe_compatible_suite_ids(tmp_path: Path) -> None:
+    suite = get_suite_definition("det.roles_quick_v1")
+    suite_state = build_suite_dataset_state(suite)
+    recipe = next(recipe for recipe in list_recipes() if recipe["id"] == "pipeline:soccermaster")
+
+    result = benchmark_orchestrator._run_suite_recipe(
+        benchmark_id="test_recipe_compatibility",
+        benchmark_dir=tmp_path,
+        suite=suite,
+        suite_dataset_state=suite_state,
+        recipe=recipe,
+        dataset_root=str(suite_state.get("dataset_root") or ""),
+    )
+
+    assert result["status"] == "not_supported"
+    assert "compatibility" in str(result["error"]).lower()
+
+
+def test_hydrate_legacy_benchmark_maps_old_summary_to_operational_suite(tmp_path: Path) -> None:
+    benchmark_dir = tmp_path / "legacy_benchmark"
+    benchmark_dir.mkdir(parents=True)
+    legacy_payload = {
+        "benchmark_id": "legacy_123",
+        "status": "completed",
+        "created_at": "2026-03-12T00:00:00Z",
+        "candidates": [
+            {"id": "soccana", "label": "soccana (pretrained)", "source": "pretrained"},
+        ],
+        "leaderboard": [
+            {
+                "candidate_id": "soccana",
+                "status": "completed",
+                "throughput": 25.0,
+                "track_stability": 82.5,
+                "calibration": 91.0,
+                "coverage": 88.0,
+                "run_id": "bench_legacy",
+            }
+        ],
+        "logs": [],
+    }
+
+    hydrated = hydrate_legacy_benchmark(legacy_payload, benchmark_dir)
+
+    assert hydrated["legacy_record"] is True
+    assert hydrated["primary_suite_id"] == "ops.clip_review_v1"
+    assert "ops.clip_review_v1" in hydrated["suite_results"]
+    assert hydrated["suite_results"]["ops.clip_review_v1"]["detector:soccana"]["status"] == "completed"
+
+
+def test_benchmark_config_endpoint_returns_v2_payload() -> None:
+    result = main.benchmark_config()
+    payload = result.model_dump(mode="json")
+
+    assert "suites" in payload
+    assert "assets" in payload
+    assert "recipes" in payload
+    assert "dataset_states" in payload
+    assert payload["schema_version"] == 2

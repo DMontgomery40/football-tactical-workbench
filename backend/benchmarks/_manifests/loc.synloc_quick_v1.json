@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "suite_id": "loc.synloc_quick_v1",
+  "kind": "dataset_manifest",
+  "split": "validation",
+  "task_coverage": ["localization", "calibration"],
+  "materialization": {
+    "status": "blocked",
+    "expected_files": [
+      "backend/benchmarks/_datasets/loc.synloc_quick_v1/<challenge-or-converted-root>",
+      "backend/benchmarks/_datasets/loc.synloc_quick_v1/<annotations-and-camera-or-world-coordinate-labels>",
+      "backend/third_party/soccernet/sskit"
+    ],
+    "source_artifacts": [
+      "https://github.com/Spiideo/sskit"
+    ],
+    "blockers": [
+      "SynLoc benchmark materialization is still missing. Expected evaluator-ready localization data under backend/benchmarks/_datasets/loc.synloc_quick_v1, but no local SynLoc archive or converted suite root is present in this workspace and no vendored `sskit` checkout exists under backend/third_party/soccernet/sskit."
+    ]
+  }
+}

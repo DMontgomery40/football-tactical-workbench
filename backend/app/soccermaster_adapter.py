@@ -14,7 +14,6 @@ from __future__ import annotations
 import copy
 import logging
 import math
-import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -29,44 +28,7 @@ import torchvision.ops as tv_ops
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "soccermaster"
-SOCCERMASTER_MODELS_ENV_VAR = "SOCCERMASTER_MODELS_DIR"
-SOCCERMASTER_REQUIRED_FILES = (
-    "backbone.pt",
-    "KeypointsDetection.pt",
-    "SoccerNetGSR_Detection.pt",
-    "LinesDetection.pt",
-)
-
-
-@lru_cache(maxsize=1)
-def resolve_soccermaster_model_dir() -> Path:
-    candidates: list[Path] = []
-    raw_env = str(os.environ.get(SOCCERMASTER_MODELS_ENV_VAR, "")).strip()
-    if raw_env:
-        candidates.append(Path(raw_env).expanduser())
-    candidates.append(DEFAULT_MODEL_DIR)
-
-    siblings_root = DEFAULT_MODEL_DIR.parent.parent.parent.parent
-    try:
-        candidates.extend(sorted(siblings_root.glob("*/backend/models/soccermaster")))
-    except Exception:
-        pass
-
-    deduped: list[Path] = []
-    seen: set[str] = set()
-    for candidate in candidates:
-        key = str(candidate)
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(candidate)
-
-    for candidate in deduped:
-        if all((candidate / filename).exists() for filename in SOCCERMASTER_REQUIRED_FILES):
-            return candidate.resolve()
-
-    return (deduped[0] if deduped else DEFAULT_MODEL_DIR).resolve()
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "soccermaster"
 
 # --- 57 pitch keypoint world coordinates (meters, 105 × 68 pitch) ---
 # From SoccerMaster/data/pnlcalib_utils/utils_keypoints.py
@@ -153,28 +115,6 @@ SOCCERMASTER_WORLD_COORDS_PIPELINE[:, 0] *= _SCALE_X
 SOCCERMASTER_WORLD_COORDS_PIPELINE[:, 1] *= _SCALE_Y
 
 NUM_KEYPOINTS = 58  # 57 pitch keypoints + 1 background channel
-
-
-def _ensure_huggingface_hub_transformers_compat() -> None:
-    """Patch newer huggingface_hub installs for older transformers imports.
-
-    Some local environments ship a huggingface_hub version that no longer exports
-    ``is_offline_mode`` at the package top level, while the transformers version
-    used by SoccerMaster still imports it from there during module import.
-    """
-    try:
-        import huggingface_hub
-    except Exception:
-        return
-
-    if "is_offline_mode" in huggingface_hub.__dict__:
-        return
-
-    def _is_offline_mode() -> bool:
-        raw_value = os.environ.get("HF_HUB_OFFLINE") or os.environ.get("TRANSFORMERS_OFFLINE") or ""
-        return str(raw_value).strip().lower() in {"1", "true", "yes", "on"}
-
-    huggingface_hub.is_offline_mode = _is_offline_mode  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -331,16 +271,14 @@ class SoccerMasterKeypointDetector:
         if self._loaded:
             return
 
-        _ensure_huggingface_hub_transformers_compat()
         from transformers import SiglipVisionConfig, SiglipVisionModel
 
-        model_dir = resolve_soccermaster_model_dir()
-        backbone_path = model_dir / "backbone.pt"
-        head_path = model_dir / "KeypointsDetection.pt"
+        backbone_path = MODEL_DIR / "backbone.pt"
+        head_path = MODEL_DIR / "KeypointsDetection.pt"
 
         if not backbone_path.exists() or not head_path.exists():
             raise FileNotFoundError(
-                f"SoccerMaster weights not found in {model_dir}. "
+                f"SoccerMaster weights not found in {MODEL_DIR}. "
                 "Download from https://huggingface.co/xleprime/SoccerMaster"
             )
 
@@ -905,14 +843,12 @@ class SoccerMasterPipeline:
         if self._loaded:
             return
 
-        _ensure_huggingface_hub_transformers_compat()
         from transformers import SiglipVisionConfig, SiglipVisionModel
 
-        model_dir = resolve_soccermaster_model_dir()
-        backbone_path = model_dir / "backbone.pt"
-        kp_path = model_dir / "KeypointsDetection.pt"
-        det_path = model_dir / "SoccerNetGSR_Detection.pt"
-        lines_path = model_dir / "LinesDetection.pt"
+        backbone_path = MODEL_DIR / "backbone.pt"
+        kp_path = MODEL_DIR / "KeypointsDetection.pt"
+        det_path = MODEL_DIR / "SoccerNetGSR_Detection.pt"
+        lines_path = MODEL_DIR / "LinesDetection.pt"
 
         required = [backbone_path, kp_path, det_path, lines_path]
         missing_files = [p for p in required if not p.exists()]

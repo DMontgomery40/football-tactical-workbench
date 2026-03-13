@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "suite_id": "gsr.medium_v1",
+  "kind": "dataset_manifest",
+  "split": "valid",
+  "selection": "fixed_12_clip_subset_v1",
+  "items": [
+    "SN-GSR-2025-valid-001",
+    "SN-GSR-2025-valid-002",
+    "SN-GSR-2025-valid-003",
+    "SN-GSR-2025-valid-004",
+    "SN-GSR-2025-valid-005",
+    "SN-GSR-2025-valid-006",
+    "SN-GSR-2025-valid-007",
+    "SN-GSR-2025-valid-008",
+    "SN-GSR-2025-valid-009",
+    "SN-GSR-2025-valid-010",
+    "SN-GSR-2025-valid-011",
+    "SN-GSR-2025-valid-012"
+  ],
+  "task_coverage": ["game_state"],
+  "materialization": {
+    "status": "blocked",
+    "source_archives": [
+      "backend/datasets/huggingface/soccernet_sn_gsr_2025_medium/valid.zip"
+    ],
+    "blockers": [
+      "No local SoccerNetGS validation archive is staged for the fixed 12-clip medium suite. The only upstream validation artifact exposed by SoccerNet/SN-GSR-2025 is valid.zip (~11.17 GB), and a direct hf_hub_download probe in this workspace warned that the target needed 11169.50 MB while the local destination only had 10698.60 MB free before the download could proceed."
+    ]
+  }
+}

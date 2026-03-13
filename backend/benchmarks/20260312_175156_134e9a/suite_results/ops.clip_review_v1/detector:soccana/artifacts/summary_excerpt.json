@@ -1,0 +1,612 @@
+{
+  "summary_version": "2026.03.10",
+  "pipeline": "classic",
+  "job_id": "bench_23ff50e1",
+  "run_dir": "/Users/davidmontgomery/football_pose_workbench/backend/runs/bench_20260312_175156_134e9a_detector_soccana_e166",
+  "input_video": "/Users/davidmontgomery/football_pose_workbench/backend/benchmarks/_clip_cache/benchmark_clip.mp4",
+  "overlay_video": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/overlay.mp4",
+  "detections_csv": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/detections.csv",
+  "track_summary_csv": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/track_summary.csv",
+  "projection_csv": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/projections.csv",
+  "calibration_debug_csv": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/calibration_debug.csv",
+  "entropy_timeseries_csv": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/entropy_timeseries.csv",
+  "goal_events_csv": null,
+  "summary_json": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/summary.json",
+  "all_outputs_zip": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/all_outputs.zip",
+  "device": "mps",
+  "field_calibration_device": "cpu",
+  "player_model": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+  "requested_player_tracker_mode": "hybrid_reid",
+  "player_tracker_mode": "hybrid_reid",
+  "resolved_player_tracker_mode": "hybrid_reid",
+  "player_tracker_runtime": "hybrid_reid_stitch",
+  "player_tracker_backend": "torchvision_resnet18_imagenet@mps",
+  "player_tracker_embedding_error": null,
+  "player_tracker_stitching_enabled": true,
+  "detector_class_names_source": "checkpoint metadata",
+  "player_detector_class_ids": [
+    0
+  ],
+  "ball_detector_class_ids": [
+    1
+  ],
+  "referee_detector_class_ids": [
+    2
+  ],
+  "ball_model": "/Users/davidmontgomery/football_pose_workbench/backend/models/soccana/Model/weights/best.pt",
+  "ball_tracker_mode": "bytetrack.yaml",
+  "field_calibration_model": "soccana_keypoint",
+  "include_ball": true,
+  "player_conf": 0.25,
+  "ball_conf": 0.2,
+  "iou": 0.5,
+  "frames_processed": 750,
+  "fps": 25.0,
+  "player_rows": 15527,
+  "ball_rows": 150,
+  "unique_player_track_ids": 40,
+  "raw_unique_player_track_ids": 47,
+  "unique_ball_track_ids": 5,
+  "home_tracks": 26,
+  "away_tracks": 13,
+  "unassigned_tracks": 0,
+  "average_player_detections_per_frame": 20.7027,
+  "average_ball_detections_per_frame": 0.2,
+  "longest_track_length": 750,
+  "average_track_length": 388.175,
+  "raw_longest_track_length": 750,
+  "raw_average_track_length": 330.3617,
+  "player_track_churn_ratio": 0.053333,
+  "raw_player_track_churn_ratio": 0.062667,
+  "tracklet_merges_applied": 7,
+  "stitched_track_id_reduction": 0.148936,
+  "identity_embedding_updates": 1303,
+  "identity_embedding_interval_frames": 12,
+  "projected_player_points": 1871,
+  "projected_ball_points": 13,
+  "projected_player_points_fresh": 1871,
+  "projected_player_points_stale": 0,
+  "projected_ball_points_fresh": 13,
+  "projected_ball_points_stale": 0,
+  "player_rows_while_calibration_fresh": 1871,
+  "player_rows_while_calibration_stale": 13656,
+  "field_registered_frames": 1871,
+  "field_registered_ratio": 0.1205,
+  "frames_with_field_homography": 750,
+  "frames_with_usable_homography": 91,
+  "frames_with_nonstale_homography": 91,
+  "frames_with_stale_homography": 659,
+  "frames_projection_blocked_by_stale": 659,
+  "frames_projected_with_last_known_homography": 0,
+  "frames_with_player_anchors": 750,
+  "frames_with_projected_points": 91,
+  "frames_with_homography_but_no_player_anchors": 0,
+  "homography_enabled": true,
+  "field_calibration_refresh_frames": 10,
+  "field_calibration_refresh_attempts": 75,
+  "field_calibration_refresh_successes": 7,
+  "field_calibration_success_rate": 0.093333,
+  "field_calibration_refresh_rejections": 68,
+  "field_keypoint_confidence_threshold": 0.25,
+  "field_calibration_min_visible_keypoints": 4,
+  "field_calibration_stale_recovery_min_visible_keypoints": 5,
+  "field_calibration_stale_recovery_attempts": 65,
+  "field_calibration_stale_recovery_successes": 0,
+  "field_calibration_stale_recovery_rejections": 65,
+  "field_calibration_rejections_no_candidate": 1,
+  "field_calibration_rejections_low_visible_count": 0,
+  "field_calibration_rejections_low_visible_keypoints": 0,
+  "field_calibration_rejections_low_inliers": 47,
+  "field_calibration_rejections_high_reprojection_error": 64,
+  "field_calibration_rejections_high_temporal_drift": 29,
+  "field_calibration_rejections_invalid_candidate": 0,
+  "field_calibration_primary_rejections_no_candidate": 1,
+  "field_calibration_primary_rejections_low_visible_count": 0,
+  "field_calibration_primary_rejections_low_visible_keypoints": 0,
+  "field_calibration_primary_rejections_low_inliers": 46,
+  "field_calibration_primary_rejections_high_reprojection_error": 19,
+  "field_calibration_primary_rejections_high_temporal_drift": 2,
+  "field_calibration_primary_rejections_invalid_candidate": 0,
+  "average_visible_pitch_keypoints": 9.1867,
+  "last_good_calibration_frame": 60,
+  "detector_debug_sample_frames": 5,
+  "raw_detector_boxes_sampled": 106,
+  "raw_detector_class_histogram_sample": {
+    "0": 103,
+    "1": 1,
+    "2": 2
+  },
+  "goal_events_count": 0,
+  "goal_label_source": null,
+  "team_cluster_distance": 0.2199,
+  "jersey_crops_used": 15505,
+  "experiments": [
+    {
+      "id": "geometric_volatility_index",
+      "status": "experimental",
+      "title": "Geometric Volatility Index",
+      "summary": "1 Hz team-shape volatility built from spread, team length, inter-team centroid distance, and spatial entropy.",
+      "interpretation": "Higher values indicate rapid spatial reorganization and a more unstable game state.",
+      "metrics": [
+        {
+          "label": "Peak vol index",
+          "value": 0.4277,
+          "hint": "Highest normalized combined volatility over the half."
+        },
+        {
+          "label": "Average vol index",
+          "value": -0.0,
+          "hint": "Baseline volatility across the half."
+        },
+        {
+          "label": "Latest vol index",
+          "value": 0.0133,
+          "hint": "Most recent combined volatility reading."
+        },
+        {
+          "label": "Sampling",
+          "value": "1 Hz / 10s",
+          "hint": "Per-second series with 10-second rolling mean absolute deltas."
+        },
+        {
+          "label": "Goals in clip",
+          "value": 0,
+          "hint": "Count of SoccerNet goal annotations aligned to this half."
+        },
+        {
+          "label": "30s pre-goal index",
+          "value": 0.0,
+          "hint": "Average combined volatility index in rows that precede a goal within 30 seconds."
+        },
+        {
+          "label": "30s baseline index",
+          "value": 0.0,
+          "hint": "Average combined volatility index outside those 30-second pre-goal windows."
+        },
+        {
+          "label": "30s uplift",
+          "value": 0.0,
+          "hint": "Relative lift of the volatility index in pre-goal windows versus baseline."
+        }
+      ]
+    }
+  ],
+  "top_tracks": [
+    {
+      "track_id": 7,
+      "team_label": "away",
+      "team_vote_ratio": 1.0,
+      "frames": 750,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.8109,
+      "average_bbox_area": 2446.1427,
+      "projected_points": 91
+    },
+    {
+      "track_id": 9,
+      "team_label": "away",
+      "team_vote_ratio": 0.9987,
+      "frames": 750,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.832,
+      "average_bbox_area": 3409.6587,
+      "projected_points": 91
+    },
+    {
+      "track_id": 14,
+      "team_label": "away",
+      "team_vote_ratio": 0.8747,
+      "frames": 750,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.8001,
+      "average_bbox_area": 1821.2147,
+      "projected_points": 91
+    },
+    {
+      "track_id": 11,
+      "team_label": "home",
+      "team_vote_ratio": 0.9987,
+      "frames": 749,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7676,
+      "average_bbox_area": 1668.6435,
+      "projected_points": 91
+    },
+    {
+      "track_id": 4,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 747,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.8054,
+      "average_bbox_area": 2346.7095,
+      "projected_points": 91
+    },
+    {
+      "track_id": 6,
+      "team_label": "away",
+      "team_vote_ratio": 0.8828,
+      "frames": 743,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.768,
+      "average_bbox_area": 1463.7483,
+      "projected_points": 91
+    },
+    {
+      "track_id": 18,
+      "team_label": "away",
+      "team_vote_ratio": 0.9946,
+      "frames": 741,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7714,
+      "average_bbox_area": 1390.8718,
+      "projected_points": 82
+    },
+    {
+      "track_id": 3,
+      "team_label": "home",
+      "team_vote_ratio": 0.9986,
+      "frames": 740,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.809,
+      "average_bbox_area": 2116.9608,
+      "projected_points": 81
+    },
+    {
+      "track_id": 22,
+      "team_label": "away",
+      "team_vote_ratio": 0.9959,
+      "frames": 739,
+      "first_frame": 4,
+      "last_frame": 749,
+      "average_confidence": 0.7871,
+      "average_bbox_area": 1931.5602,
+      "projected_points": 85
+    },
+    {
+      "track_id": 17,
+      "team_label": "home",
+      "team_vote_ratio": 0.9973,
+      "frames": 738,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7777,
+      "average_bbox_area": 1544.3374,
+      "projected_points": 80
+    },
+    {
+      "track_id": 2,
+      "team_label": "home",
+      "team_vote_ratio": 0.9549,
+      "frames": 709,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7947,
+      "average_bbox_area": 1877.7941,
+      "projected_points": 91
+    },
+    {
+      "track_id": 5,
+      "team_label": "away",
+      "team_vote_ratio": 0.5546,
+      "frames": 696,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.741,
+      "average_bbox_area": 1358.6106,
+      "projected_points": 89
+    },
+    {
+      "track_id": 1,
+      "team_label": "away",
+      "team_vote_ratio": 0.878,
+      "frames": 672,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7708,
+      "average_bbox_area": 1491.0357,
+      "projected_points": 91
+    },
+    {
+      "track_id": 13,
+      "team_label": "away",
+      "team_vote_ratio": 0.7195,
+      "frames": 663,
+      "first_frame": 0,
+      "last_frame": 680,
+      "average_confidence": 0.7544,
+      "average_bbox_area": 1928.8944,
+      "projected_points": 84
+    },
+    {
+      "track_id": 12,
+      "team_label": "home",
+      "team_vote_ratio": 0.8531,
+      "frames": 642,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7608,
+      "average_bbox_area": 1870.3364,
+      "projected_points": 91
+    },
+    {
+      "track_id": 8,
+      "team_label": "away",
+      "team_vote_ratio": 0.7117,
+      "frames": 614,
+      "first_frame": 0,
+      "last_frame": 749,
+      "average_confidence": 0.7651,
+      "average_bbox_area": 1774.7508,
+      "projected_points": 91
+    },
+    {
+      "track_id": 15,
+      "team_label": "home",
+      "team_vote_ratio": 0.9947,
+      "frames": 566,
+      "first_frame": 0,
+      "last_frame": 733,
+      "average_confidence": 0.7646,
+      "average_bbox_area": 1467.0972,
+      "projected_points": 91
+    },
+    {
+      "track_id": 25,
+      "team_label": "away",
+      "team_vote_ratio": 0.5684,
+      "frames": 526,
+      "first_frame": 88,
+      "last_frame": 749,
+      "average_confidence": 0.6917,
+      "average_bbox_area": 1302.9202,
+      "projected_points": 2
+    },
+    {
+      "track_id": 19,
+      "team_label": "home",
+      "team_vote_ratio": 0.8176,
+      "frames": 499,
+      "first_frame": 0,
+      "last_frame": 739,
+      "average_confidence": 0.7141,
+      "average_bbox_area": 1572.491,
+      "projected_points": 90
+    },
+    {
+      "track_id": 20,
+      "team_label": "home",
+      "team_vote_ratio": 1.0,
+      "frames": 484,
+      "first_frame": 0,
+      "last_frame": 502,
+      "average_confidence": 0.8002,
+      "average_bbox_area": 2096.9091,
+      "projected_points": 91
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "warn",
+      "title": "Calibration gates are rejecting most candidates",
+      "message": "Detection and tracking are not the main bottleneck here: the run produced 15,527 player rows, 20.70 player detections/frame, and 40 stitched player IDs across 750 frames. The minimap weakness is coming from live calibration acceptance. Only 7 of 75 scheduled refreshes succeeded (9.33%), field registration covered 1,871 projected player points across just 12.05% of frames, and the last good calibration frame was 60. This is not a visibility collapse: average visible pitch keypoints stayed high at 9.19, and `field_calibration_rejections_low_visible_count` was 0. Rejections are happening after candidate formation, mainly on `inlier_count >= MIN_CALIBRATION_INLIERS` and `reprojection_error <= MAX_CALIBRATION_REPROJECTION_ERROR_CM`, with 47 low-inlier rejections and 64 high-reprojection-error rejections; temporal drift also contributed 29 times.",
+      "next_step": "Use the existing `calibration_debug.csv` to isolate the first sustained failure window after frame 60 and patch against the dominant rejection term instead of touching detector or tracker settings. Start by plotting per-refresh `visible_count`, `inlier_count`, `reprojection_error`, and `temporal_drift` for frames 0,10,20,...,740. If most rejected frames have 4 visible / 4 inliers but reprojection error slightly above 250 cm, raise `MAX_CALIBRATION_REPROJECTION_ERROR_CM` to 300-350 for `soccana_keypoint` and rerun. If rejected frames usually have many visible points but only 3-4 inliers, reduce the `cv2.findHomography(..., cv2.RANSAC, 35.0)` reprojection threshold to tighten correspondence selection and log per-point residuals. After that, compare overlay keypoints and minimap at frames near 60, 70, and 80 to confirm whether accepted homographies are geometrically stable enough for smoothing rather than just numerically passing.",
+      "evidence_keys": [
+        "field_calibration_refresh_successes",
+        "field_calibration_refresh_attempts",
+        "field_registered_ratio",
+        "average_visible_pitch_keypoints",
+        "field_calibration_rejections_low_inliers",
+        "field_calibration_rejections_high_reprojection_error",
+        "field_calibration_rejections_high_temporal_drift",
+        "last_good_calibration_frame"
+      ],
+      "implementation_diagnosis": "The critical gate is `backend/app/wide_angle.py::analyze_video` at `candidate_is_usable = (...)`. `detect_pitch_homography` is successfully producing keypoints often enough, but the candidate is dropped unless all of these pass together: non-null homography, `visible_count >= min_visible_count`, `inlier_count >= min_inlier_count`, `reprojection_error <= reprojection_limit_cm`, and `temporal_drift <= temporal_drift_limit_cm`. In this run, visibility was sufficient, so the most likely implementation-level problem is that `backend/app/wide_angle.py::detect_pitch_homography` feeds all thresholded keypoints into `cv2.findHomography` with a fixed RANSAC threshold of 35 pixels, then the runtime applies a separate 250 cm global reprojection gate. That combination can produce a numerically valid homography with enough visible points but too few inliers or too much field-space reprojection error, causing repeated rejection even though the model is seeing the pitch.",
+      "suggested_fix": "Make the calibration path less brittle for `soccana_keypoint`: (1) log the exact rejecting clause per refresh into `calibration_debug.csv` if not already present, (2) expose the RANSAC threshold in `detect_pitch_homography` as a config value instead of hardcoding `35.0`, and (3) tune acceptance by increasing `MAX_CALIBRATION_REPROJECTION_ERROR_CM` modestly to 300-350 or by requiring a stronger inlier ratio when many points are visible. Prefer a small code change that couples `visible_count` to an adaptive inlier requirement rather than globally loosening every gate.",
+      "code_refs": [
+        "backend/app/wide_angle.py::detect_pitch_homography",
+        "backend/app/wide_angle.py::analyze_video"
+      ]
+    },
+    {
+      "level": "warn",
+      "title": "Stale recovery never actually recovers",
+      "message": "After calibration aged out, the pipeline did not regain a usable homography once. There were 65 stale recovery attempts, 0 stale recovery successes, and 65 stale recovery rejections. Because `CALIBRATION_MAX_AGE_FRAMES` is 30 and refresh cadence is every 10 frames, the system had multiple opportunities to recover after the last accepted calibration at frame 60, but projection still remained disabled on most frames, leaving only 13 projected ball points and 1,871 projected player points over the whole run.",
+      "next_step": "Patch stale recovery behavior before spending time on downstream minimap rendering. Reproduce from this run and add a per-attempt log row containing `stale_recovery_mode`, `visible_count`, `inlier_count`, `reprojection_error`, `temporal_drift`, and whether `homography_candidate` was null. Then rerun with a temporary change that skips temporal drift gating on the first stale-recovery acceptance attempt after age-out, while keeping the looser stale thresholds already defined. If that restores registration after camera changes, keep drift disabled or down-weighted for stale recovery only; if not, clear the smoothing history and accept the first geometrically valid candidate after staleness to avoid the old homography poisoning recovery.",
+      "evidence_keys": [
+        "field_calibration_stale_recovery_attempts",
+        "field_calibration_stale_recovery_successes",
+        "field_calibration_stale_recovery_rejections",
+        "last_good_calibration_frame",
+        "projected_ball_points",
+        "projected_player_points"
+      ],
+      "implementation_diagnosis": "In `backend/app/wide_angle.py::analyze_video`, stale recovery mode is only entered when `calibration_was_stale and field_homography is not None`. Even in stale mode the candidate must still satisfy all gates, including `temporal_drift <= calibration_temporal_drift_limit_cm(stale_recovery_mode)`. Although stale thresholds are looser (`STALE_RECOVERY_*` constants), this run shows 0/65 recoveries, which strongly suggests the fallback is still too strict once the camera view diverges from the old homography. Because `temporal_drift` is computed against the existing `field_homography`, a large camera shift can keep new candidates failing even when current keypoints are otherwise usable.",
+      "suggested_fix": "Change stale recovery acceptance logic so that drift is not mandatory when recovering from an already stale calibration. Concretely, in `candidate_is_usable`, gate on visible count, inliers, and reprojection error first; then apply temporal drift only in the non-stale refresh path, or cap it much higher for the first stale acceptance. Keep the existing behavior that clears `accepted_homographies` on stale recovery success so the new estimate is not smoothed against obsolete history.",
+      "code_refs": [
+        "backend/app/wide_angle.py::analyze_video",
+        "backend/app/wide_angle.py::CALIBRATION_MAX_AGE_FRAMES"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Player identity path is working",
+      "message": "The hybrid ReID/stitch tracker is contributing positively rather than causing the weak run. The system produced 15,527 player rows, 40 stitched player IDs from 47 raw IDs, 7 tracklet merges, and a stitched track ID reduction of 0.1489. Track continuity is strong: longest stitched track lasted all 750 frames, average stitched track length was 388.2 frames, and raw-to-stitched improvement is consistent with the configured `hybrid_reid_stitch` runtime. Deep appearance updates are also active rather than falling back to color-only mode: 1,303 identity embedding updates were recorded with an interval of 12 frames using `torchvision_resnet18_imagenet@mps`.",
+      "next_step": "Keep the current tracker path while fixing calibration. For operator validation, use `track_summary.csv` and the overlay to spot-check only the few long tracks with lower team-vote certainty, such as away track 14 at 0.8747 and away track 6 at 0.8828, through occlusion or camera pans. Do not retune ByteTrack or ReID thresholds until calibration is repaired, because the current churn ratio of 0.0533 and full-length tracks indicate identity is already stable enough for tactical overlays.",
+      "evidence_keys": [
+        "player_rows",
+        "unique_player_track_ids",
+        "raw_unique_player_track_ids",
+        "tracklet_merges_applied",
+        "stitched_track_id_reduction",
+        "longest_track_length",
+        "average_track_length",
+        "identity_embedding_updates",
+        "identity_embedding_interval_frames"
+      ],
+      "implementation_diagnosis": "The code path in `backend/app/reid_tracker.py::SparseAppearanceEmbedder` successfully initialized the deep model and is running batched embedding extraction every 12 frames for boxes above the area gate. The post-tracking stitch stage in `backend/app/reid_tracker.py::build_stitched_track_map` then merged 7 candidate tracklets, reducing 47 raw IDs to 40 final IDs. Nothing in the supplied metrics indicates fallback to `hsv_hist_only` or excessive fragmentation, so tracker logic is not the primary fault in this run.",
+      "suggested_fix": "No code change is needed first here. If future identity issues appear after calibration is fixed, add stitch-debug export of rejected links with `appearance_distance`, `continuity_score`, `size_ratio`, and final `score` from `build_stitched_track_map` so merge thresholds can be tuned using evidence instead of guesswork.",
+      "code_refs": [
+        "backend/app/reid_tracker.py::SparseAppearanceEmbedder",
+        "backend/app/reid_tracker.py::build_stitched_track_map"
+      ]
+    },
+    {
+      "level": "good",
+      "title": "Team clustering is usable",
+      "message": "Team assignment is internally consistent enough for broad team-level analysis. There are 26 home tracks and 13 away tracks with 0 unassigned tracks, cluster distance is 0.2199, and jersey crops were plentiful at 15,505. The online team assignment loop also had enough evidence density to keep vote ratios high on the dominant long tracks: for example track 7 is away with 1.0000 vote ratio across 750 frames, track 9 is away at 0.9987, track 11 is home at 0.9987, and track 4 is home at 1.0000.",
+      "next_step": "Use the team split as-is for exploratory aggregates, but restrict any player-specific reporting to tracks with vote ratios above about 0.95 until calibration is fixed. In the overlay, focus manual review on the minority of long tracks with lower certainty, especially track 14 (0.8747 away) and track 6 (0.8828 away), because they are the most likely to flip if jersey crops were contaminated by motion blur or overlap.",
+      "evidence_keys": [
+        "home_tracks",
+        "away_tracks",
+        "unassigned_tracks",
+        "team_cluster_distance",
+        "jersey_crops_used"
+      ],
+      "implementation_diagnosis": "The runtime team labeling path in `backend/app/wide_angle.py::analyze_video` recomputes online team info every 5 frames from accumulated jersey samples. Given 15,505 jersey crops and zero unassigned tracks, the clustering stage appears sufficiently fed and is not being starved by tracker instability. The evidence supports a usable two-cluster separation rather than a collapse of the jersey feature pipeline.",
+      "suggested_fix": "No immediate patch is required. If you want stronger auditability, export per-track sample counts and recent vote windows from `_compute_online_track_team_info` so borderline assignments can be traced without reading the overlay frame by frame.",
+      "code_refs": [
+        "backend/app/wide_angle.py::analyze_video"
+      ]
+    }
+  ],
+  "learn_cards": [
+    {
+      "title": "1. Player detection + hybrid ReID tracker",
+      "what_it_does": "Uses football-specific detection, sparse appearance embeddings, field-aware association, and a stitch pass so player IDs can survive short occlusions and re-entries.",
+      "what_breaks": "Crowded same-kit players, close-up broadcast cuts, and tiny distant crops can still create duplicate IDs.",
+      "what_to_try_next": "Inspect raw-vs-stitched ID counts and longest tracks before trusting any per-player sequence."
+    },
+    {
+      "title": "2. Team ID from jersey colors",
+      "what_it_does": "Samples upper-body jersey colors, clusters them into two groups, and tags tracks as home or away.",
+      "what_breaks": "Goalkeepers, referees, shadows, and tiny crops can poison the color signal.",
+      "what_to_try_next": "Use clips with clear kit contrast first and treat the labels as approximate, not gospel."
+    },
+    {
+      "title": "3. Ball tracking",
+      "what_it_does": "Runs a second detector for the ball so the demo is about play context, not just player boxes.",
+      "what_breaks": "The ball is small, fast, and happy to hide behind players or advertising boards.",
+      "what_to_try_next": "Keep the detector lightweight for now and judge it by overlay sanity, not by perfection."
+    },
+    {
+      "title": "4. Automatic field registration",
+      "what_it_does": "Refreshes pitch calibration from field keypoints every frame and smooths the last few accepted homographies so the minimap can follow a moving broadcast camera without jitter.",
+      "what_breaks": "If the keypoint model loses field structure during a fast cut or tight zoom, the projection has to coast on the last good calibration.",
+      "what_to_try_next": "Watch the live preview for calibration dropouts instead of trusting the minimap blindly."
+    },
+    {
+      "title": "5. Demo first, fancy later",
+      "what_it_does": "Packages detection, appearance-aware tracking, team ID, and rough spatial context into one football-first pipeline.",
+      "what_breaks": "Long match-wide identity is still harder than short tactical windows, especially across cutaways and resets.",
+      "what_to_try_next": "Treat stitched IDs as tactical tracklets first, then add jersey numbers or shot segmentation if match-long identity still matters."
+    }
+  ],
+  "created_at": "2026-03-12T17:53:03.096375Z",
+  "heuristic_diagnostics": [
+    {
+      "level": "good",
+      "title": "Tracking stability: acceptable",
+      "message": "40 stitched player track IDs across 750 frames (raw 47, longest 750, mean 388.2).",
+      "next_step": "Review the longest tracks through pans and occlusions to confirm IDs stay attached to the same players."
+    },
+    {
+      "level": "good",
+      "title": "Identity stitching",
+      "message": "Player tracker ran in hybrid_reid mode with torchvision_resnet18_imagenet@mps. Raw track IDs dropped from 47 to 40 after 7 accepted merges.",
+      "next_step": "Inspect long same-kit occlusions and restart phases to verify the stitched IDs stay on the same players."
+    },
+    {
+      "level": "good",
+      "title": "Team clustering: separated",
+      "message": "26 home tracks and 13 away tracks from 15505 jersey crops (cluster distance 0.220, mean vote ratio 0.92).",
+      "next_step": "Cross-check goalkeepers, referees, and edge cases before treating the home and away labels as clean."
+    },
+    {
+      "level": "good",
+      "title": "Ball detections: usable",
+      "message": "Average ball detections per frame 0.20; projected ball anchors 13.",
+      "next_step": "Verify that the highlighted ball follows play movement rather than bright crowd or signage artifacts."
+    },
+    {
+      "level": "warn",
+      "title": "Field calibration: unstable",
+      "message": "7/75 refreshes succeeded; mean visible pitch keypoints 9.2; 12.0% of player detections projected. Frames with fresh homography 91, stale homography 659, anchors 750, projected 91. Stale recovery 0/65. Gate rejects: no cand 1, low vis 0, low inliers 47, reproj 64, drift 29.",
+      "next_step": "Use a wider camera phase with clearer pitch markings if you need reliable minimap projection."
+    },
+    {
+      "level": "warn",
+      "title": "Goal labels: missing",
+      "message": "No aligned SoccerNet goal events were found for this clip.",
+      "next_step": "Use a clip with Labels-v2.json available if you want to evaluate the example experiment against goals."
+    }
+  ],
+  "diagnostics_source": "ai",
+  "diagnostics_provider": "openai",
+  "diagnostics_model": "gpt-5.4",
+  "diagnostics_status": "completed",
+  "diagnostics_summary_line": "750-frame run with healthy player detection/tracking and usable team labeling, but live field calibration is the dominant failure: only 7/75 refreshes were accepted, stale recovery never recovered, and minimap/projection coverage stayed limited to 12.1% of frames.",
+  "diagnostics_error": "",
+  "diagnostics_json": "/runs/bench_20260312_175156_134e9a_detector_soccana_e166/outputs/diagnostics_ai.json",
+  "diagnostics_prompt_context": {
+    "recent_logs": [],
+    "code_context": [
+      {
+        "label": "calibration_constants",
+        "reason": "Field-calibration constants and acceptance thresholds.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "CALIBRATION_REFRESH_FRAMES =",
+        "excerpt": "CALIBRATION_REFRESH_FRAMES = 10\nCALIBRATION_SMOOTHING_WINDOW = 5\nCALIBRATION_MAX_AGE_FRAMES = 30\nFIELD_KEYPOINT_CONFIDENCE = 0.25\nMIN_CALIBRATION_VISIBLE_KEYPOINTS = 4\nMIN_CALIBRATION_INLIERS = 4\nMAX_CALIBRATION_REPROJECTION_ERROR_CM = 250.0\nMAX_CALIBRATION_TEMPORAL_DRIFT_CM = 1800.0\nSTALE_RECOVERY_MIN_CALIBRATION_VISIBLE_KEYPOINTS = 5\nSTALE_RECOVERY_MIN_CALIBRATION_INLIERS = 5\nSTALE_RECOVERY_MAX_CALIBRATION_REPROJECTION_ERROR_CM = 350.0\nSTALE_RECOVERY_TEMPORAL_DRIFT_CM = 5000.0\nEXPERIMENT_WINDOW_SECONDS = 10.0\nEXPERIMENT_GRID_COLS = 6\nEXPERIMENT_GRID_ROWS = 4\nGOAL_LOOKAHEAD_SECONDS = (30, 60)\nPROGRESS_TRACKING_MAX = 68.0\nPROGRESS_RENDER_END = 90.0\nPROGRESS_VIDEO_FINALIZE_END = 94.0"
+      },
+      {
+        "label": "homography_detection",
+        "reason": "Pitch homography detection and reprojection error calculation.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "def detect_pitch_homography(",
+        "excerpt": "def detect_pitch_homography(\n    frame: np.ndarray,\n    keypoint_model: YOLO | str,\n    device: str,\n    confidence_threshold: float = FIELD_KEYPOINT_CONFIDENCE,\n) -> tuple[np.ndarray | None, np.ndarray | None, int, int, float]:\n    # Dispatch to SoccerMaster adapter when using that model\n    if isinstance(keypoint_model, str) and keypoint_model == \"soccermaster\":\n        from app.soccermaster_adapter import detect_pitch_homography_soccermaster\n        return detect_pitch_homography_soccermaster(frame, device=device, confidence_threshold=0.15)\n\n    results = keypoint_model(source=frame, conf=0.05, device=device, verbose=False)\n    if not results:\n        return None, None, 0, 0, float(\"inf\")\n\n    result = results[0]\n    if not hasattr(result, \"keypoints\") or result.keypoints is None or result.keypoints.data is None:\n        return None, None, 0, 0, float(\"inf\")\n\n    keypoints_data = result.keypoints.data.cpu().numpy().astype(np.float32)\n    if keypoints_data.size == 0:\n        return None, None, 0, 0, float(\"inf\")\n\n    best_index = int(np.argmax((keypoints_data[:, :, 2] >= confidence_threshold).sum(axis=1)))\n    keypoints = keypoints_data[best_index]\n    valid_mask = keypoints[:, 2] >= confidence_threshold\n    visible_count = int(valid_mask.sum())\n    if visible_count < 4:\n        return None, keypoints, visible_count, 0, float(\"inf\")\n\n    image_points = keypoints[valid_mask, :2].astype(np.float32)\n    field_points = PITCH_REFERENCE_POINTS[valid_mask].astype(np.float32)\n    homography_matrix, inlier_mask = cv2.findHomography(image_points, field_points, cv2.RANSAC, 35.0)\n    inlier_count = int(inlier_mask.sum()) if inlier_mask is not None else visible_count\n    if homography_matrix is None or inlier_count < 4:\n        return None, keypoints, visible_count, inlier_count, float(\"inf\")\n    reprojection_error = homography_reprojection_error_cm(homography_matrix.astype(np.float32), image_points, field_points)\n    return homography_matrix.astype(np.float32), keypoints, visible_count, inlier_count, reprojection_error"
+      },
+      {
+        "label": "calibration_runtime_gate",
+        "reason": "Runtime calibration acceptance, stale handling, and projection wiring in the active analysis loop.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "candidate_is_usable = (",
+        "excerpt": "\n            # --- SoccerMaster unified path: one forward pass for detection + calibration ---\n            sm_frame_result = None\n            if use_soccermaster:\n                sm_frame_result = sm_pipeline.detect_frame(frame, det_confidence=player_conf, nms_iou=iou)\n\n            if frame_index % CALIBRATION_REFRESH_FRAMES == 0 or field_homography is None:\n                if use_soccermaster and sm_frame_result is not None:\n                    homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = _homography_from_soccermaster_keypoints(sm_frame_result[\"keypoints\"], frame_width, frame_height)\n                else:\n                    homography_candidate, detected_keypoints, visible_count, inlier_count, reprojection_error = detect_pitch_homography(frame, keypoint_model, keypoint_device)\n                calibration_was_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)\n                stale_recovery_mode = calibration_was_stale and field_homography is not None\n                min_visible_count = calibration_visible_keypoint_minimum(stale_recovery_mode)\n                min_inlier_count = calibration_inlier_minimum(stale_recovery_mode)\n                reprojection_limit_cm = calibration_reprojection_limit_cm(stale_recovery_mode)\n                temporal_drift_limit_cm = calibration_temporal_drift_limit_cm(stale_recovery_mode)\n                temporal_drift = homography_temporal_drift_cm(field_homography, homography_candidate, frame_width, frame_height) if homography_candidate is not None else float(\"inf\")\n                candidate_is_usable = (\n                    homography_candidate is not None\n                    and visible_count >= min_visible_count\n                    and inlier_count >= min_inlier_count\n                    and reprojection_error <= reprojection_limit_cm\n                    and temporal_drift <= temporal_drift_limit_cm\n                )\n                if candidate_is_usable:\n                    normalized_candidate = normalize_homography_matrix(homography_candidate)\n                    if normalized_candidate is not None:\n                        if stale_recovery_mode:\n                            accepted_homographies.clear()\n                            accepted_homographies.append(normalized_candidate)\n                            field_homography = normalized_candidate\n                        else:\n                            accepted_homographies.append(normalized_candidate)\n                            smoothed_homography = smooth_homography_history(accepted_homographies)\n                            field_homography = smoothed_homography if smoothed_homography is not None else normalized_candidate\n                    last_calibration_frame = frame_index\n                    latest_reprojection_error_cm = reprojection_error\n                latest_field_keypoints = detected_keypoints\n                latest_visible_keypoints = visible_count\n                latest_inlier_count = inlier_count\n            calibration_is_stale = calibration_stale_for_frame(field_homography, last_calibration_frame, frame_index)\n            projection_homography = None if calibration_is_stale else field_homography\n\n            current_players: list[dict[str, Any]] = []\n            current_ball: dict[str, Any] | None = None\n\n            if use_soccermaster and sm_frame_result is not None:\n                player_detections = _soccermaster_player_detections(\n                    sm_frame_result[\"detections\"], frame_width, frame_height, projection_homography,\n                    frame_index, tracker_mode, player_tracker, frame,\n                )\n            else:\n                player_detections = detect_players_for_frame(\n                    frame=frame,\n                    player_model=player_model,\n                    detector_spec=detector_spec,\n                    detector_device=detector_device,\n                    player_conf=player_conf,\n                    iou=iou,\n                    frame_width=frame_width,\n                    frame_height=frame_height,\n                    field_homography=projection_homography,\n                    frame_index=frame_index,\n                    tracker_mode=tracker_mode,\n                    player_tracker=player_tracker,\n                )"
+      },
+      {
+        "label": "appearance_embedder",
+        "reason": "Sparse appearance embedder initialization and feature extraction fallback rules.",
+        "path": "backend/app/reid_tracker.py",
+        "anchor": "class SparseAppearanceEmbedder:",
+        "excerpt": "class SparseAppearanceEmbedder:\n    def __init__(self, device: str = \"cpu\", deep_feature_interval: int = 12, min_deep_feature_area: float = 625.0) -> None:\n        self.device_preference = device\n        self.deep_feature_interval = max(1, int(deep_feature_interval))\n        self.min_deep_feature_area = float(min_deep_feature_area)\n        self.deep_feature_dim = 512\n        self.color_feature_dim = 32\n        self.deep_feature_source = \"hsv_hist_only\"\n        self.deep_feature_error: str | None = None\n        self.deep_feature_updates = 0\n        self._torch = None\n        self._model = None\n        self._device = \"cpu\"\n        self._deep_weight = 0.85\n        self._color_weight = 0.35\n        self._init_model()\n\n    def _init_model(self) -> None:\n        try:\n            import torch\n            from torchvision.models import ResNet18_Weights, resnet18\n        except Exception as exc:\n            self.deep_feature_error = f\"torchvision unavailable: {exc}\"\n            return\n\n        try:\n            weights = ResNet18_Weights.DEFAULT\n            model = resnet18(weights=None)\n            state_dict_path = self._ensure_torchvision_weights(weights.url)\n            state_dict = torch.load(state_dict_path, map_location=\"cpu\", weights_only=True)\n            model.load_state_dict(state_dict)\n            model.fc = torch.nn.Identity()\n            preferred_device = self.device_preference\n            if preferred_device == \"mps\" and not torch.backends.mps.is_available():\n                preferred_device = \"cpu\"\n            if preferred_device == \"cuda\" and not torch.cuda.is_available():\n                preferred_device = \"cpu\"\n            model = model.to(preferred_device)\n            model.eval()\n            self._torch = torch\n            self._device = preferred_device\n            self._model = model\n            self.deep_feature_source = f\"torchvision_resnet18_imagenet@{preferred_device}\"\n        except Exception as exc:\n            self.deep_feature_error = str(exc)\n            self._model = None\n            self._torch = None\n            self._device = \"cpu\"\n            self.deep_feature_source = \"hsv_hist_only\"\n\n    def _ensure_torchvision_weights(self, url: str) -> Path:\n        destination = REID_MODEL_CACHE_DIR / Path(url).name\n        if destination.exists() and destination.stat().st_size > 0:\n            return destination\n\n        ssl_context = None\n        try:\n            import certifi\n\n            ssl_context = ssl.create_default_context(cafile=certifi.where())\n        except Exception:\n            ssl_context = ssl.create_default_context()\n\n        req = request.Request(url, headers={\"User-Agent\": \"football-tactical-workbench/1.0\"})\n        with request.urlopen(req, timeout=120, context=ssl_context) as response:\n            destination.write_bytes(response.read())\n        return destination\n\n    def describe(self) -> dict[str, Any]:\n        return {\n            \"embedding_source\": self.deep_feature_source,\n            \"embedding_error\": self.deep_feature_error,\n            \"deep_feature_updates\": self.deep_feature_updates,\n            \"deep_feature_interval\": self.deep_feature_interval,\n        }\n\n    def _preprocess_for_deep_model(self, crop: np.ndarray) -> Any:\n        torch = self._torch\n        if torch is None:\n            return None\n        rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)\n        resized = cv2.resize(rgb, (128, 256), interpolation=cv2.INTER_LINEAR)\n        array = resized.astype(np.float32) / 255.0\n        tensor = torch.from_numpy(array).permute(2, 0, 1)\n        mean = torch.tensor([0.485, 0.456, 0.406], dtype=tensor.dtype).view(3, 1, 1)\n        std = torch.tensor([0.229, 0.224, 0.225], dtype=tensor.dtype).view(3, 1, 1)\n        tensor = (tensor - mean) / std\n        return tensor\n\n    def encode(self, frame: np.ndarray, boxes: list[tuple[int, int, int, int]], frame_index: int) -> list[np.ndarray | None]:\n        features: list[np.ndarray | None] = [None] * len(boxes)\n        identity_crops = [_sample_identity_crop(frame, box) for box in boxes]\n        color_features = [_identity_color_feature(crop) for crop in identity_crops]\n\n        deep_features: dict[int, np.ndarray] = {}\n        should_run_deep = self._model is not None and (frame_index % self.deep_feature_interval == 0)\n        if should_run_deep and self._torch is not None:\n            prepared_batches: list[Any] = []\n            prepared_indices: list[int] = []\n            for index, crop in enumerate(identity_crops):\n                if crop is None or _bbox_area(boxes[index]) < self.min_deep_feature_area:\n                    continue\n                prepared = self._preprocess_for_deep_model(crop)\n                if prepared is None:\n                    continue\n                prepared_batches.append(prepared)\n                prepared_indices.append(index)\n\n            if prepared_batches:\n                torch = self._torch\n                batch = torch.stack(prepared_batches, dim=0).to(self._device)\n                with torch.inference_mode():\n                    outputs = self._model(batch)\n                vectors = outputs.detach().cpu().numpy().astype(np.float32)\n                for local_index, detection_index in enumerate(prepared_indices):\n                    vector = _l2_normalize(vectors[local_index])\n                    if vector is not None:\n                        deep_features[detection_index] = vector\n                        self.deep_feature_updates += 1\n\n        for index, color_feature in enumerate(color_features):\n            deep_feature = deep_features.get(index)\n            deep_part = np.zeros(self.deep_feature_dim, dtype=np.float32)\n            color_part = np.zeros(self.color_feature_dim, dtype=np.float32)\n            has_signal = False\n            if deep_feature is not None:\n                deep_part[: min(len(deep_feature), self.deep_feature_dim)] = deep_feature[: self.deep_feature_dim] * self._deep_weight\n                has_signal = True\n            if color_feature\n# ...[truncated]"
+      },
+      {
+        "label": "tracklet_stitcher",
+        "reason": "Current post-run track stitching logic and merge gates.",
+        "path": "backend/app/reid_tracker.py",
+        "anchor": "def build_stitched_track_map(",
+        "excerpt": "def build_stitched_track_map(tracklets: dict[int, dict[str, Any]], fps: float) -> tuple[dict[int, int], dict[str, Any]]:\n    if not tracklets:\n        return {}, {\"merge_count\": 0, \"raw_track_count\": 0, \"stitched_track_count\": 0}\n\n    max_gap_frames = max(75, int(round(float(fps) * 6.0)))\n    sorted_track_ids = sorted(tracklets, key=lambda track_id: (tracklets[track_id][\"first_frame\"], track_id))\n    candidate_links: list[tuple[float, int, int]] = []\n\n    for previous_track_id in sorted_track_ids:\n        previous_track = tracklets[previous_track_id]\n        for next_track_id in sorted_track_ids:\n            if next_track_id == previous_track_id:\n                continue\n            next_track = tracklets[next_track_id]\n            gap = int(next_track[\"first_frame\"]) - int(previous_track[\"last_frame\"])\n            if gap < 1 or gap > max_gap_frames:\n                continue\n\n            appearance_distance = _cosine_distance(previous_track.get(\"mean_feature\"), next_track.get(\"mean_feature\"))\n            if appearance_distance is not None and appearance_distance > 0.34:\n                continue\n\n            previous_field = previous_track.get(\"last_field_point\")\n            next_field = next_track.get(\"first_field_point\")\n            continuity_score = 0.0\n            if previous_field is not None and next_field is not None:\n                field_distance = float(math.dist(previous_field, next_field))\n                field_gate = 280.0 + gap * 85.0\n                if field_distance > field_gate:\n                    continue\n                continuity_score = 1.0 - min(1.0, field_distance / max(field_gate, 1.0))\n            else:\n                previous_anchor = previous_track.get(\"last_anchor\")\n                next_anchor = next_track.get(\"first_anchor\")\n                if previous_anchor is None or next_anchor is None:\n                    continue\n                pixel_distance = float(math.dist(previous_anchor, next_anchor))\n                pixel_gate = 240.0 + gap * 14.0\n                if pixel_distance > pixel_gate:\n                    continue\n                continuity_score = 1.0 - min(1.0, pixel_distance / max(pixel_gate, 1.0))\n\n            previous_area = max(float(previous_track.get(\"average_bbox_area\") or 1.0), 1.0)\n            next_area = max(float(next_track.get(\"average_bbox_area\") or 1.0), 1.0)\n            size_ratio = max(previous_area, next_area) / max(min(previous_area, next_area), 1.0)\n            if size_ratio > 2.8:\n                continue\n            size_score = 1.0 - min(1.0, abs(math.log(size_ratio)) / 1.1)\n\n            if appearance_distance is None:\n                if gap > max(25, int(round(float(fps) * 1.5))) or continuity_score < 0.82:\n                    continue\n                appearance_score = 0.0\n                score = (0.8 * continuity_score) + (0.2 * size_score) - 0.06\n            else:\n                appearance_score = 1.0 - appearance_distance\n                if appearance_score < 0.66:\n                    continue\n                score = (0.58 * appearance_score) + (0.27 * continuity_score) + (0.15 * size_score)\n\n            if score >= 0.72:\n                candidate_links.append((float(score), previous_track_id, next_track_id))\n\n    next_link: dict[int, int] = {}\n    previous_link: dict[int, int] = {}\n    for _score, previous_track_id, next_track_id in sorted(candidate_links, key=lambda item: item[0], reverse=True):\n        if previous_track_id in next_link or next_track_id in previous_link:\n            continue\n        if int(tracklets[next_track_id][\"first_frame\"]) <= int(tracklets[previous_track_id][\"last_frame\"]):\n            continue\n        next_link[previous_track_id] = next_track_id\n        previous_link[next_track_id] = previous_track_id\n\n    stitched_track_map: dict[int, int] = {}\n    merge_count = 0\n    for track_id in sorted_track_ids:\n        root = track_id\n        while root in previous_link:\n            root = previous_link[root]\n        stitched_track_map[track_id] = root\n        if root != track_id:\n            merge_count += 1\n\n    stitched_track_count = len(set(stitched_track_map.values()))\n    return stitched_track_map, {\n        \"merge_count\": merge_count,\n        \"raw_track_count\": len(sorted_track_ids),\n        \"stitched_track_count\": stitched_track_count,\n        \"max_gap_frames\": max_gap_frames,\n    }"
+      },
+      {
+        "label": "ball_tracking_branch",
+        "reason": "Ball tracking branch inside the active analysis loop.",
+        "path": "backend/app/wide_angle.py",
+        "anchor": "if include_ball and ball_model is not None:",
+        "excerpt": "                        \"pitch_point\": None,\n                    }\n                )\n\n            if use_soccermaster and sm_frame_result is not None:\n                # Ball from SoccerMaster detections (role == \"ball\")\n                if include_ball:\n                    current_ball = _soccermaster_best_ball(sm_frame_result[\"detections\"], frame_width, frame_height)\n            elif include_ball and ball_model is not None:\n                ball_results = ball_model.track(\n                    source=frame,\n                    persist=True,\n                    tracker=DEFAULT_TRACKER,\n                    conf=ball_conf,\n                    iou=iou,\n                    device=detector_device,\n                    classes=detector_spec[\"ball_class_ids\"],\n                    verbose=False,\n                )\n                ball_boxes = ball_results[0].boxes\n                if ball_boxes is not None and len(ball_boxes) > 0:\n                    b_xyxy = ball_boxes.xyxy.cpu().numpy()\n                    b_confidences = ball_boxes.conf.cpu().numpy() if ball_boxes.conf is not None else np.zeros(len(b_xyxy), dtype=np.float32)\n                    b_track_ids = ball_boxes.id.cpu().numpy().astype(int) if ball_boxes.id is not None else np.full(len(b_xyxy), -1, dtype=int)\n                    best_index = int(np.argmax(b_confidences))\n                    x1, y1, x2, y2 = clamp_box(b_xyxy[best_index], frame_width, frame_height)\n                    current_ball = {\n                        \"track_id\": int(b_track_ids[best_index]),\n                        \"confidence\": float(b_confidences[best_index]),\n                        \"bbox\": (x1, y1, x2, y2),\n                        \"anchor\": (float((x1 + x2) / 2.0), float((y1 + y2) / 2.0)),\n                        \"pitch_point\": None,\n                    }\n\n            if frame_index % 5 == 0:\n                team_info_by_track, _ = _compute_online_track_team_info(jersey_samples, jersey_sample_track_ids)\n\n            annotated = frame.copy()\n            draw_detected_field_keypoints(annotated, latest_field_keypoints, style)\n\n            for player_row in current_players:\n                team_info = team_info_by_track.get(player_row[\"track_id\"], default_team_info())\n                player_row[\"team_label\"] = team_info[\"team_label\"]\n                player_row[\"team_vote_ratio\"] = float(team_info[\"team_vote_ratio\"])\n                player_row[\"field_point\"] = project_point(player_row[\"anchor\"], projection_homography)\n                player_row[\"pitch_point\"] = field_point_to_minimap(player_row[\"field_point\"], minimap_width, minimap_height)\n                x1, y1, x2, y2 = player_row[\"bbox\"]\n                color = TEAM_BOX_COLORS.get(player_row[\"team_label\"], TEAM_BOX_COLORS[\"unassigned\"])\n                cv2.rectangle(annotated, (x1, y1), (x2, y2), color, style[\"box_thickness\"])\n                label = f\"{player_row['team_label']} #{player_row['track_id']}\" if player_row[\"track_id\"] >= 0 else player_row[\"team_label\"]\n                draw_label(\n                    annotated,\n                    label,\n                    x1,\n                    y1,\n                    (255, 255, 255),\n                    scale=style[\"label_scale\"],\n                    thickness=style[\"text_thickness\"],\n                    padding_x=style[\"label_padding_x\"],\n                    padding_y=style[\"label_padding_y\"],\n                )\n\n            if current_ball is not None:\n                current_ball[\"field_point\"] = project_point(current_ball[\"anchor\"], projection_homography)"
+      }
+    ],
+    "budget": {
+      "max_output_tokens": 3000,
+      "context_json_chars": 31156,
+      "code_slice_count": 6,
+      "recent_log_count": 0
+    }
+  }
+}
