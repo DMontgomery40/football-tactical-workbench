@@ -115,6 +115,15 @@ def evaluate_gamestate(
     artifacts_dir: str | Path,
     benchmark_id: str,
 ) -> dict[str, Any]:
+    recipe_id = str(recipe.get("id") or "").strip()
+    if recipe_id != "pipeline:sn-gamestate-tracklab":
+        raise BenchmarkEvaluationUnavailable(
+            "Benchmark Lab can now execute the vendored sn-gamestate baseline row through the official validation "
+            "tracker state, but it still does not translate non-baseline recipe rows into TrackLab tracker-state "
+            "inputs or module overrides. The remaining unsupported recipe is "
+            f"{recipe_id or '<unknown recipe>'}."
+        )
+
     blockers = probe_gamestate_blockers(
         suite=suite,
         dataset_root=dataset_root,
@@ -124,14 +133,6 @@ def evaluate_gamestate(
         raise BenchmarkEvaluationUnavailable(" ".join(dict.fromkeys(blockers)))
 
     state_file = _resolved_gamestate_state_file(recipe)
-    recipe_id = str(recipe.get("id") or "").strip()
-    if recipe_id != "pipeline:sn-gamestate-tracklab":
-        raise BenchmarkEvaluationUnavailable(
-            "Benchmark Lab can now execute the vendored sn-gamestate baseline row through the official validation "
-            "tracker state, but it still does not translate non-baseline recipe rows into TrackLab tracker-state "
-            "inputs or module overrides. The remaining unsupported recipe is "
-            f"{recipe_id or '<unknown recipe>'}."
-        )
     if state_file is None or not state_file.exists():
         raise BenchmarkEvaluationUnavailable(
             "Game-state baseline execution needs the official compressed validation tracker state at "

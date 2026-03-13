@@ -170,6 +170,9 @@ def test_external_adapters_use_repo_owned_wrapper_scripts(tmp_path: Path) -> Non
         "app.benchmark_eval.gamestate.run_external_json_command",
         side_effect=fake_run_external_json_command,
     ), patch(
+        "app.benchmark_eval.gamestate.probe_gamestate_blockers",
+        return_value=[],
+    ), patch(
         "app.benchmark_eval.synloc.ensure_synloc_prediction_export",
         return_value={
             "predictions_json": str(synloc_artifacts / "results.json"),
